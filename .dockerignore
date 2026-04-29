@@ -1,0 +1,21 @@
+# Local build artifacts shouldn't enter the build context.
+agent
+/dist/
+/bin/
+*.test
+*.out
+coverage.txt
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local config / secrets
+.env
+.env.*
+
+# Git history isn't needed for the build (we read VERSION via build arg).
+.git
+.gitignore

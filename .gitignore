@@ -1,0 +1,21 @@
+# Binaries
+/agent
+/dist/
+/bin/
+*.exe
+
+# Go build artifacts
+*.test
+*.out
+coverage.txt
+
+# Editor / OS
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Local config / secrets
+.env
+.env.*
+!.env.example
