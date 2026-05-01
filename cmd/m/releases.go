@@ -25,6 +25,19 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.12",
+		Date:    "2026-05-01",
+		Highlights: []string{
+			"Theme system: built-in themes (matrix, default, minimal) + custom themes via ~/.config/m/theme.yaml.",
+			"Matrix theme (default): green monochrome — green user text, dark green tools, red errors.",
+			"`/theme` command: list themes or switch live (e.g. `/theme matrix`, `/theme default`).",
+			"Responsive layout: header collapses on small terminals (<80 cols or <20 rows).",
+			"Tool activity visible in TUI: → fs_list / ← 245 bytes shown in yellow while agent works.",
+			"Visual message styling: user (bold colored), tool activity (faint), errors (red).",
+			"Fix: v0.0.11 release asset conflict resolved (stale GitHub release deleted before retag).",
+		},
+	},
+	{
 		Version: "0.0.11",
 		Date:    "2026-05-01",
 		Highlights: []string{

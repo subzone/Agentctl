@@ -70,18 +70,15 @@ type tuiModel struct {
 	input    textinput.Model
 	spinner  spinner.Model
 
-	// history is a *Builder, not a value, because bubbletea's Update is
-	// value-receiver: every Update call gets a copy of tuiModel, and a
-	// non-zero strings.Builder panics ("illegal use of non-zero Builder
-	// copied by value") on the next WriteString. The pointer is shared
-	// across all copies, so writes land on the same backing buffer.
 	history  *strings.Builder
 	stats    sysStats
 	usage    llm.Usage
 	lastIn   int
-	provider string // e.g. "anthropic"
-	model    string // bare model id, e.g. "claude-sonnet-4-6"
+	provider string
+	model    string
 	thinking bool
+	theme    *Theme
+	styles   Styles
 
 	width  int
 	height int
@@ -99,7 +96,11 @@ func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, n
 	sp.Spinner = spinner.Dot
 
 	vp := viewport.New(80, 10)
-	vp.SetContent(fmt.Sprintf("chat with %s — /exit to quit, /reset to clear history, /help for more\n\n", name))
+
+	t := Load()
+	s := t.Resolve()
+
+	vp.SetContent(s.Dim.Render(fmt.Sprintf("chat with %s — /exit to quit, /reset to clear, /help for more", name)) + "\n\n")
 
 	return tuiModel{
 		sess:     sess,
@@ -113,6 +114,8 @@ func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, n
 		provider: provider,
 		model:    model,
 		name:     name,
+		theme:    t,
+		styles:   s,
 	}
 }
 
@@ -179,11 +182,36 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendHistory("(compacted to last 4 exchanges)\n")
 				return m, nil
 			}
+			if strings.HasPrefix(line, "/theme") {
+				arg := strings.TrimSpace(strings.TrimPrefix(line, "/theme"))
+				if arg == "" {
+					names := []string{}
+					for n := range Builtin {
+						mark := "  "
+						if n == m.theme.Name {
+							mark = "* "
+						}
+						names = append(names, mark+n)
+					}
+					m.appendHistory("themes: " + strings.Join(names, ", ") + " (* = active)\n")
+					return m, nil
+				}
+				t := ByName(arg)
+				if t == nil {
+					m.appendHistory(fmt.Sprintf("unknown theme %q (try /theme for list)\n", arg))
+					return m, nil
+				}
+				m.theme = t
+				m.styles = t.Resolve()
+				_ = Save(t)
+				m.appendHistory(fmt.Sprintf("switched to %s theme\n", arg))
+				return m, nil
+			}
 			if strings.HasPrefix(line, "/") {
 				m.appendHistory(fmt.Sprintf("unknown command %q (try /help)\n", line))
 				return m, nil
 			}
-			m.appendHistory(userStyle.Render("» "+line) + "\n")
+			m.appendHistory(m.styles.User.Render("» "+line) + "\n")
 			m.thinking = true
 			return m, tea.Batch(
 				runStepCmd(m.ctx, m.sess, m.streamCh, line),
@@ -197,7 +225,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.usage = msg.usage
 			m.lastIn = msg.lastIn
 			if msg.err != nil {
-				m.appendHistory(errorStyle.Render(fmt.Sprintf("error: %v", msg.err)) + "\n")
+				m.appendHistory(m.styles.Error.Render(fmt.Sprintf("error: %v", msg.err)) + "\n")
 			} else {
 				m.appendHistory("\n")
 			}
@@ -206,7 +234,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Style tool activity indicators from the engine's Status writer.
 		chunk := msg.chunk
 		if strings.HasPrefix(chunk, "→ ") || strings.HasPrefix(chunk, "← ") {
-			chunk = toolStyle.Render(strings.TrimRight(chunk, "\n")) + "\n"
+			chunk = m.styles.Tool.Render(strings.TrimRight(chunk, "\n")) + "\n"
 		}
 		m.appendHistory(chunk)
 		return m, listenStreamCmd(m.streamCh)
@@ -249,9 +277,15 @@ func (m *tuiModel) appendHistory(s string) {
 // resizes. Header height is fixed at the banner's row count plus a
 // border; input is one row plus padding.
 func (m *tuiModel) layout() {
-	const headerHeight = 9 // banner (6) + commands bar (1) + border (2)
 	const inputHeight = 1
-	bodyHeight := m.height - headerHeight - inputHeight - 2 // 2 for body borders
+	// Responsive header: hide elements on small terminals.
+	headerHeight := 9 // banner(6) + model label(1) + cmds bar(1) + gap(1)
+	if m.width < 80 {
+		headerHeight = 3 // just cmds bar + minimal padding
+	} else if m.height < 20 {
+		headerHeight = 3
+	}
+	bodyHeight := m.height - headerHeight - inputHeight - 2
 	if bodyHeight < 3 {
 		bodyHeight = 3
 	}
@@ -265,8 +299,10 @@ func (m *tuiModel) layout() {
 // on the right; lipgloss handles the alignment so the box edges stay
 // flush regardless of terminal width.
 func (m tuiModel) View() string {
-	bannerBox := bannerStyle.Render(strings.TrimLeft(banner, "\n"))
-	tokenBox := renderTokenBox(m.usage, m.provider, m.model)
+	bannerBox := lipgloss.NewStyle().Padding(0, 2).Render(
+		m.styles.Banner.Render(strings.TrimLeft(banner, "\n")),
+	)
+	tokenBox := renderTokenBox(m.usage, m.provider, m.model, m.styles.Dim)
 	statsBox := renderStatsTable(m.stats)
 
 	boxes := lipgloss.Width(bannerBox) + lipgloss.Width(tokenBox) + lipgloss.Width(statsBox)
@@ -281,22 +317,21 @@ func (m tuiModel) View() string {
 
 	header := lipgloss.JoinHorizontal(lipgloss.Top, bannerBox, spacerL, tokenBox, spacerR, statsBox)
 
-	cmdsBar := cmdBarStyle.Render("/exit  /reset  /compact  /model  /config  /help")
+	cmdsBar := m.styles.Dim.Padding(0, 2).Render("/exit  /reset  /compact  /model  /config  /theme  /help")
 
 	cwdLabel := ""
 	if cwd, err := os.Getwd(); err == nil {
-		cwdLabel = dimStyle.Render("cwd: " + cwd)
+		cwdLabel = m.styles.Dim.Render("cwd: " + cwd)
 	}
 
 	body := m.viewport.View()
 	if m.thinking {
-		body += "\n" + dimStyle.Render(m.spinner.View()+" thinking…")
+		body += "\n" + m.styles.Dim.Render(m.spinner.View()+" thinking…")
 	}
 
-	// Input line with context % indicator on the right.
 	inputLine := m.input.View()
 	if pct := contextPercent(m.lastIn, m.model); pct >= 0 {
-		ctxLabel := dimStyle.Render(fmt.Sprintf("ctx: %d%%", pct))
+		ctxLabel := m.styles.Dim.Render(fmt.Sprintf("ctx: %d%%", pct))
 		pad := m.width - lipgloss.Width(inputLine) - lipgloss.Width(ctxLabel) - 4
 		if pad < 1 {
 			pad = 1
@@ -314,21 +349,12 @@ func (m tuiModel) View() string {
 }
 
 var (
-	bannerStyle = lipgloss.NewStyle().Padding(0, 2)
-	bodyStyle   = lipgloss.NewStyle().
-			Padding(0, 1).
-			Border(lipgloss.NormalBorder(), true, false)
+	bodyStyle  = lipgloss.NewStyle().Padding(0, 1).Border(lipgloss.NormalBorder(), true, false)
 	inputStyle = lipgloss.NewStyle().Padding(0, 1)
-	dimStyle   = lipgloss.NewStyle().Faint(true)
 
 	statsKey = lipgloss.NewStyle().Width(6)
 	statsVal = lipgloss.NewStyle().Align(lipgloss.Right).Width(8)
 	statsBox = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1)
-
-	cmdBarStyle = lipgloss.NewStyle().Faint(true).Padding(0, 2)
-	userStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12"))  // bright blue
-	toolStyle  = lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("11")) // yellow
-	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))              // red
 )
 
 func renderStatsTable(s sysStats) string {
@@ -344,7 +370,7 @@ func renderStatsTable(s sysStats) string {
 // renderTokenBox shows cumulative token counts and estimated cost for the
 // session. Cost is a rough estimate based on published per-1M-token rates;
 // models not in the table show tokens only.
-func renderTokenBox(u llm.Usage, provider, model string) string {
+func renderTokenBox(u llm.Usage, provider, model string, dim lipgloss.Style) string {
 	total := u.InputTokens + u.OutputTokens
 	rows := []string{
 		statsKey.Render("In") + statsVal.Render(formatTokens(u.InputTokens)),
@@ -354,9 +380,8 @@ func renderTokenBox(u llm.Usage, provider, model string) string {
 	cost := estimateCost(u, model)
 	rows = append(rows, statsKey.Render("Cost") + statsVal.Render(formatCost(cost)))
 	box := tokenBoxStyle.Render(strings.Join(rows, "\n"))
-	// Show full provider/model below the box so it's always readable.
 	label := provider + "/" + model
-	labelStyled := dimStyle.Align(lipgloss.Center).Width(lipgloss.Width(box)).Render(label)
+	labelStyled := dim.Align(lipgloss.Center).Width(lipgloss.Width(box)).Render(label)
 	return lipgloss.JoinVertical(lipgloss.Center, box, labelStyled)
 }
 
