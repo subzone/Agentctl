@@ -183,8 +183,9 @@ func (s *Session) Step(ctx context.Context, task string) error {
 		assistant := llm.Message{Role: llm.RoleAssistant}
 		var (
 			stopReason string
-			textIdx    = -1 // index of the in-progress text block, -1 if none
+			textIdx    = -1
 		)
+		hasSchema := len(s.cfg.ResponseSchema) > 0
 
 		for ev := range events {
 			switch ev.Kind {
@@ -194,10 +195,13 @@ func (s *Session) Step(ctx context.Context, task string) error {
 					textIdx = len(assistant.Content) - 1
 				}
 				assistant.Content[textIdx].Text += ev.Text
-				if _, err := io.WriteString(s.out, ev.Text); err != nil {
-					return err
+				// When structured output is active, buffer instead of streaming.
+				if !hasSchema {
+					if _, err := io.WriteString(s.out, ev.Text); err != nil {
+						return err
+					}
+					wroteAny = true
 				}
-				wroteAny = true
 			case llm.EventToolCall:
 				textIdx = -1
 				assistant.Content = append(assistant.Content, llm.ContentBlock{
@@ -220,11 +224,37 @@ func (s *Session) Step(ctx context.Context, task string) error {
 			}
 		}
 
+		// Structured output post-processing: extract JSON, validate,
+		// display only the answer field, store full JSON in history.
+		if hasSchema {
+			fullJSON, display := extractStructuredResponse(assistant)
+			if fullJSON != "" {
+				if err := validateStructuredResponse(fullJSON); err != nil {
+					fmt.Fprintf(s.status, "warning: %v\n", err)
+				}
+				if _, err := io.WriteString(s.out, display); err != nil {
+					return err
+				}
+				wroteAny = true
+			}
+			// Rewrite history so the hub sees clean JSON, not tool_use blocks.
+			if fullJSON != "" {
+				assistant = rewriteAssistantForHistory(fullJSON)
+			}
+		}
+
 		s.messages = append(s.messages, assistant)
 
 		switch stopReason {
 		case "tool_use":
-			// Model wants to call tools — execute them and loop.
+			// If structured output extracted the response from a tool call,
+			// don't execute tools — the response-tool is synthetic.
+			if hasSchema {
+				if wroteAny {
+					fmt.Fprintln(s.out)
+				}
+				return nil
+			}
 			results, err := executeTools(ctx, s.cfg.Tools, s.status, assistant.Content)
 			if err != nil {
 				return err
@@ -247,44 +277,70 @@ func (s *Session) Step(ctx context.Context, task string) error {
 	return fmt.Errorf("engine: hit MaxTurns=%d without natural stop", s.maxTurns)
 }
 
-// executeTools runs each tool_use block in assistant and returns a single
-// user message containing tool_result blocks in matching order.
+// executeTools runs each tool_use block in assistant. When multiple tools
+// are requested in the same turn, they run concurrently (each tool call
+// is independent). Results are collected in order.
 func executeTools(ctx context.Context, reg *tools.Registry, status io.Writer, assistant []llm.ContentBlock) (llm.Message, error) {
-	results := llm.Message{Role: llm.RoleUser}
+	var calls []llm.ContentBlock
 	for _, b := range assistant {
-		if b.Type != llm.BlockToolUse {
-			continue
+		if b.Type == llm.BlockToolUse {
+			calls = append(calls, b)
 		}
+	}
+	if len(calls) == 0 {
+		return llm.Message{}, errors.New("engine: stop_reason=tool_use but no tool_use blocks present")
+	}
+
+	// Single tool call — run inline, no goroutine overhead.
+	if len(calls) == 1 {
+		b := calls[0]
 		fmt.Fprintf(status, "→ %s %s\n", b.ToolName, summarizeInput(b.ToolInput))
+		result := runToolBlock(ctx, reg, status, b)
+		return llm.Message{Role: llm.RoleUser, Content: []llm.ContentBlock{result}}, nil
+	}
 
-		output, err := runOne(ctx, reg, b)
-		isErr := false
-		content := output
-		if err != nil {
-			isErr = true
-			if content == "" {
-				content = err.Error()
-			} else {
-				content = output + "\nERROR: " + err.Error()
-			}
-			fmt.Fprintf(status, "← error: %v\n", err)
+	// Multiple tool calls — run concurrently.
+	type indexed struct {
+		idx    int
+		result llm.ContentBlock
+	}
+	ch := make(chan indexed, len(calls))
+	for i, b := range calls {
+		fmt.Fprintf(status, "→ %s %s\n", b.ToolName, summarizeInput(b.ToolInput))
+		go func(i int, b llm.ContentBlock) {
+			ch <- indexed{idx: i, result: runToolBlock(ctx, reg, status, b)}
+		}(i, b)
+	}
+
+	results := make([]llm.ContentBlock, len(calls))
+	for range calls {
+		r := <-ch
+		results[r.idx] = r.result
+	}
+	return llm.Message{Role: llm.RoleUser, Content: results}, nil
+}
+
+func runToolBlock(ctx context.Context, reg *tools.Registry, status io.Writer, b llm.ContentBlock) llm.ContentBlock {
+	output, err := runOne(ctx, reg, b)
+	isErr := false
+	content := output
+	if err != nil {
+		isErr = true
+		if content == "" {
+			content = err.Error()
 		} else {
-			fmt.Fprintf(status, "← %d bytes\n", len(output))
+			content = output + "\nERROR: " + err.Error()
 		}
-
-		results.Content = append(results.Content, llm.ContentBlock{
-			Type:      llm.BlockToolResult,
-			ToolUseID: b.ToolID,
-			Output:    content,
-			IsError:   isErr,
-		})
+		fmt.Fprintf(status, "← error: %v\n", err)
+	} else {
+		fmt.Fprintf(status, "← %d bytes\n", len(output))
 	}
-	if len(results.Content) == 0 {
-		// Should not happen — stop_reason was tool_use but no blocks. Surface it
-		// rather than silently looping.
-		return results, errors.New("engine: stop_reason=tool_use but no tool_use blocks present")
+	return llm.ContentBlock{
+		Type:      llm.BlockToolResult,
+		ToolUseID: b.ToolID,
+		Output:    content,
+		IsError:   isErr,
 	}
-	return results, nil
 }
 
 func runOne(ctx context.Context, reg *tools.Registry, b llm.ContentBlock) (string, error) {

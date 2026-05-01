@@ -25,6 +25,17 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.10",
+		Date:    "2026-05-01",
+		Highlights: []string{
+			"Structured output post-processing: engine buffers JSON responses, extracts the `answer` field for display, validates JSON, rewrites history for hub consumption.",
+			"Anthropic response-tool extraction: the synthetic `structured_response` tool call is intercepted and not executed as a real tool.",
+			"Parallel tool execution: multiple tool calls in the same turn run concurrently, results collected in order.",
+			"Ports/adapters layer: `internal/ports` defines ConfigSource, Secrets, and StateStore interfaces; `internal/adapters` provides an in-memory StateStore.",
+			"Test coverage push: structured output tests, parallel execution test, validate/changelog/cwd cmd tests. Engine at 90.5%, adapters at 100%.",
+		},
+	},
+	{
 		Version: "0.0.9",
 		Date:    "2026-05-01",
 		Highlights: []string{

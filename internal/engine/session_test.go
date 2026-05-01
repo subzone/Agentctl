@@ -297,3 +297,66 @@ func TestSessionResponseSchemaPassedToProvider(t *testing.T) {
 		t.Errorf("ResponseSchema = %s, want %s", p.requests[0].ResponseSchema, schema)
 	}
 }
+
+func TestParallelToolExecution(t *testing.T) {
+	// Provider returns two tool calls in one turn, then a final text turn.
+	p := &recordingProvider{turns: [][]llm.Event{
+		{
+			{Kind: llm.EventToolCall, ToolID: "t1", ToolName: "shell", ToolInput: json.RawMessage(`{"command":"echo a"}`)},
+			{Kind: llm.EventToolCall, ToolID: "t2", ToolName: "shell", ToolInput: json.RawMessage(`{"command":"echo b"}`)},
+			{Kind: llm.EventDone, StopReason: "tool_use"},
+		},
+		{
+			{Kind: llm.EventText, Text: "done"},
+			{Kind: llm.EventDone, StopReason: "end_turn"},
+		},
+	}}
+	reg := tools.NewRegistry(&fakeTool{})
+	var out bytes.Buffer
+	s := NewSession(Config{Provider: p, Model: "m", Tools: reg, Out: &out})
+	if err := s.Step(context.Background(), "go"); err != nil {
+		t.Fatalf("Step: %v", err)
+	}
+	// Both tool results should be in the history.
+	msgs := s.Messages()
+	// user, assistant(2 tool calls), user(2 tool results), assistant(text)
+	if len(msgs) != 4 {
+		t.Fatalf("messages = %d, want 4", len(msgs))
+	}
+	toolResults := msgs[2].Content
+	if len(toolResults) != 2 {
+		t.Fatalf("tool results = %d, want 2", len(toolResults))
+	}
+	// Results should be in order (t1, t2) regardless of goroutine scheduling.
+	if toolResults[0].ToolUseID != "t1" || toolResults[1].ToolUseID != "t2" {
+		t.Errorf("tool result order: %s, %s", toolResults[0].ToolUseID, toolResults[1].ToolUseID)
+	}
+}
+
+func TestSessionStructuredOutputBuffersAndDisplaysAnswer(t *testing.T) {
+	schema := json.RawMessage(`{"type":"object","properties":{"answer":{"type":"string"}},"required":["answer"]}`)
+	p := &recordingProvider{turns: [][]llm.Event{
+		{
+			{Kind: llm.EventText, Text: `{"answer":"the result","confidence":"high"}`},
+			{Kind: llm.EventDone, StopReason: "end_turn"},
+		},
+	}}
+	var out bytes.Buffer
+	s := NewSession(Config{Provider: p, Model: "m", ResponseSchema: schema, Out: &out})
+	if err := s.Step(context.Background(), "go"); err != nil {
+		t.Fatalf("Step: %v", err)
+	}
+	// Output should show only the answer, not the full JSON.
+	if got := out.String(); got != "the result\n" {
+		t.Errorf("out = %q, want %q", got, "the result\n")
+	}
+	// History should contain the full JSON for the hub.
+	msgs := s.Messages()
+	if len(msgs) != 2 {
+		t.Fatalf("messages = %d", len(msgs))
+	}
+	assistantText := msgs[1].Content[0].Text
+	if assistantText != `{"answer":"the result","confidence":"high"}` {
+		t.Errorf("history = %q", assistantText)
+	}
+}
