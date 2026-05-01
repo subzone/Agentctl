@@ -90,7 +90,7 @@ func runAgent(cmd *cobra.Command, args []string) error {
 	return engine.Run(ctx, engine.Config{
 		Provider:    provider,
 		Model:       model,
-		System:      doc.Body,
+		System:      systemWithCwd(doc.Body),
 		Tools:       rt.registry,
 		Temperature: agent.Temperature,
 		MaxTokens:   maxTokens,
@@ -159,6 +159,14 @@ func readTask(cmd *cobra.Command, rest []string) (string, error) {
 		return "", fmt.Errorf("stdin was empty")
 	}
 	return t, nil
+}
+
+// systemWithCwd appends the current working directory to a system prompt.
+func systemWithCwd(body string) string {
+	if cwd, err := os.Getwd(); err == nil {
+		return body + fmt.Sprintf("\n\nCurrent working directory: %s", cwd)
+	}
+	return body
 }
 
 // stdinConfirm returns a ConfirmFunc that prints the prompt to w and reads

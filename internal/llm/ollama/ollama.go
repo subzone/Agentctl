@@ -119,6 +119,11 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 			opts.NumPredict = &mt
 		}
 		payload.Options = opts
+	} else {
+		// When MaxTokens is 0, set a generous default so Ollama doesn't
+		// use its built-in limit (often 128-2048 tokens).
+		defaultPredict := 8192
+		payload.Options = &chatOpts{NumPredict: &defaultPredict}
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {

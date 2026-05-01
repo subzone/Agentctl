@@ -69,6 +69,12 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 	// Extract provider name for TUI display (e.g. "anthropic" from "anthropic/claude-sonnet-4-6").
 	providerName, _, _ := strings.Cut(agent.Model, "/")
 
+	// Inject the working directory so the model knows where it is.
+	system := doc.Body
+	if cwd, err := os.Getwd(); err == nil {
+		system += fmt.Sprintf("\n\nCurrent working directory: %s", cwd)
+	}
+
 	ctx, cancel := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
@@ -102,7 +108,7 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 		sess := engine.NewSession(engine.Config{
 			Provider:    provider,
 			Model:       model,
-			System:      doc.Body,
+			System:      system,
 			Tools:       rt.registry,
 			Temperature: agent.Temperature,
 			MaxTokens:   maxTokens,
@@ -115,7 +121,7 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 	sess := engine.NewSession(engine.Config{
 		Provider:    provider,
 		Model:       model,
-		System:      doc.Body,
+		System:      system,
 		Tools:       rt.registry,
 		Temperature: agent.Temperature,
 		MaxTokens:   maxTokens,

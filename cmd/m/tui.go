@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -277,6 +278,11 @@ func (m tuiModel) View() string {
 
 	cmdsBar := cmdBarStyle.Render("/exit  /reset  /compact  /model <provider/model>  /help")
 
+	cwdLabel := ""
+	if cwd, err := os.Getwd(); err == nil {
+		cwdLabel = dimStyle.Render("cwd: " + cwd)
+	}
+
 	body := m.viewport.View()
 	if m.thinking {
 		body += "\n" + dimStyle.Render(m.spinner.View()+" thinking…")
@@ -296,7 +302,7 @@ func (m tuiModel) View() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		header,
-		cmdsBar,
+		cmdsBar+"  "+cwdLabel,
 		bodyStyle.Render(body),
 		inputStyle.Render(inputLine),
 	)

@@ -95,6 +95,11 @@ func runDefaultChat(cmd *cobra.Command, _ []string) error {
 			spec.Model = override
 		}
 	}
+	// Append the working directory to the system prompt so the model
+	// knows where it is on the filesystem.
+	if cwd, err := os.Getwd(); err == nil {
+		doc.Body += fmt.Sprintf("\n\nCurrent working directory: %s", cwd)
+	}
 
 	fmt.Fprintln(cmd.OutOrStdout())
 	return runChatWithDoc(cmd, doc, nil)
