@@ -77,14 +77,15 @@ func (s *spawner) spawn(ctx context.Context, name, task string) (string, error) 
 
 	var captured bytes.Buffer
 	cfg := engine.Config{
-		Provider:    provider,
-		Model:       model,
-		System:      doc.Body,
-		Tools:       rt.registry,
-		Temperature: spec.Temperature,
-		MaxTokens:   maxTokens,
-		Out:         io.MultiWriter(&captured, childOut),
-		Status:      childStatus,
+		Provider:       provider,
+		Model:          model,
+		System:         doc.Body,
+		Tools:          rt.registry,
+		Temperature:    spec.Temperature,
+		MaxTokens:      maxTokens,
+		ResponseSchema: spec.ResponseSchemaJSON(),
+		Out:            io.MultiWriter(&captured, childOut),
+		Status:         childStatus,
 	}
 	if err := engine.Run(ctx, cfg, task); err != nil {
 		fmt.Fprintf(s.status, "← delegate %s: error: %v\n", name, err)

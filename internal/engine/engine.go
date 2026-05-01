@@ -34,6 +34,10 @@ type Config struct {
 	Temperature *float64
 	MaxTokens   int
 
+	// ResponseSchema constrains the model to produce valid JSON matching
+	// this schema. Nil means unconstrained text output.
+	ResponseSchema json.RawMessage
+
 	// Out receives streamed assistant text. nil means discard.
 	Out io.Writer
 	// Status receives tool-call indicators ("→ shell ls", "← 12 lines").
@@ -164,12 +168,13 @@ func (s *Session) Step(ctx context.Context, task string) error {
 
 	for turn := 0; turn < s.maxTurns; turn++ {
 		events, err := s.cfg.Provider.Stream(ctx, llm.Request{
-			Model:       s.cfg.Model,
-			System:      s.cfg.System,
-			Messages:    s.messages,
-			Tools:       s.schemas,
-			Temperature: s.cfg.Temperature,
-			MaxTokens:   s.cfg.MaxTokens,
+			Model:          s.cfg.Model,
+			System:         s.cfg.System,
+			Messages:       s.messages,
+			Tools:          s.schemas,
+			Temperature:    s.cfg.Temperature,
+			MaxTokens:      s.cfg.MaxTokens,
+			ResponseSchema: s.cfg.ResponseSchema,
 		})
 		if err != nil {
 			return err

@@ -25,6 +25,20 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.9",
+		Date:    "2026-05-01",
+		Highlights: []string{
+			"Engine-enforced structured output: `response_schema` in agent frontmatter constrains model output to valid JSON via provider-native mechanisms (OpenAI json_schema, Anthropic response-tool, Ollama format).",
+			"Hub-and-spoke agents: hub orchestrator delegates to spoke-coder, spoke-reviewer, spoke-planner — spokes return structured JSON with citations, confidence, and caveats.",
+			"429 retry with exponential backoff for Anthropic and OpenAI — respects Retry-After header, clear error after 3 retries.",
+			"Anthropic model picker in wizard: choose sonnet (default), haiku, opus, or custom.",
+			"Ollama output cap: num_predict defaults to 8192 when agent doesn't specify max_tokens (was using tiny model default).",
+			"Assertive default agent system prompt forces tool use instead of asking the user.",
+			"Current working directory injected into system prompt for all sessions.",
+			"Structured-output skill for spoke agents.",
+		},
+	},
+	{
 		Version: "0.0.8",
 		Date:    "2026-05-01",
 		Highlights: []string{

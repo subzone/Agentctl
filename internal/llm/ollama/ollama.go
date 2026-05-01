@@ -67,6 +67,7 @@ type chatPayload struct {
 	Tools    []chatTool `json:"tools,omitempty"`
 	Stream   bool       `json:"stream"`
 	Options  *chatOpts  `json:"options,omitempty"`
+	Format   any        `json:"format,omitempty"`
 }
 
 type chatOpts struct {
@@ -108,6 +109,15 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 		Messages: buildMessages(req.System, req.Messages),
 		Tools:    buildTools(req.Tools),
 		Stream:   true,
+	}
+	if len(req.ResponseSchema) > 0 {
+		// Ollama supports passing the JSON schema directly as the format field.
+		var schema any
+		if json.Unmarshal(req.ResponseSchema, &schema) == nil {
+			payload.Format = schema
+		} else {
+			payload.Format = "json"
+		}
 	}
 	if req.Temperature != nil || req.MaxTokens > 0 {
 		opts := &chatOpts{}

@@ -76,7 +76,7 @@ func runWizard(in io.Reader, out, status io.Writer) (*userconfig.Config, error) 
 	case "1":
 		cfg, err = setupOllama(w)
 	case "2":
-		cfg, err = setupHostedKey(w, userconfig.ProviderAnthropic, "Anthropic", "claude-sonnet-4-6", "sk-ant-")
+		cfg, err = setupAnthropic(w)
 	case "3":
 		cfg, err = setupHostedKey(w, userconfig.ProviderOpenAI, "OpenAI", "gpt-4o-mini", "sk-")
 	case "4":
@@ -399,6 +399,40 @@ func setupHostedKey(w *wiz, provider userconfig.Provider, label, defaultModel, e
 		Provider: provider,
 		Model:    defaultModel,
 	}, nil
+}
+
+func setupAnthropic(w *wiz) (*userconfig.Config, error) {
+	fmt.Fprintln(w.out, "\nAnthropic Claude model:")
+	fmt.Fprintln(w.out, "  1) claude-sonnet-4-6    — best balance of quality and cost (recommended)")
+	fmt.Fprintln(w.out, "  2) claude-haiku-3-5     — fastest, cheapest")
+	fmt.Fprintln(w.out, "  3) claude-opus-4        — highest quality, most expensive")
+	fmt.Fprintln(w.out, "  4) custom               — enter a model id")
+
+	choice, err := w.prompt("Choice [1-4, default 1]: ")
+	if err != nil {
+		return nil, err
+	}
+	var model string
+	switch choice {
+	case "1", "":
+		model = "claude-sonnet-4-6"
+	case "2":
+		model = "claude-haiku-3-5"
+	case "3":
+		model = "claude-opus-4"
+	case "4":
+		model, err = w.prompt("Model id: ")
+		if err != nil {
+			return nil, err
+		}
+		if model == "" {
+			return nil, errors.New("no model provided")
+		}
+	default:
+		return nil, fmt.Errorf("invalid choice %q", choice)
+	}
+
+	return setupHostedKey(w, userconfig.ProviderAnthropic, "Anthropic", model, "sk-ant-")
 }
 
 func setupLiteLLM(w *wiz) (*userconfig.Config, error) {

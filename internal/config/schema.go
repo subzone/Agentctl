@@ -1,5 +1,7 @@
 package config
 
+import "encoding/json"
+
 // DocType identifies the kind of MD document.
 type DocType string
 
@@ -20,15 +22,29 @@ type Meta struct {
 
 // AgentSpec describes a runnable agent.
 type AgentSpec struct {
-	Meta        `yaml:",inline"`
-	Model       string   `yaml:"model"`
-	Tools       []string `yaml:"tools,omitempty"`
-	MCP         []string `yaml:"mcp,omitempty"`
-	Skills      []string `yaml:"skills,omitempty"`
-	Subagents   []string `yaml:"subagents,omitempty"`
-	Powers      []string `yaml:"powers,omitempty"`
-	Temperature *float64 `yaml:"temperature,omitempty"`
-	MaxTokens   *int     `yaml:"max_tokens,omitempty"`
+	Meta           `yaml:",inline"`
+	Model          string   `yaml:"model"`
+	Tools          []string `yaml:"tools,omitempty"`
+	MCP            []string `yaml:"mcp,omitempty"`
+	Skills         []string `yaml:"skills,omitempty"`
+	Subagents      []string `yaml:"subagents,omitempty"`
+	Powers         []string `yaml:"powers,omitempty"`
+	Temperature    *float64 `yaml:"temperature,omitempty"`
+	MaxTokens      *int     `yaml:"max_tokens,omitempty"`
+	ResponseSchema any      `yaml:"response_schema,omitempty"`
+}
+
+// ResponseSchemaJSON returns the response_schema as JSON bytes suitable
+// for passing to providers. Returns nil if no schema is set.
+func (a *AgentSpec) ResponseSchemaJSON() json.RawMessage {
+	if a.ResponseSchema == nil {
+		return nil
+	}
+	b, err := json.Marshal(a.ResponseSchema)
+	if err != nil {
+		return nil
+	}
+	return b
 }
 
 // SkillSpec describes a reusable instruction block composed into an agent.

@@ -282,3 +282,18 @@ func TestSessionAutoContinueOnMaxTokens(t *testing.T) {
 		t.Errorf("auto-continue message = %+v", last)
 	}
 }
+
+func TestSessionResponseSchemaPassedToProvider(t *testing.T) {
+	schema := json.RawMessage(`{"type":"object","properties":{"answer":{"type":"string"}},"required":["answer"]}`)
+	p := &recordingProvider{turns: [][]llm.Event{
+		{{Kind: llm.EventText, Text: `{"answer":"ok"}`}, {Kind: llm.EventDone}},
+	}}
+	s := NewSession(Config{Provider: p, Model: "m", ResponseSchema: schema})
+	_ = s.Step(context.Background(), "go")
+	if len(p.requests) != 1 {
+		t.Fatalf("requests = %d", len(p.requests))
+	}
+	if string(p.requests[0].ResponseSchema) != string(schema) {
+		t.Errorf("ResponseSchema = %s, want %s", p.requests[0].ResponseSchema, schema)
+	}
+}

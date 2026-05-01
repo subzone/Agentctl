@@ -75,6 +75,11 @@ type Request struct {
 	Tools       []ToolSchema
 	Temperature *float64
 	MaxTokens   int
+	// ResponseSchema, when non-nil, constrains the model's output to valid
+	// JSON matching this schema. Providers implement this via their native
+	// structured-output mechanism (OpenAI json_schema, Anthropic tool-use
+	// trick, Ollama format:json). Nil means unconstrained text output.
+	ResponseSchema json.RawMessage
 }
 
 // Usage carries token counts for a single provider round-trip.

@@ -21,7 +21,9 @@ import (
 	"net/http"
 	"os"
 	"sort"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/subzone/m/internal/llm"
 )
@@ -76,17 +78,29 @@ func getenvOr(k, dflt string) string {
 }
 
 type chatPayload struct {
-	Model         string          `json:"model"`
-	Messages      []chatMsg       `json:"messages"`
-	Tools         []chatTool      `json:"tools,omitempty"`
-	Temperature   *float64        `json:"temperature,omitempty"`
-	MaxTokens     int             `json:"max_tokens,omitempty"`
-	Stream        bool            `json:"stream"`
-	StreamOptions *streamOptions  `json:"stream_options,omitempty"`
+	Model          string          `json:"model"`
+	Messages       []chatMsg       `json:"messages"`
+	Tools          []chatTool      `json:"tools,omitempty"`
+	Temperature    *float64        `json:"temperature,omitempty"`
+	MaxTokens      int             `json:"max_tokens,omitempty"`
+	Stream         bool            `json:"stream"`
+	StreamOptions  *streamOptions  `json:"stream_options,omitempty"`
+	ResponseFormat *responseFormat `json:"response_format,omitempty"`
 }
 
 type streamOptions struct {
 	IncludeUsage bool `json:"include_usage"`
+}
+
+type responseFormat struct {
+	Type       string          `json:"type"`
+	JSONSchema *jsonSchemaSpec `json:"json_schema,omitempty"`
+}
+
+type jsonSchemaSpec struct {
+	Name   string          `json:"name"`
+	Strict bool            `json:"strict"`
+	Schema json.RawMessage `json:"schema"`
 }
 
 type chatMsg struct {
@@ -121,7 +135,7 @@ type chatToolFunction struct {
 // Stream sends req to /v1/chat/completions with stream=true and forwards
 // streamed events onto the returned channel.
 func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Event, error) {
-	body, err := json.Marshal(chatPayload{
+	payload := chatPayload{
 		Model:         req.Model,
 		Messages:      buildMessages(req.System, req.Messages),
 		Tools:         buildTools(req.Tools),
@@ -129,7 +143,18 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 		MaxTokens:     req.MaxTokens,
 		Stream:        true,
 		StreamOptions: &streamOptions{IncludeUsage: true},
-	})
+	}
+	if len(req.ResponseSchema) > 0 {
+		payload.ResponseFormat = &responseFormat{
+			Type: "json_schema",
+			JSONSchema: &jsonSchemaSpec{
+				Name:   "response",
+				Strict: true,
+				Schema: req.ResponseSchema,
+			},
+		}
+	}
+	body, err := json.Marshal(payload)
 	if err != nil {
 		return nil, err
 	}
@@ -142,7 +167,7 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 	httpReq.Header.Set("Accept", "text/event-stream")
 	httpReq.Header.Set("Authorization", "Bearer "+p.apiKey)
 
-	resp, err := p.client.Do(httpReq) //nolint:bodyclose // closed in goroutine below
+	resp, err := p.doWithRetry(ctx, httpReq) //nolint:bodyclose // closed in goroutine below
 	if err != nil {
 		return nil, err
 	}
@@ -164,6 +189,50 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 		}
 	}()
 	return out, nil
+}
+
+// doWithRetry executes the request with retry on 429 (rate limit).
+func (p *Provider) doWithRetry(ctx context.Context, req *http.Request) (*http.Response, error) {
+	const maxRetries = 3
+	var body []byte
+	if req.Body != nil {
+		var err error
+		body, err = io.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	backoff := time.Second
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if body != nil {
+			req.Body = io.NopCloser(bytes.NewReader(body))
+		}
+		resp, err := p.client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode != http.StatusTooManyRequests {
+			return resp, nil
+		}
+		resp.Body.Close()
+		if attempt == maxRetries {
+			return nil, fmt.Errorf("openai rate limited (429) after %d retries — wait a moment and try again", maxRetries)
+		}
+		wait := backoff
+		if ra := resp.Header.Get("Retry-After"); ra != "" {
+			if secs, err := strconv.Atoi(ra); err == nil {
+				wait = time.Duration(secs) * time.Second
+			}
+		}
+		select {
+		case <-time.After(wait):
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+		backoff *= 2
+	}
+	return nil, errors.New("unreachable")
 }
 
 // buildMessages translates llm.Messages into OpenAI's flat shape. The

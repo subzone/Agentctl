@@ -90,3 +90,44 @@ Jira MCP server.
 		t.Errorf("unexpected: %+v", spec)
 	}
 }
+
+func TestParseAgentWithResponseSchema(t *testing.T) {
+	src := `---
+name: spoke
+type: agent
+model: anthropic/claude-sonnet-4-6
+response_schema:
+  type: object
+  properties:
+    answer:
+      type: string
+  required: [answer]
+---
+You are a spoke.
+`
+	doc, err := Parse([]byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	spec, ok := doc.Spec.(*AgentSpec)
+	if !ok {
+		t.Fatalf("got %T", doc.Spec)
+	}
+	if spec.ResponseSchema == nil {
+		t.Fatal("ResponseSchema is nil")
+	}
+	json := spec.ResponseSchemaJSON()
+	if json == nil {
+		t.Fatal("ResponseSchemaJSON returned nil")
+	}
+	if !strings.Contains(string(json), `"answer"`) {
+		t.Errorf("JSON missing answer field: %s", json)
+	}
+}
+
+func TestResponseSchemaJSONNil(t *testing.T) {
+	spec := &AgentSpec{}
+	if got := spec.ResponseSchemaJSON(); got != nil {
+		t.Errorf("expected nil, got %s", got)
+	}
+}

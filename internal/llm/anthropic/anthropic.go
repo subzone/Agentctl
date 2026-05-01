@@ -13,7 +13,9 @@ import (
 	"io"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/subzone/m/internal/llm"
 )
@@ -91,21 +93,49 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 	if err != nil {
 		return nil, err
 	}
-	tools := buildTools(req.Tools)
 
 	maxTok := req.MaxTokens
 	if maxTok == 0 {
 		maxTok = 16384
 	}
-	body, err := json.Marshal(messagePayload{
-		Model:       req.Model,
-		System:      req.System,
-		Messages:    msgs,
-		Tools:       tools,
-		MaxTokens:   maxTok,
-		Temperature: req.Temperature,
-		Stream:      true,
-	})
+
+	apiTools := buildTools(req.Tools)
+
+	// Structured output: add a synthetic "response" tool whose input schema
+	// is the desired output schema. The model is forced to call it via
+	// tool_choice. We extract the tool input as the structured response.
+	var forceResponseTool bool
+	if len(req.ResponseSchema) > 0 {
+		apiTools = append(apiTools, apiTool{
+			Name:        "structured_response",
+			Description: "Return your response using this structured format. You MUST call this tool with your answer.",
+			InputSchema: req.ResponseSchema,
+		})
+		forceResponseTool = true
+	}
+
+	payloadMap := map[string]any{
+		"model":       req.Model,
+		"messages":    msgs,
+		"max_tokens":  maxTok,
+		"stream":      true,
+	}
+	if req.System != "" {
+		payloadMap["system"] = req.System
+	}
+	if req.Temperature != nil {
+		payloadMap["temperature"] = req.Temperature
+	}
+	if len(apiTools) > 0 {
+		payloadMap["tools"] = apiTools
+	}
+	if forceResponseTool {
+		payloadMap["tool_choice"] = map[string]any{
+			"type": "tool",
+			"name": "structured_response",
+		}
+	}
+	body, err := json.Marshal(payloadMap)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +149,7 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 	httpReq.Header.Set("x-api-key", p.apiKey)
 	httpReq.Header.Set("anthropic-version", apiVersion)
 
-	resp, err := p.client.Do(httpReq) //nolint:bodyclose // closed in goroutine below
+	resp, err := p.doWithRetry(ctx, httpReq) //nolint:bodyclose // closed in goroutine below
 	if err != nil {
 		return nil, err
 	}
@@ -141,6 +171,51 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 		}
 	}()
 	return out, nil
+}
+
+// doWithRetry executes the request with retry on 429 (rate limit) and 529
+// (overloaded). Respects Retry-After header when present.
+func (p *Provider) doWithRetry(ctx context.Context, req *http.Request) (*http.Response, error) {
+	const maxRetries = 3
+	var body []byte
+	if req.Body != nil {
+		var err error
+		body, err = io.ReadAll(req.Body)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	backoff := time.Second
+	for attempt := 0; attempt <= maxRetries; attempt++ {
+		if body != nil {
+			req.Body = io.NopCloser(bytes.NewReader(body))
+		}
+		resp, err := p.client.Do(req)
+		if err != nil {
+			return nil, err
+		}
+		if resp.StatusCode != http.StatusTooManyRequests && resp.StatusCode != 529 {
+			return resp, nil
+		}
+		resp.Body.Close()
+		if attempt == maxRetries {
+			return nil, fmt.Errorf("anthropic rate limited (429) after %d retries — wait a moment and try again, or switch to a different model with /model", maxRetries)
+		}
+		wait := backoff
+		if ra := resp.Header.Get("Retry-After"); ra != "" {
+			if secs, err := strconv.Atoi(ra); err == nil {
+				wait = time.Duration(secs) * time.Second
+			}
+		}
+		select {
+		case <-time.After(wait):
+		case <-ctx.Done():
+			return nil, ctx.Err()
+		}
+		backoff *= 2
+	}
+	return nil, errors.New("unreachable")
 }
 
 // buildMessages translates llm.Messages into the API's content-block shape.
