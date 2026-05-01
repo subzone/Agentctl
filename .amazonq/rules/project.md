@@ -3,48 +3,101 @@
 ## Project Overview
 
 `m` is an MD-driven agent CLI written in Go 1.26. Agents are plain Markdown
-files with YAML frontmatter; the CLI runs them against Anthropic, OpenAI,
-Ollama, or LiteLLM backends. Binary name is `m`, module path is
-`github.com/subzone/m`.
+files with YAML frontmatter; the CLI runs them against 6 LLM backends.
+Binary name is `m`, module path is `github.com/subzone/m`.
 
 ## Architecture
 
 ```
-cmd/m/                  # cobra CLI: main, run, chat, validate, init, config, releases, tui
+cmd/m/                  # cobra CLI entry point
+  main.go               # root command, default chat, applyConfig
+  run.go                # `m run` one-shot execution
+  chat.go               # `m chat` REPL + TUI branching, slash commands
+  spawn.go              # subagent spawner, buildAgentRuntime
+  tui.go                # bubbletea TUI model + rendering
+  tui_stats.go          # system stats (CPU/RAM/Disk via gopsutil)
+  theme.go              # theme system (matrix/default/minimal + custom YAML)
+  init.go               # first-run wizard (6 providers)
+  config.go             # `m config` interactive manager + model discovery
+  context.go            # project context auto-detection
+  validate.go           # `m validate` frontmatter linter
+  releases.go           # changelog data + release notes display
+
 internal/
   engine/               # agent loop, tool dispatch, session, structured output
+    engine.go           # Session, Step, Run, parallel executeTools, auto-continue
+    structured.go       # structured output post-processing (buffer, extract, validate)
   config/               # MD frontmatter parser + schema + validator
+    schema.go           # AgentSpec (with response_schema), SkillSpec, ToolSpec, MCPServerSpec
+    parser.go           # YAML frontmatter parser (strict mode)
+    validator.go        # per-type + cross-ref validation
   llm/                  # Provider interface + registry
-    anthropic/          # Messages API, SSE streaming, stdlib-only
-    openai/             # Chat Completions, SSE streaming, stdlib-only
-    ollama/             # /api/chat, NDJSON streaming, stdlib-only
-    litellm/            # thin wrapper over openai with custom base URL
-    gemini/             # thin wrapper over openai for Google AI Studio
-    alibaba/            # thin wrapper over openai for DashScope
-  tools/                # Tool interface, Registry, builtins: shell, fs_read, fs_write, fs_list, delegate
+    provider.go         # Provider, Event (Text/ToolCall/Usage/Done/Error), Request, Usage
+    registry.go         # Register + Resolve
+    anthropic/          # Messages API, SSE, 429 retry, response-tool for structured output
+    openai/             # Chat Completions, SSE, 429 retry, json_schema response_format
+    ollama/             # /api/chat, NDJSON, num_predict default 8192
+    litellm/            # OpenAI-compat wrapper (WithCompat)
+    gemini/             # OpenAI-compat wrapper for Google AI Studio (WithCompat)
+    alibaba/            # OpenAI-compat wrapper for DashScope (WithCompat)
+  tools/                # Tool interface, Registry, builtins
+    tool.go             # Tool interface, Registry, Builtins(confirm, undo), Merge
+    shell.go            # ShellTool (timeout, output cap)
+    fsread.go           # FSReadTool (size cap, truncation)
+    fswrite.go          # FSWriteTool (diff preview, user confirm, undo stack)
+    fslist.go           # FSListTool (recursive, skip .git/node_modules)
+    git.go              # GitTool (status, diff, log, add, commit, branch, checkout, stash)
+    testrun.go          # TestRunTool (run tests, return pass/fail + output)
+    delegate.go         # DelegateTool + SpawnFunc
   mcp/                  # MCP client (stdio JSON-RPC), manager, tool adapter
-  userconfig/           # ~/.config/m/config.yaml, OS keychain (macOS/Linux), state
   ports/                # ConfigSource, Secrets, StateStore interfaces
   adapters/             # MemoryStore (in-memory StateStore)
-examples/agents/        # example .md agent files (17 docs)
+  userconfig/           # ~/.config/m/config.yaml, OS keychain, state
+examples/agents/        # 17 example agent MD files
 ```
 
 ### Hard Rules
 - Nothing in `internal/engine/` or `internal/tools/` imports `client-go`,
   `controller-runtime`, or HTTP server libs.
-- LLM clients are stdlib-only (`net/http`, `bufio`, `encoding/json`) — no SDK deps.
-- Providers self-register via `init()` + `llm.Register()`. Engine never imports
-  a provider directly.
+- LLM clients are stdlib-only (`net/http`, `bufio`, `encoding/json`).
+- Providers self-register via `init()` + `llm.Register()`.
 - API keys live in the OS keychain, never in plaintext config files.
+- OpenAI-compat providers (gemini, alibaba, litellm) use `WithCompat()`
+  which disables `stream_options` and `json_schema` response_format.
 
-## Dependencies
+## 6 Providers
 
-Only essential deps — keep it minimal:
-- `github.com/spf13/cobra` — CLI framework
-- `gopkg.in/yaml.v3` — YAML parsing
-- `golang.org/x/term` — terminal detection + password input
-- `github.com/charmbracelet/bubbletea` + `bubbles` + `lipgloss` — TUI
-- `github.com/shirou/gopsutil/v4` — system stats (CPU/RAM/Disk)
+| Provider | Adapter | Auth Env Var | Notes |
+|---|---|---|---|
+| anthropic | Custom SSE | ANTHROPIC_API_KEY | 429 retry, response-tool for structured output |
+| openai | OpenAI SSE | OPENAI_API_KEY | 429 retry, native json_schema |
+| ollama | NDJSON | (none) | num_predict=8192 default, format field for structured |
+| gemini | OpenAI-compat | GEMINI_API_KEY | WithCompat, Google AI Studio endpoint |
+| alibaba | OpenAI-compat | DASHSCOPE_API_KEY | WithCompat, DashScope endpoint |
+| litellm | OpenAI-compat | LITELLM_API_KEY | WithCompat, custom base URL |
+
+## 8 Builtin Tools
+
+| Tool | Description |
+|---|---|
+| shell | Run shell commands via /bin/sh -c |
+| fs_read | Read UTF-8 files (size cap) |
+| fs_write | Create/patch files with diff preview + user confirmation + undo |
+| fs_list | List directories (recursive, skip .git) |
+| git | Git operations (status, diff, log, add, commit, branch, checkout, stash) |
+| test_run | Run tests, return pass/fail + output for edit-test-fix loops |
+| delegate | Spawn subagent (depth-limited, parallel execution) |
+
+## Key Types
+
+- `llm.Provider` — `Stream(ctx, Request) (<-chan Event, error)`
+- `llm.Event` — EventText, EventToolCall, EventUsage, EventDone, EventError
+- `llm.Request` — includes ResponseSchema for structured output
+- `engine.Session` — multi-turn driver, usage tracking, SetModel, LastInputTokens
+- `tools.Tool` — Name, Description, InputSchema, Run
+- `tools.UndoStack` — Push/Pop for file write rollback
+- `tools.ConfirmFunc` — gates fs_write (stdin prompt in REPL, auto-approve in TUI)
+- `config.AgentSpec` — includes response_schema (any → JSON via ResponseSchemaJSON())
 
 ## Build & Test
 
@@ -52,79 +105,52 @@ Only essential deps — keep it minimal:
 make build          # CGO_ENABLED=0 static binary
 make test           # go test ./...
 make race           # go test -race ./...
-make lint           # golangci-lint run (requires v2.x)
+make lint           # golangci-lint run (v2.x, go install)
 make cover          # coverage report
 make validate       # validate example agent docs
 make docker         # docker build
 ```
 
-Go version: 1.26.1. Binary output: `./m`.
+## Slash Commands (TUI + REPL)
 
-## Code Style
+/exit /quit /reset /compact /undo /model <provider/model> /theme [name] /config /help
 
-- Go standard formatting (gofmt/goimports).
-- No SDK deps for LLM providers — use stdlib `net/http` + `encoding/json`.
-- Errors from `fmt.Fprint*` to io.Writer are intentionally unchecked (status/log output).
-- `defer resp.Body.Close()` in goroutines needs `//nolint:bodyclose` comment.
-- Test helpers go in `testing_helpers_test.go` files.
-- Scripted/fake providers in tests replay `[]llm.Event` turns.
+## TUI Features
 
-## Key Types
-
-- `llm.Provider` — interface with `Stream(ctx, Request) (<-chan Event, error)`
-- `llm.Event` — streamed event: EventText, EventToolCall, EventUsage, EventDone, EventError
-- `llm.Usage` — InputTokens + OutputTokens per response
-- `engine.Session` — multi-turn conversation driver, accumulates usage
-- `tools.Tool` — interface: Name, Description, InputSchema, Run
-- `tools.Registry` — tool lookup, filter by allowlist, merge
-- `config.Document` — parsed MD file with typed Spec (AgentSpec, SkillSpec, etc.)
-
-## Frontmatter Schema
-
-Agent MD files have YAML frontmatter with: name, type, version, model
-(provider/model), tools, mcp, skills, subagents, powers, temperature,
-max_tokens. See `internal/config/schema.go` for the full spec.
-
-## TUI Layout
-
-Header: M banner (left) | token/cost box (center) | system stats (right)
-Commands bar: `/exit  /reset  /help`
-Body: scrolling chat viewport
-Footer: text input
-
-Token box shows: Model, In, Out, Total, Cost.
-Cost estimated from `modelPricing` map in `tui.go`.
+- Header: M banner | token/cost box | system stats
+- Full provider/model label below token box
+- Commands bar + cwd display
+- Context window % on input line (ctx: N%)
+- Theme system: matrix (default), default, minimal + custom ~/.config/m/theme.yaml
+- Tool activity visible (→ fs_list / ← 245 bytes) in yellow
+- User messages bold colored, errors red
+- Responsive layout (collapses on small terminals)
+- Auto-approve fs_write in TUI (bubbletea owns stdin)
 
 ## CI/CD
 
 `.github/workflows/release.yml` triggers on `v*` tags:
-1. `gate` job: go vet → golangci-lint (v2, installed via `go install`) → tests with -race
-2. `linux` job: goreleaser → .deb + tarballs
-3. `macos` job (after linux): universal binary → .pkg
-
-golangci-lint must be installed via `go install` because pre-built binaries
-are compiled with Go 1.24 which can't analyze Go 1.26 code.
+1. `gate`: go vet → golangci-lint (v2, via `go install`) → tests with -race
+2. `linux`: goreleaser → .deb + tarballs
+3. `macos` (after linux): universal binary → .pkg
 
 ## Release Process
 
-1. Update `releases` slice in `cmd/m/releases.go` (prepend new entry)
+1. Update `releases` slice in `cmd/m/releases.go`
 2. Run `make lint && make race` locally
 3. `git commit && git tag v0.0.X && git push origin main --tags`
+4. If retag needed: delete GitHub release first, then retag
 
-## Current State (v0.0.6)
+## Current State (v0.0.14)
 
-Milestones M1–M8 complete. See PLAN.md for full details.
-- Config/parser, validation, multi-provider LLM, tool loop, MCP stdio,
-  subagent delegation, chat REPL, TUI with stats/tokens/cost, setup wizard,
-  keychain storage, Dockerfile, release pipeline.
+- 11,936 lines production + 4,299 lines tests
+- 15 packages, 17 example agents, 7.8 MB binary
+- Engine 90.5%, adapters 100%, providers 79-100%, tools 59%
+- 25 commits, 14 tags
 
-### Test Coverage
-- engine: 90%, llm registry: 93%, providers: 81-86%, mcp: 78%,
-  tools: 78%, config: 51%, userconfig: 50%, cmd/m: ~21%
-
-### What's Next (from PLAN.md)
-- `git` builtin tool (go-git)
+### What's Next
+- Spec-driven workflow (requirement → design → tasks → code → verify)
+- Filesystem StateStore adapter (conversation persistence)
+- Stabilization pass (test all 6 providers against live APIs)
 - HTTP/SSE MCP transport
-- `ports/adapters` layer (ConfigSource, Secrets, TaskQueue, StateStore)
-- Structured logging (slog JSON)
-- k8s operator + helm chart (later)
+- Multi-file atomic edits
