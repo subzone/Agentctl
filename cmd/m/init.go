@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -151,31 +152,28 @@ func setupOllama(w *wiz) (*userconfig.Config, error) {
 	} else {
 		fmt.Fprintln(w.out, "✓ ollama found on PATH")
 	}
-	if err := ensureOllamaRunning(w.out); err != nil {
+	if err := ensureOllamaRunning(w.out, w.status); err != nil {
 		return nil, err
 	}
 
 	fmt.Fprintln(w.out)
-	fmt.Fprintln(w.out, "Pick a Qwen3-Coder size:")
-	fmt.Fprintln(w.out, "  1) qwen3-coder:7b   — ~5 GB, ~16 GB RAM, fastest")
-	fmt.Fprintln(w.out, "  2) qwen3-coder:14b  — ~10 GB, ~24 GB RAM, balanced (recommended)")
-	fmt.Fprintln(w.out, "  3) qwen3-coder:30b  — ~20 GB, ~32 GB+ RAM, best quality")
-	fmt.Fprintln(w.out, "  4) custom — type your own ollama tag")
+	fmt.Fprintln(w.out, "Ollama tag for the coder model:")
+	fmt.Fprintln(w.out, "  1) qwen3-coder       — latest tag (recommended, always exists)")
+	fmt.Fprintln(w.out, "  2) qwen2.5-coder:7b  — small, well-tested fallback (~5 GB)")
+	fmt.Fprintln(w.out, "  3) custom            — pick a specific tag from https://ollama.com/library/qwen3-coder")
 
-	sizeChoice, err := w.prompt("Size [1-4, default 2]: ")
+	tagChoice, err := w.prompt("Choice [1-3, default 1]: ")
 	if err != nil {
 		return nil, err
 	}
 	var tag string
-	switch sizeChoice {
-	case "1":
-		tag = "qwen3-coder:7b"
-	case "2", "":
-		tag = "qwen3-coder:14b"
+	switch tagChoice {
+	case "1", "":
+		tag = "qwen3-coder"
+	case "2":
+		tag = "qwen2.5-coder:7b"
 	case "3":
-		tag = "qwen3-coder:30b"
-	case "4":
-		tag, err = w.prompt("Ollama tag (e.g. qwen3-coder:30b): ")
+		tag, err = w.prompt("Ollama tag: ")
 		if err != nil {
 			return nil, err
 		}
@@ -183,7 +181,7 @@ func setupOllama(w *wiz) (*userconfig.Config, error) {
 			return nil, errors.New("no tag provided")
 		}
 	default:
-		return nil, fmt.Errorf("invalid size choice %q", sizeChoice)
+		return nil, fmt.Errorf("invalid choice %q", tagChoice)
 	}
 
 	fmt.Fprintf(w.out, "\nPulling %s — this may take a while.\n", tag)
@@ -231,24 +229,71 @@ func installOllama(w *wiz) error {
 	return nil
 }
 
-// ensureOllamaRunning probes localhost:11434 and tries `brew services
-// start ollama` once on macOS as a convenience. On Linux the install.sh
-// sets up a systemd unit, so by the time we land here the daemon is
-// usually up.
-func ensureOllamaRunning(out io.Writer) error {
+// ensureOllamaRunning probes localhost:11434, then tries the
+// persistent-daemon path (brew services on macOS), then falls back to
+// launching `ollama serve` as a background child for the duration of the
+// `m` process. The earlier 2-second sleep + single brew-services attempt
+// was racy on first install and silently swallowed brew errors; this
+// version polls and surfaces failures so users can see what went wrong.
+func ensureOllamaRunning(out, status io.Writer) error {
 	if ollamaReachable() {
 		fmt.Fprintln(out, "✓ ollama daemon reachable at http://localhost:11434")
 		return nil
 	}
+
+	// macOS: try the persistent-service path first — it survives reboots
+	// and is what most desktop users want long-term.
 	if runtime.GOOS == "darwin" {
-		_ = exec.Command("brew", "services", "start", "ollama").Run()
-		time.Sleep(2 * time.Second)
-		if ollamaReachable() {
-			fmt.Fprintln(out, "✓ started ollama via brew services")
-			return nil
+		var stderr bytes.Buffer
+		brew := exec.Command("brew", "services", "start", "ollama")
+		brew.Stderr = &stderr
+		if err := brew.Run(); err == nil {
+			if waitForOllama(10 * time.Second) {
+				fmt.Fprintln(out, "✓ started ollama via brew services")
+				return nil
+			}
+		} else if msg := strings.TrimSpace(stderr.String()); msg != "" {
+			fmt.Fprintf(status, "brew services start ollama: %s\n", msg)
 		}
 	}
-	return errors.New("ollama daemon is not reachable at http://localhost:11434 — start it with `ollama serve` in another terminal, then re-run `m init`")
+
+	// Fall back to launching the daemon ourselves. The child outlives this
+	// wizard step but typically dies with the m process; the closing
+	// message tells the user how to make it persistent afterward.
+	fmt.Fprintln(out, "Starting ollama serve in the background for this session…")
+	serve := exec.Command("ollama", "serve")
+	serve.Stdout = io.Discard
+	serve.Stderr = io.Discard
+	if err := serve.Start(); err != nil {
+		return fmt.Errorf("failed to start ollama serve: %w. Start it manually with `ollama serve` in another terminal and re-run `m init`", err)
+	}
+	if waitForOllama(15 * time.Second) {
+		fmt.Fprintln(out, "✓ ollama daemon reachable at http://localhost:11434")
+		hint := "  (this instance ends with `m`. To keep it running between sessions, run `brew services start ollama`.)"
+		if runtime.GOOS == "linux" {
+			hint = "  (this instance ends with `m`. The Linux installer normally registers a systemd unit; if it didn't, see https://ollama.com/download for setup.)"
+		}
+		fmt.Fprintln(out, hint)
+		return nil
+	}
+	return errors.New("ollama daemon did not become reachable within 15s — start it manually with `ollama serve` and re-run `m init`")
+}
+
+// waitForOllama polls reachability with exponential backoff until the
+// total duration elapses. Returns true the moment a probe succeeds.
+func waitForOllama(total time.Duration) bool {
+	deadline := time.Now().Add(total)
+	interval := 500 * time.Millisecond
+	for time.Now().Before(deadline) {
+		if ollamaReachable() {
+			return true
+		}
+		time.Sleep(interval)
+		if interval < 2*time.Second {
+			interval *= 2
+		}
+	}
+	return false
 }
 
 // saveKeyWithRetry wraps userconfig.SaveAPIKey with a one-shot install

@@ -25,6 +25,15 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.2",
+		Date:    "2026-05-01",
+		Highlights: []string{
+			"Ollama daemon detection: polls localhost:11434 for up to 15 s and falls back to starting `ollama serve` as a background child when `brew services` doesn't bring it up.",
+			"`brew services start ollama` failures now print their stderr instead of being silently swallowed.",
+			"Qwen tag picker no longer hardcodes invalid `:Nb` sizes. Defaults to the always-valid `qwen3-coder` tag, with a `qwen2.5-coder:7b` fallback and a custom-tag option.",
+		},
+	},
+	{
 		Version: "0.0.1",
 		Date:    "2026-05-01",
 		Highlights: []string{
