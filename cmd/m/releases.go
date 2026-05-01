@@ -25,6 +25,17 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.5",
+		Date:    "2026-05-01",
+		Highlights: []string{
+			"Makefile with build, test, lint, cover, docker, and validate targets.",
+			"golangci-lint config (.golangci.yml) for static analysis.",
+			"Release workflow now gates on vet + lint + tests before publishing artifacts.",
+			"Tests for userconfig (save/load/permissions/state), litellm provider registration, and version comparison logic.",
+			"Fix stale .dockerignore and .gitignore referencing old `agent` binary name.",
+		},
+	},
+	{
 		Version: "0.0.4",
 		Date:    "2026-05-01",
 		Highlights: []string{

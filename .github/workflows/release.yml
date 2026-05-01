@@ -9,8 +9,30 @@ permissions:
   contents: write
 
 jobs:
+  gate:
+    name: Vet + Lint + Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+
+      - name: Tests
+        run: go test -race -count=1 ./...
+
   linux:
     name: Linux (.deb + tarballs)
+    needs: gate
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -31,7 +53,7 @@ jobs:
 
   macos:
     name: macOS (.pkg)
-    needs: linux
+    needs: gate
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
