@@ -92,3 +92,22 @@ func TestTruncModel(t *testing.T) {
 		t.Errorf("got %q, want ellipsis suffix", got)
 	}
 }
+
+func TestContextPercent(t *testing.T) {
+	// Known model.
+	if got := contextPercent(20000, "claude-sonnet-4-6"); got != 10 {
+		t.Errorf("contextPercent(20000, claude-sonnet-4-6) = %d, want 10", got)
+	}
+	// Half full.
+	if got := contextPercent(100000, "claude-sonnet-4-6"); got != 50 {
+		t.Errorf("contextPercent(100000, claude-sonnet-4-6) = %d, want 50", got)
+	}
+	// Unknown model returns -1.
+	if got := contextPercent(5000, "qwen3-coder"); got != -1 {
+		t.Errorf("contextPercent for unknown model = %d, want -1", got)
+	}
+	// Zero tokens returns -1.
+	if got := contextPercent(0, "claude-sonnet-4-6"); got != -1 {
+		t.Errorf("contextPercent(0) = %d, want -1", got)
+	}
+}

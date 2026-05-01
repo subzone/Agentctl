@@ -20,7 +20,9 @@ import (
 )
 
 // defaultMaxTokens is used when an agent's frontmatter doesn't specify one.
-const defaultMaxTokens = 1024
+// Zero means the provider picks its own default (e.g. Anthropic uses 16384,
+// OpenAI and Ollama use their server-side defaults).
+const defaultMaxTokens = 0
 
 func newRunCmd() *cobra.Command {
 	cmd := &cobra.Command{

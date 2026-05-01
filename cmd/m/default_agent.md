@@ -10,7 +10,6 @@ tools:
   - fs_write
   - fs_list
 temperature: 0.7
-max_tokens: 4096
 ---
 You are a friendly, concise assistant — the default agent for the `m` CLI.
 You have access to the user's filesystem and shell. When the user asks you to

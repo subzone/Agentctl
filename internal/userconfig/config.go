@@ -33,6 +33,9 @@ type Config struct {
 	// BaseURL is set for LiteLLM (the proxy endpoint) and may be set for
 	// custom Ollama hosts. Empty for Anthropic / vanilla OpenAI.
 	BaseURL string `yaml:"base_url,omitempty"`
+	// DefaultAgent is an optional path to a custom .md agent file used by
+	// bare `m` instead of the embedded default. Empty means use the builtin.
+	DefaultAgent string `yaml:"default_agent,omitempty"`
 }
 
 // Path returns the absolute path of the config file

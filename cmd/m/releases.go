@@ -25,6 +25,23 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.8",
+		Date:    "2026-05-01",
+		Highlights: []string{
+			"`/model <provider/model>` — switch LLM mid-session, history preserved.",
+			"`/compact` — truncate history to last 4 exchanges to free context window.",
+			"Context window indicator (`ctx: N%`) shown next to the input line.",
+			"Auto-continue on `max_tokens` — no more silent truncation of long responses.",
+			"No artificial output cap — providers use their own limits (Anthropic 16K, OpenAI/Ollama server default).",
+			"Custom default agent: set `default_agent: /path/to/agent.md` in config.yaml.",
+			"Orchestrator agent: routes tasks to coder, reviewer, writer, devops, planner, or summarize.",
+			"`fs_write` tool: create or patch files with user confirmation before every write.",
+			"`fs_list` tool: list directories, recursive, skips .git/node_modules.",
+			"New example agents: reviewer, writer, devops, local (Ollama).",
+			"Updated docs: agents, changelog, quickstart, configuration.",
+		},
+	},
+	{
 		Version: "0.0.7",
 		Date:    "2026-05-01",
 		Highlights: []string{

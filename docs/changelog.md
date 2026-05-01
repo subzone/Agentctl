@@ -17,6 +17,78 @@ page is kept in sync.
 
 ---
 
+## v0.0.8 — 2026-05-01
+
+- **`/model <provider/model>`** — switch LLM mid-session. History is
+  preserved; the next turn uses the new provider. Works in both TUI
+  and line REPL.
+- **`/compact`** — manually truncate history to the last 4 exchanges.
+  Frees context window when it gets crowded.
+- **Context window indicator** — `ctx: N%` shown next to the input
+  line. Based on `input_tokens` from the last call and known context
+  window sizes (200K for Claude, 128K for GPT-4o, 1M for GPT-4.1).
+- **Auto-continue on `max_tokens`** — when the model's output is
+  truncated, the engine automatically sends a "continue" message so
+  the response picks up where it left off.
+- **No artificial output cap** — `defaultMaxTokens` is now 0 (provider
+  decides). Anthropic falls back to 16384; OpenAI and Ollama use their
+  server-side defaults.
+- **Custom default agent** — set `default_agent: /path/to/agent.md` in
+  `config.yaml` to replace the built-in default for bare `m`.
+- **Orchestrator agent** — new `examples/agents/orchestrator.md` routes
+  tasks to coder, reviewer, writer, devops, planner, or summarize.
+- **`fs_write` tool** — create or patch files with user confirmation.
+- **`fs_list` tool** — list directories, recursive, skips `.git`.
+- **New example agents** — reviewer, writer, devops, local.
+- **Updated docs** — agents page, changelog, quickstart, configuration.
+
+## v0.0.7 — 2026-05-01
+
+- **`fs_write` tool** — create files or patch existing ones. Every
+  write is gated by a user confirmation prompt (`y/N`). Supports
+  `mode=create` (full file) and `mode=patch` (find-and-replace).
+- **`fs_list` tool** — list directory contents, optionally recursive.
+  Skips `.git`, `node_modules`, `__pycache__`. Capped at 500 entries.
+- **Default agent upgraded** — now has `shell`, `fs_read`, `fs_write`,
+  `fs_list`. You can ask it to read, explore, and edit files out of
+  the box.
+- **New example agents** — `reviewer` (read-only code review),
+  `writer` (docs/README), `devops` (CI/infra), `local` (Ollama, no
+  API key).
+- **Updated agents** — `coder`, `qwen-coder`, `summarize`, `planner`
+  all include the new tools.
+- **Fixed** stale `fs.read` → `fs_read` in code-review skill.
+
+## v0.0.6 — 2026-05-01
+
+- **Token count + cost in TUI header** — new box between the M banner
+  and system stats showing Model, In, Out, Total tokens, and estimated
+  Cost.
+- **Model name visible** in the token box (provider/model, truncated).
+- **Cost always shown** — `$0.0000` for local/unknown models, real
+  estimate for paid APIs (Claude, GPT-4o/4.1, o3/o4).
+- **Persistent commands bar** — `/exit  /reset  /help` always visible
+  below the header.
+- **Usage events** — all three providers (Anthropic, OpenAI, Ollama)
+  now emit `EventUsage` with input/output token counts.
+- **golangci-lint fixes** — bodyclose, unused fields, capitalized
+  error strings, empty branches.
+- **Release pipeline** — macOS job runs after Linux to avoid
+  goreleaser race; golangci-lint installed via `go install` (pre-built
+  binaries are Go 1.24, can't lint Go 1.26 code).
+
+## v0.0.5 — 2026-05-01
+
+- **Makefile** with `build`, `test`, `lint`, `cover`, `docker`,
+  `validate` targets.
+- **golangci-lint config** (`.golangci.yml`) for static analysis.
+- **CI gate** — release workflow now runs vet + lint + tests before
+  publishing artifacts.
+- **New tests** for `userconfig` (save/load/permissions/state),
+  `litellm` provider registration, and version comparison logic.
+- **Fixed** stale `.dockerignore` and `.gitignore` referencing old
+  `agent` binary name.
+
 ## v0.0.4 — 2026-05-01
 
 - **Crash fix.** v0.0.3 panicked on the second user message with
@@ -35,46 +107,29 @@ page is kept in sync.
   Disk), a scrolling chat viewport, and a pinned input at the bottom.
 - **Auto-fallback to line REPL** — when stdin/stdout/stderr aren't
   all TTYs (piped input, scripts, CI), `m` skips the TUI and uses the
-  original line-oriented REPL. No surprises in non-interactive contexts.
+  original line-oriented REPL.
 - **`thinking…` spinner** — animated indicator while waiting for the
-  model's first streamed token; disappears the moment text starts
-  flowing.
-- **GPU = `n/a`** for now. Apple Silicon has no clean public API and
-  shelling out to `powermetrics` needs sudo. Linux NVIDIA via
-  `nvidia-smi` is on the roadmap.
-- **Stats refresh** at 1 Hz via `gopsutil`. CPU is overall system
-  usage; RAM is overall used percent; Disk is `/` used percent. No
-  per-process metrics in this release.
+  model's first streamed token.
+- **GPU = `n/a`** for now. Apple Silicon has no clean public API.
+- **Stats refresh** at 1 Hz via `gopsutil`.
 
 ## v0.0.2 — 2026-05-01
 
-- **Ollama daemon detection** — `m init` now polls `localhost:11434`
-  for up to 15 s with exponential backoff and falls back to starting
-  `ollama serve` as a background child when `brew services` doesn't
-  bring it up. Previously the wizard gave up after 2 seconds.
-- **Visible brew failures** — `brew services start ollama` errors
-  are no longer silently swallowed; stderr is printed.
-- **Valid Qwen tags** — replaced the made-up `qwen3-coder:7b/14b/30b`
-  size menu with options that actually exist on Ollama's library.
-  Default is `qwen3-coder` (latest tag), with a `qwen2.5-coder:7b`
-  fallback and a custom-tag option that links to the Ollama library
-  page.
+- **Ollama daemon detection** — polls `localhost:11434` for up to 15 s
+  with backoff, falls back to launching `ollama serve` as a background
+  child.
+- **Visible brew failures** — `brew services start ollama` errors are
+  no longer silently swallowed.
+- **Valid Qwen tags** — replaced invalid size tags with options that
+  exist on Ollama's library.
 
 ## v0.0.1 — 2026-05-01
 
 Initial public release.
 
-- **Default chat** — type `m` to talk to an embedded agent. No
-  arguments required.
-- **Setup wizard** — first-run picker with four backends:
-  Ollama+Qwen3-Coder, Anthropic, OpenAI, LiteLLM. Auto-installs
-  Ollama (`brew install ollama` / `curl https://ollama.com/install.sh
-  | sh`) and `libsecret` (`apt`/`dnf`/`pacman`/`apk`) on demand with
-  explicit confirmation.
-- **Keychain-backed key storage** — API keys stored in macOS
-  Keychain or Linux libsecret. Never in plain config.
-- **Tag-driven release pipeline** — GitHub Actions builds a macOS
-  `.pkg` and Linux `.deb` (amd64 + arm64) on every `vX.Y.Z` push.
-- **`m init`** re-runs the wizard;
-  **`M_MODEL=provider/model m`** overrides for one session;
-  **`m changelog`** prints history.
+- **Default chat** — type `m` to talk to an embedded agent.
+- **Setup wizard** — four backends: Ollama+Qwen3-Coder, Anthropic,
+  OpenAI, LiteLLM.
+- **Keychain-backed key storage** — macOS Keychain or Linux libsecret.
+- **Tag-driven release pipeline** — macOS `.pkg` and Linux `.deb`.
+- **`m init`**, **`M_MODEL=...`**, **`m changelog`**.

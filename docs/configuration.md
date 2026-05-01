@@ -125,7 +125,13 @@ It's plain YAML; you can edit it directly. The schema is:
 provider: ollama | anthropic | openai | litellm   # required
 model: <provider-specific id>                     # required
 base_url: <url>                                   # optional, mainly for litellm
+default_agent: /path/to/agent.md                  # optional, custom default for bare `m`
 ```
+
+If `default_agent` is set, bare `m` loads that file instead of the
+embedded default. The agent's `model:` field is used as-is (not
+overridden by the config's provider/model). Companion docs (subagents,
+MCP servers) are resolved from the agent file's project root.
 
 If you change the provider field manually but no key is stored for
 that provider, the next `m` will fail with a clear "key not found"

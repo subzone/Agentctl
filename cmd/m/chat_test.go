@@ -244,3 +244,60 @@ func TestHandleSlashNonCommandPassesThrough(t *testing.T) {
 		t.Error("regular input should not be reported as handled")
 	}
 }
+
+func TestHandleSlashCompact(t *testing.T) {
+	p := &chatScriptedProvider{turns: [][]llm.Event{
+		{{Kind: llm.EventDone}},
+		{{Kind: llm.EventDone}},
+		{{Kind: llm.EventDone}},
+		{{Kind: llm.EventDone}},
+		{{Kind: llm.EventDone}},
+		{{Kind: llm.EventDone}},
+	}}
+	var out, status bytes.Buffer
+	in := strings.NewReader("a\nb\nc\nd\ne\nf\n/compact\n/exit\n")
+	sess := newChatTestSession(p, &out, &status)
+	if err := chatLoop(context.Background(), sess, in, &out, &status, "a"); err != nil {
+		t.Fatalf("chatLoop: %v", err)
+	}
+	if !strings.Contains(status.String(), "compacted") {
+		t.Errorf("missing compact notice: %q", status.String())
+	}
+	// After 6 exchanges + compact(4), should have at most 8 messages.
+	if got := len(sess.Messages()); got > 8 {
+		t.Errorf("post-compact messages = %d, want <= 8", got)
+	}
+}
+
+func TestHandleSlashModelSwitch(t *testing.T) {
+	// Register a test provider so /model can resolve it.
+	llm.Register("testprov", func() (llm.Provider, error) {
+		return &chatScriptedProvider{turns: [][]llm.Event{
+			{{Kind: llm.EventDone}},
+		}}, nil
+	})
+	sess := newChatTestSession(&chatScriptedProvider{}, io.Discard, io.Discard)
+	var status bytes.Buffer
+	handled, exit := handleSlash("/model testprov/new-model", sess, &status)
+	if !handled || exit {
+		t.Errorf("handled=%v exit=%v", handled, exit)
+	}
+	if !strings.Contains(status.String(), "switched to testprov/new-model") {
+		t.Errorf("status = %q", status.String())
+	}
+	if sess.Model() != "new-model" {
+		t.Errorf("Model() = %q", sess.Model())
+	}
+}
+
+func TestHandleSlashModelInvalid(t *testing.T) {
+	sess := newChatTestSession(&chatScriptedProvider{}, io.Discard, io.Discard)
+	var status bytes.Buffer
+	handled, _ := handleSlash("/model badformat", sess, &status)
+	if !handled {
+		t.Error("should be handled")
+	}
+	if !strings.Contains(status.String(), "error") {
+		t.Errorf("status = %q, want error", status.String())
+	}
+}

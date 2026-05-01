@@ -20,10 +20,11 @@ import (
 // them in order. runStepCmd pushes the terminal {done: true} after
 // sess.Step returns so the UI knows to re-enable input.
 type streamMsg struct {
-	chunk string
-	done  bool
-	err   error
-	usage llm.Usage // cumulative snapshot after Step completes
+	chunk  string
+	done   bool
+	err    error
+	usage  llm.Usage // cumulative snapshot after Step completes
+	lastIn int       // input_tokens from last call
 }
 
 // streamWriter is the io.Writer wired into engine.Config.Out. Each
@@ -48,7 +49,7 @@ func listenStreamCmd(ch <-chan streamMsg) tea.Cmd {
 func runStepCmd(ctx context.Context, sess *engine.Session, ch chan<- streamMsg, line string) tea.Cmd {
 	return func() tea.Msg {
 		err := sess.Step(ctx, line)
-		ch <- streamMsg{done: true, err: err, usage: sess.Usage()}
+		ch <- streamMsg{done: true, err: err, usage: sess.Usage(), lastIn: sess.LastInputTokens()}
 		return nil
 	}
 }
@@ -76,6 +77,7 @@ type tuiModel struct {
 	history  *strings.Builder
 	stats    sysStats
 	usage    llm.Usage
+	lastIn   int
 	provider string // e.g. "anthropic"
 	model    string // bare model id, e.g. "claude-sonnet-4-6"
 	thinking bool
@@ -155,7 +157,25 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendHistory("(history cleared)\n")
 				return m, nil
 			case "/help":
-				m.appendHistory("commands: /exit, /quit, /reset, /help\n")
+				m.appendHistory("commands: /exit, /quit, /reset, /compact, /model <provider/model>, /help\n")
+				return m, nil
+			}
+			if strings.HasPrefix(line, "/model ") {
+				newModel := strings.TrimSpace(strings.TrimPrefix(line, "/model "))
+				p, model, err := llm.Resolve(newModel)
+				if err != nil {
+					m.appendHistory(fmt.Sprintf("error: %v\n", err))
+					return m, nil
+				}
+				m.sess.SetModel(p, model)
+				m.provider, _, _ = strings.Cut(newModel, "/")
+				m.model = model
+				m.appendHistory(fmt.Sprintf("switched to %s\n", newModel))
+				return m, nil
+			}
+			if line == "/compact" {
+				m.sess.Truncate(4)
+				m.appendHistory("(compacted to last 4 exchanges)\n")
 				return m, nil
 			}
 			if strings.HasPrefix(line, "/") {
@@ -174,6 +194,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.done {
 			m.thinking = false
 			m.usage = msg.usage
+			m.lastIn = msg.lastIn
 			if msg.err != nil {
 				m.appendHistory(fmt.Sprintf("\nerror: %v\n", msg.err))
 			} else {
@@ -254,11 +275,22 @@ func (m tuiModel) View() string {
 
 	header := lipgloss.JoinHorizontal(lipgloss.Top, bannerBox, spacerL, tokenBox, spacerR, statsBox)
 
-	cmdsBar := cmdBarStyle.Render("/exit  /reset  /help")
+	cmdsBar := cmdBarStyle.Render("/exit  /reset  /compact  /model <provider/model>  /help")
 
 	body := m.viewport.View()
 	if m.thinking {
 		body += "\n" + dimStyle.Render(m.spinner.View()+" thinking…")
+	}
+
+	// Input line with context % indicator on the right.
+	inputLine := m.input.View()
+	if pct := contextPercent(m.lastIn, m.model); pct >= 0 {
+		ctxLabel := dimStyle.Render(fmt.Sprintf("ctx: %d%%", pct))
+		pad := m.width - lipgloss.Width(inputLine) - lipgloss.Width(ctxLabel) - 4
+		if pad < 1 {
+			pad = 1
+		}
+		inputLine = inputLine + strings.Repeat(" ", pad) + ctxLabel
 	}
 
 	return lipgloss.JoinVertical(
@@ -266,7 +298,7 @@ func (m tuiModel) View() string {
 		header,
 		cmdsBar,
 		bodyStyle.Render(body),
-		inputStyle.Render(m.input.View()),
+		inputStyle.Render(inputLine),
 	)
 }
 
@@ -345,18 +377,43 @@ func formatCost(dollars float64) string {
 type pricing struct{ input, output float64 }
 
 var modelPricing = map[string]pricing{
-	"claude-sonnet-4-6":       {3.0, 15.0},
+	"claude-sonnet-4-6":        {3.0, 15.0},
 	"claude-sonnet-4-20250514": {3.0, 15.0},
-	"claude-haiku-3-5":        {0.80, 4.0},
-	"claude-opus-4":           {15.0, 75.0},
-	"gpt-4o":                  {2.50, 10.0},
-	"gpt-4o-mini":             {0.15, 0.60},
-	"gpt-4.1":                 {2.0, 8.0},
-	"gpt-4.1-mini":            {0.40, 1.60},
-	"gpt-4.1-nano":            {0.10, 0.40},
-	"o3":                      {2.0, 8.0},
-	"o3-mini":                 {1.10, 4.40},
-	"o4-mini":                 {1.10, 4.40},
+	"claude-haiku-3-5":         {0.80, 4.0},
+	"claude-opus-4":            {15.0, 75.0},
+	"gpt-4o":                   {2.50, 10.0},
+	"gpt-4o-mini":              {0.15, 0.60},
+	"gpt-4.1":                  {2.0, 8.0},
+	"gpt-4.1-mini":             {0.40, 1.60},
+	"gpt-4.1-nano":             {0.10, 0.40},
+	"o3":                       {2.0, 8.0},
+	"o3-mini":                  {1.10, 4.40},
+	"o4-mini":                  {1.10, 4.40},
+}
+
+// modelContextWindow maps bare model ids to their context window size in
+// tokens. Used to show context usage %. Models not in the map show no %.
+var modelContextWindow = map[string]int{
+	"claude-sonnet-4-6":        200_000,
+	"claude-sonnet-4-20250514": 200_000,
+	"claude-haiku-3-5":         200_000,
+	"claude-opus-4":            200_000,
+	"gpt-4o":                   128_000,
+	"gpt-4o-mini":              128_000,
+	"gpt-4.1":                  1_000_000,
+	"gpt-4.1-mini":             1_000_000,
+	"gpt-4.1-nano":             1_000_000,
+	"o3":                       200_000,
+	"o3-mini":                  200_000,
+	"o4-mini":                  200_000,
+}
+
+func contextPercent(lastInputTokens int, model string) int {
+	window, ok := modelContextWindow[model]
+	if !ok || window == 0 || lastInputTokens == 0 {
+		return -1 // unknown
+	}
+	return (lastInputTokens * 100) / window
 }
 
 func estimateCost(u llm.Usage, model string) float64 {

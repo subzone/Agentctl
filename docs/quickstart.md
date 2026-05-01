@@ -55,12 +55,14 @@ In an interactive terminal, `m` opens a full-screen TUI:
 
 ```
 ┌──────────────────────────────────────────────┐
-│ ███╗   ███╗      ┌──────────────┐            │
-│ ████╗ ████║      │ CPU    12 %  │            │
-│ ██╔████╔██║      │ RAM    45 %  │            │
-│ ██║╚██╔╝██║      │ GPU      -   │            │
-│ ██║ ╚═╝ ██║      │ Disk   78 %  │            │
-│ ╚═╝     ╚═╝      └──────────────┘            │
+│ ███╗   ███╗  ┌──────────┐  ┌──────────┐     │
+│ ████╗ ████║  │ Model  … │  │ CPU  12% │     │
+│ ██╔████╔██║  │ In     0 │  │ RAM  45% │     │
+│ ██║╚██╔╝██║  │ Out    0 │  │ GPU  n/a │     │
+│ ██║ ╚═╝ ██║  │ Total  0 │  │ Disk 78% │     │
+│ ╚═╝     ╚═╝  │ Cost  $0 │  └──────────┘     │
+│               └──────────┘                   │
+│  /exit  /reset  /help                        │
 ├──────────────────────────────────────────────┤
 │ chat scrolls here                            │
 │ » hello                                      │
@@ -70,9 +72,10 @@ In an interactive terminal, `m` opens a full-screen TUI:
 └──────────────────────────────────────────────┘
 ```
 
-The header (banner + system stats) stays pinned; the chat viewport in
-the middle scrolls; the input is at the bottom. Stats refresh every
-second.
+The header shows the M banner, a token/cost box (model name, input/output
+tokens, estimated cost), and system stats. The commands bar (`/exit`,
+`/reset`, `/help`) is always visible. The chat viewport scrolls; input
+is pinned at the bottom.
 
 If you pipe input or run `m` in a script (any of stdin/stdout/stderr
 not a TTY), it falls back to the line-oriented REPL — same prompt
@@ -80,9 +83,17 @@ not a TTY), it falls back to the line-oriented REPL — same prompt
 
 Slash commands work in both modes:
 
-- `/exit` or `/quit` — end the session
-- `/reset` — clear conversation history
-- `/help` — list commands
+| Command | What it does |
+|---|---|
+| `/exit` or `/quit` | End the session |
+| `/reset` | Clear conversation history |
+| `/compact` | Truncate to last 4 exchanges (frees context window) |
+| `/model <provider/model>` | Switch LLM mid-session (e.g. `/model ollama/qwen3-coder`) |
+| `/help` | List commands |
+
+The input line shows `ctx: N%` on the right — the percentage of the
+model's context window currently consumed. When it climbs past 70–80%,
+use `/compact` to free space or `/reset` to start fresh.
 
 While the model is preparing its reply, an animated `thinking…`
 indicator appears at the bottom of the chat area; it clears the moment

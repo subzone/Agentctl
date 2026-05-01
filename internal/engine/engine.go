@@ -63,10 +63,25 @@ type Session struct {
 	schemas  []llm.ToolSchema
 	messages []llm.Message
 	usage    llm.Usage // cumulative across all Steps
+	lastIn   int       // input_tokens from the most recent provider call
 }
 
 // Usage returns the cumulative token counts across all Steps in this session.
 func (s *Session) Usage() llm.Usage { return s.usage }
+
+// LastInputTokens returns the input_tokens from the most recent provider
+// call. This approximates the current context window consumption.
+func (s *Session) LastInputTokens() int { return s.lastIn }
+
+// SetModel hot-swaps the provider and model for subsequent Steps.
+// Existing message history is preserved.
+func (s *Session) SetModel(p llm.Provider, model string) {
+	s.cfg.Provider = p
+	s.cfg.Model = model
+}
+
+// Model returns the current bare model id.
+func (s *Session) Model() string { return s.cfg.Model }
 
 // NewSession constructs a Session. It validates required Config fields
 // lazily on the first Step call (so a Session can be built before all
@@ -189,6 +204,7 @@ func (s *Session) Step(ctx context.Context, task string) error {
 			case llm.EventUsage:
 				s.usage.InputTokens += ev.Usage.InputTokens
 				s.usage.OutputTokens += ev.Usage.OutputTokens
+				s.lastIn = ev.Usage.InputTokens
 			case llm.EventDone:
 				stopReason = ev.StopReason
 			case llm.EventError:
@@ -201,18 +217,26 @@ func (s *Session) Step(ctx context.Context, task string) error {
 
 		s.messages = append(s.messages, assistant)
 
-		if stopReason != "tool_use" {
+		switch stopReason {
+		case "tool_use":
+			// Model wants to call tools — execute them and loop.
+			results, err := executeTools(ctx, s.cfg.Tools, s.status, assistant.Content)
+			if err != nil {
+				return err
+			}
+			s.messages = append(s.messages, results)
+
+		case "max_tokens":
+			// Output was truncated — ask the model to continue seamlessly.
+			s.messages = append(s.messages, llm.TextMessage(llm.RoleUser, "continue"))
+
+		default:
+			// Normal end ("end_turn" or anything else) — done.
 			if wroteAny {
 				fmt.Fprintln(s.out)
 			}
 			return nil
 		}
-
-		results, err := executeTools(ctx, s.cfg.Tools, s.status, assistant.Content)
-		if err != nil {
-			return err
-		}
-		s.messages = append(s.messages, results)
 	}
 
 	return fmt.Errorf("engine: hit MaxTurns=%d without natural stop", s.maxTurns)

@@ -56,13 +56,26 @@ The `tools:` allowlist exposes these to the model:
 
 | Tool | What it does |
 |---|---|
-| `shell` | Run shell commands. |
-| `fs_read` | Read files. |
-| `fs_write` | Create or overwrite files. |
+| `shell` | Run shell commands via `/bin/sh -c`. |
+| `fs_read` | Read a UTF-8 file from disk. |
+| `fs_write` | Create or patch files. **User confirms every write.** |
+| `fs_list` | List directory contents, optionally recursive. |
 | `delegate` | Invoke a sub-agent (auto-added when `subagents:` is set). |
 
-Empty allowlist → only safe built-ins (`fs_read` is currently the only
-builtin in the safe set; check `m run --help` for current behavior).
+### File write confirmation
+
+When the model calls `fs_write`, the user is always prompted:
+
+```
+Overwrite main.go (1200 → 1250 bytes)? [y/N]:
+```
+
+Type `y` to approve or `n` (or just Enter) to decline. If declined,
+the model sees "user declined the write" and can adjust its approach.
+
+`fs_write` supports two modes:
+- **`create`** — write full file content (creates parent directories).
+- **`patch`** — find-and-replace a specific substring in an existing file.
 
 ## Running an agent
 
@@ -84,16 +97,21 @@ Validate without running:
 m validate my-agent.md
 ```
 
-## Examples
+## Example agents
 
-The repo ships with a handful in [`examples/agents/`][examples]:
+The repo ships with these in [`examples/agents/`][examples]:
 
-- `hello.md` — minimal chat agent
-- `coder.md` — software-engineer agent with shell + fs access and a
-  `planner` sub-agent
-- `qwen-coder.md` — local coder backed by Ollama / Qwen
-- `summarize.md` — single-purpose summarizer
-- `planner.md` — sub-agent that drafts implementation plans
+| Agent | Model | Tools | Use case |
+|---|---|---|---|
+| `hello.md` | Claude Sonnet | none | Minimal test agent |
+| `coder.md` | Claude Sonnet | all + MCP GitHub | Full coding assistant with planner subagent |
+| `qwen-coder.md` | Ollama/qwen3-coder | all | Local coding, no API key |
+| `reviewer.md` | Claude Sonnet | read-only | Code review, never edits |
+| `writer.md` | Claude Sonnet | read + write | Docs, READMEs, prose |
+| `devops.md` | Claude Sonnet | all | Dockerfiles, CI/CD, infra |
+| `local.md` | Ollama/qwen3-coder | read-only | General local assistant, no cost |
+| `summarize.md` | Claude Sonnet | read + list | Project summarizer |
+| `planner.md` | Claude Haiku | read + list | Task planning, no execution |
 
 Read them as templates for your own.
 
@@ -113,26 +131,20 @@ my-project/
     code-review.md
   mcp/
     github.md
-  tools/
-    custom-linter.md
 ```
 
 When you `m run agents/coder.md "..."`, `m` walks the project root and
 loads every parseable MD file, resolving cross-references in the agent
 file (e.g. `subagents: [planner]` finds `agents/planner.md`).
 
-## Replacing the default chat agent
+## Choosing the default chat agent
 
-The default chat agent is **embedded** in the binary, so you can't
-edit it directly without rebuilding. Two workarounds:
+The bare `m` command uses an embedded default agent. To customize:
 
-1. **Override per-session:** `M_MODEL=anthropic/claude-opus-4-7 m`.
-2. **Use a custom agent for chat:** `m chat my-agent.md` instead of
-   bare `m`.
-
-A future release may add a "use this agent file as the bare-`m`
-default" option in the wizard. Until then, `m chat` is the explicit
-path.
+- **Override per-session:** `M_MODEL=anthropic/claude-opus-4-7 m`.
+- **Use a custom agent:** `m chat my-agent.md` instead of bare `m`.
+- **Set a default agent file:** add `default_agent: /path/to/agent.md`
+  to your `config.yaml` (planned for a future release).
 
 ## Next steps
 

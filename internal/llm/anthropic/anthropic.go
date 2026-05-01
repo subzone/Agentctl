@@ -95,7 +95,7 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 
 	maxTok := req.MaxTokens
 	if maxTok == 0 {
-		maxTok = 1024
+		maxTok = 16384
 	}
 	body, err := json.Marshal(messagePayload{
 		Model:       req.Model,

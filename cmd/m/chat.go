@@ -198,8 +198,23 @@ func handleSlash(line string, sess *engine.Session, status io.Writer) (handled, 
 		sess.Reset()
 		fmt.Fprintln(status, "(history cleared)")
 		return true, false
+	case "/compact":
+		sess.Truncate(4)
+		fmt.Fprintln(status, "(compacted to last 4 exchanges)")
+		return true, false
 	case "/help":
-		fmt.Fprintln(status, "commands: /exit, /quit, /reset, /help")
+		fmt.Fprintln(status, "commands: /exit, /quit, /reset, /compact, /model <provider/model>, /help")
+		return true, false
+	}
+	if strings.HasPrefix(line, "/model ") {
+		newModel := strings.TrimSpace(strings.TrimPrefix(line, "/model "))
+		p, model, err := llm.Resolve(newModel)
+		if err != nil {
+			fmt.Fprintf(status, "error: %v\n", err)
+			return true, false
+		}
+		sess.SetModel(p, model)
+		fmt.Fprintf(status, "switched to %s\n", newModel)
 		return true, false
 	}
 	if strings.HasPrefix(line, "/") {

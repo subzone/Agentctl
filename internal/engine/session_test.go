@@ -205,3 +205,80 @@ func TestRunWrapsSession(t *testing.T) {
 		t.Errorf("out = %q", out.String())
 	}
 }
+
+func TestSessionSetModel(t *testing.T) {
+	p1 := &recordingProvider{turns: [][]llm.Event{
+		{{Kind: llm.EventText, Text: "from-p1"}, {Kind: llm.EventDone}},
+	}}
+	p2 := &recordingProvider{turns: [][]llm.Event{
+		{{Kind: llm.EventText, Text: "from-p2"}, {Kind: llm.EventDone}},
+	}}
+	var out bytes.Buffer
+	s := NewSession(Config{Provider: p1, Model: "model-a", Out: &out})
+	if err := s.Step(context.Background(), "hi"); err != nil {
+		t.Fatalf("Step 1: %v", err)
+	}
+	if s.Model() != "model-a" {
+		t.Errorf("Model() = %q", s.Model())
+	}
+
+	s.SetModel(p2, "model-b")
+	if s.Model() != "model-b" {
+		t.Errorf("after SetModel, Model() = %q", s.Model())
+	}
+	if err := s.Step(context.Background(), "again"); err != nil {
+		t.Fatalf("Step 2: %v", err)
+	}
+	// p2 should have received the request, and history carries over.
+	if len(p2.requests) != 1 {
+		t.Fatalf("p2 requests = %d", len(p2.requests))
+	}
+	if len(p2.requests[0].Messages) != 3 {
+		t.Errorf("p2 messages = %d, want 3 (u,a,u)", len(p2.requests[0].Messages))
+	}
+}
+
+func TestSessionLastInputTokens(t *testing.T) {
+	p := &recordingProvider{turns: [][]llm.Event{
+		{
+			{Kind: llm.EventText, Text: "ok"},
+			{Kind: llm.EventUsage, Usage: llm.Usage{InputTokens: 150, OutputTokens: 20}},
+			{Kind: llm.EventDone},
+		},
+	}}
+	s := NewSession(Config{Provider: p, Model: "m"})
+	if s.LastInputTokens() != 0 {
+		t.Errorf("before step, LastInputTokens = %d", s.LastInputTokens())
+	}
+	_ = s.Step(context.Background(), "hi")
+	if s.LastInputTokens() != 150 {
+		t.Errorf("LastInputTokens = %d, want 150", s.LastInputTokens())
+	}
+}
+
+func TestSessionAutoContinueOnMaxTokens(t *testing.T) {
+	p := &recordingProvider{turns: [][]llm.Event{
+		// First response: truncated.
+		{{Kind: llm.EventText, Text: "partial "}, {Kind: llm.EventDone, StopReason: "max_tokens"}},
+		// Continuation after auto-injected "continue".
+		{{Kind: llm.EventText, Text: "rest"}, {Kind: llm.EventDone, StopReason: "end_turn"}},
+	}}
+	var out bytes.Buffer
+	s := NewSession(Config{Provider: p, Model: "m", Out: &out})
+	if err := s.Step(context.Background(), "go"); err != nil {
+		t.Fatalf("Step: %v", err)
+	}
+	// Should have auto-continued: both chunks in output.
+	if got := out.String(); !strings.Contains(got, "partial ") || !strings.Contains(got, "rest") {
+		t.Errorf("out = %q, want both chunks", got)
+	}
+	// The second request should include the auto-injected "continue" message.
+	if len(p.requests) != 2 {
+		t.Fatalf("requests = %d, want 2", len(p.requests))
+	}
+	msgs := p.requests[1].Messages
+	last := msgs[len(msgs)-1]
+	if last.Role != llm.RoleUser || last.Content[0].Text != "continue" {
+		t.Errorf("auto-continue message = %+v", last)
+	}
+}

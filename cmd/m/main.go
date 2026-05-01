@@ -74,6 +74,17 @@ func runDefaultChat(cmd *cobra.Command, _ []string) error {
 
 	showReleaseNotesIfNeeded(cmd.OutOrStdout(), Version)
 
+	// If the user configured a custom default agent, use it.
+	if cfg.DefaultAgent != "" {
+		doc, err := config.ParseFile(cfg.DefaultAgent)
+		if err != nil {
+			return fmt.Errorf("load default agent %s: %w", cfg.DefaultAgent, err)
+		}
+		fmt.Fprintln(cmd.OutOrStdout())
+		return runChatWithDoc(cmd, doc, loadCompanionDocs(cfg.DefaultAgent))
+	}
+
+	// Fall back to the embedded default agent.
 	doc, err := config.Parse(defaultAgentMD)
 	if err != nil {
 		return fmt.Errorf("parse embedded default agent: %w", err)
