@@ -17,6 +17,16 @@ page is kept in sync.
 
 ---
 
+## v0.0.4 — 2026-05-01
+
+- **Crash fix.** v0.0.3 panicked on the second user message with
+  `strings: illegal use of non-zero Builder copied by value`. The TUI
+  model's chat-history `strings.Builder` was stored by value, so
+  bubbletea's value-receiver `Update` copied it on every call — and a
+  non-zero Builder panics on the next WriteString. Now stored as a
+  `*Builder` so all copies share one backing buffer. Regression test
+  added.
+
 ## v0.0.3 — 2026-05-01
 
 - **Chat TUI** — bare `m` now opens a full-screen TUI when launched in

@@ -66,7 +66,12 @@ type tuiModel struct {
 	input    textinput.Model
 	spinner  spinner.Model
 
-	history  strings.Builder
+	// history is a *Builder, not a value, because bubbletea's Update is
+	// value-receiver: every Update call gets a copy of tuiModel, and a
+	// non-zero strings.Builder panics ("illegal use of non-zero Builder
+	// copied by value") on the next WriteString. The pointer is shared
+	// across all copies, so writes land on the same backing buffer.
+	history  *strings.Builder
 	stats    sysStats
 	thinking bool
 
@@ -95,6 +100,7 @@ func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, n
 		viewport: vp,
 		input:    in,
 		spinner:  sp,
+		history:  &strings.Builder{},
 		stats:    blankStats(),
 		name:     name,
 	}

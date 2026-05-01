@@ -25,6 +25,13 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.4",
+		Date:    "2026-05-01",
+		Highlights: []string{
+			"Fix v0.0.3 crash: TUI panicked on the second message with `strings: illegal use of non-zero Builder copied by value`. Bubbletea's `Update` is value-receiver, so the model is copied each call; the chat-history `strings.Builder` is now stored as a `*Builder` so the copies share one backing buffer. Regression test added.",
+		},
+	},
+	{
 		Version: "0.0.3",
 		Date:    "2026-05-01",
 		Highlights: []string{
