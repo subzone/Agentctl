@@ -39,6 +39,7 @@ type Provider struct {
 	apiKey  string
 	baseURL string
 	client  *http.Client
+	compat  bool // true when targeting a non-OpenAI endpoint (Gemini, Alibaba, LiteLLM)
 }
 
 // Option configures a Provider.
@@ -49,6 +50,10 @@ func WithAPIKey(k string) Option { return func(p *Provider) { p.apiKey = k } }
 
 // WithBaseURL points the client at a custom origin (Azure, proxies, tests).
 func WithBaseURL(u string) Option { return func(p *Provider) { p.baseURL = u } }
+
+// WithCompat marks this provider as targeting a non-OpenAI endpoint.
+// Disables stream_options and other OpenAI-specific features.
+func WithCompat() Option { return func(p *Provider) { p.compat = true } }
 
 // WithHTTPClient swaps the underlying http.Client.
 func WithHTTPClient(c *http.Client) Option { return func(p *Provider) { p.client = c } }
@@ -136,22 +141,26 @@ type chatToolFunction struct {
 // streamed events onto the returned channel.
 func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Event, error) {
 	payload := chatPayload{
-		Model:         req.Model,
-		Messages:      buildMessages(req.System, req.Messages),
-		Tools:         buildTools(req.Tools),
-		Temperature:   req.Temperature,
-		MaxTokens:     req.MaxTokens,
-		Stream:        true,
-		StreamOptions: &streamOptions{IncludeUsage: true},
+		Model:       req.Model,
+		Messages:    buildMessages(req.System, req.Messages),
+		Tools:       buildTools(req.Tools),
+		Temperature: req.Temperature,
+		MaxTokens:   req.MaxTokens,
+		Stream:      true,
 	}
-	if len(req.ResponseSchema) > 0 {
-		payload.ResponseFormat = &responseFormat{
-			Type: "json_schema",
-			JSONSchema: &jsonSchemaSpec{
-				Name:   "response",
-				Strict: true,
-				Schema: req.ResponseSchema,
-			},
+	// stream_options and json_schema response_format are OpenAI-specific;
+	// compat endpoints (Gemini, Alibaba, LiteLLM) may not support them.
+	if !p.compat {
+		payload.StreamOptions = &streamOptions{IncludeUsage: true}
+		if len(req.ResponseSchema) > 0 {
+			payload.ResponseFormat = &responseFormat{
+				Type: "json_schema",
+				JSONSchema: &jsonSchemaSpec{
+					Name:   "response",
+					Strict: true,
+					Schema: req.ResponseSchema,
+				},
+			}
 		}
 	}
 	body, err := json.Marshal(payload)

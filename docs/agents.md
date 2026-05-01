@@ -141,13 +141,74 @@ file (e.g. `subagents: [planner]` finds `agents/planner.md`).
 
 The bare `m` command uses an embedded default agent. To customize:
 
-- **Override per-session:** `M_MODEL=anthropic/claude-opus-4-7 m`.
+- **Override per-session:** `M_MODEL=anthropic/claude-opus-4 m`.
 - **Use a custom agent:** `m chat my-agent.md` instead of bare `m`.
 - **Set a default agent file:** add `default_agent: /path/to/agent.md`
-  to your `config.yaml` (planned for a future release).
+  to your `config.yaml`.
+
+## Structured output (response_schema)
+
+Agents can declare a `response_schema` in their frontmatter to constrain
+the model's output to valid JSON:
+
+```yaml
+---
+name: spoke-reviewer
+type: agent
+model: anthropic/claude-sonnet-4-6
+response_schema:
+  type: object
+  properties:
+    answer:
+      type: string
+    sources:
+      type: array
+      items:
+        type: object
+        properties:
+          file: { type: string }
+          summary: { type: string }
+        required: [file, summary]
+    confidence:
+      type: string
+      enum: [high, medium, low]
+    caveats:
+      type: array
+      items: { type: string }
+  required: [answer, sources, confidence, caveats]
+---
+```
+
+The engine enforces this via provider-native mechanisms:
+- **OpenAI:** `response_format.json_schema` with strict mode
+- **Anthropic:** synthetic response-tool with forced `tool_choice`
+- **Ollama:** `format` field with JSON schema
+
+The user sees only the `answer` field; the full JSON is stored in
+history for the hub agent to consume.
+
+## Hub-and-spoke pattern
+
+For complex tasks, use an orchestrator (hub) that delegates to
+specialist agents (spokes):
+
+```
+examples/agents/
+  hub.md              — routes tasks, synthesizes with citations
+  spoke-coder.md      — writes code, returns structured JSON
+  spoke-reviewer.md   — reviews code, returns structured JSON
+  spoke-planner.md    — creates plans, returns structured JSON
+```
+
+Spokes return `{answer, sources[], confidence, caveats[]}`. The hub
+cites which spoke provided each piece of information:
+`[spoke-coder: main.go:10-25]`.
+
+Multiple spoke delegations in the same turn run in parallel.
 
 ## Next steps
 
+- **[Architecture](architecture.html)** — how it's all wired up.
 - **[Configuration](configuration.html)** — env vars and file layout.
 - **[Troubleshooting](troubleshooting.html)** — agent validation
   failures, tool errors.

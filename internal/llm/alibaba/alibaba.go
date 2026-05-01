@@ -23,6 +23,6 @@ func init() {
 		if baseURL == "" {
 			baseURL = defaultBaseURL
 		}
-		return openai.New(openai.WithAPIKey(apiKey), openai.WithBaseURL(baseURL))
+		return openai.New(openai.WithAPIKey(apiKey), openai.WithBaseURL(baseURL), openai.WithCompat())
 	})
 }

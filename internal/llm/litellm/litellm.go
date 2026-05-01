@@ -22,6 +22,6 @@ func init() {
 		if apiKey == "" {
 			return nil, errors.New("LITELLM_API_KEY is not set")
 		}
-		return openai.New(openai.WithAPIKey(apiKey), openai.WithBaseURL(baseURL))
+		return openai.New(openai.WithAPIKey(apiKey), openai.WithBaseURL(baseURL), openai.WithCompat())
 	})
 }

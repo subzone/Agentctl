@@ -6,18 +6,19 @@ title: Providers
 
 # Providers
 
-`m` supports four model backends. The first-launch wizard configures
-one; you can switch later with `m init` or by editing `config.yaml`
-directly.
+`m` supports six model backends. The first-launch wizard configures
+one; you can switch later with `m config`, `m init`, or `/model` in chat.
 
 ## At a glance
 
-| Provider | Cost | Privacy | Setup friction | Quality (rough) |
+| Provider | Cost | Privacy | Setup | Quality |
 |---|---|---|---|---|
-| Ollama + Qwen | Free | 100 % local | Medium (install + ~5–20 GB pull) | Good for code, weaker on reasoning |
-| Anthropic | Paid per-token | Sent to Anthropic | Low (paste key) | Excellent across the board |
+| Ollama + Qwen | Free | 100% local | Medium (~5–20 GB pull) | Good for code |
+| Anthropic | Paid per-token | Sent to Anthropic | Low (paste key) | Excellent |
 | OpenAI | Paid per-token | Sent to OpenAI | Low (paste key) | Excellent |
-| LiteLLM | Depends on backend | Depends on backend | Medium (need a running proxy) | Whatever the routed model is |
+| Google Gemini | Paid per-token | Sent to Google | Low (paste key) | Excellent, 1M context |
+| Alibaba Cloud | Paid per-token | Sent to Alibaba | Low (paste key) | Good for code (Qwen) |
+| LiteLLM | Depends | Depends | Medium (need proxy) | Depends on backend |
 
 ## Ollama (local)
 
@@ -96,6 +97,38 @@ var explicitly. (For LiteLLM, prefer the dedicated LiteLLM provider —
 it's cleaner.)
 
 Get a key: <https://platform.openai.com/api-keys>
+
+## Google Gemini
+
+Gemini models are accessed through Google's OpenAI-compatible endpoint.
+The wizard prompts for an API key and offers three models:
+
+- **`gemini-2.5-flash`** (default) — fast, cheap, 1M context
+- **`gemini-2.5-pro`** — highest quality, 1M context
+- **`gemini-2.0-flash`** — previous generation, fast
+
+Get a key: <https://aistudio.google.com/apikey>
+
+Override per-session: `M_MODEL=gemini/gemini-2.5-pro m`
+
+Gemini uses the OpenAI-compatible adapter with `WithCompat()` enabled,
+which disables OpenAI-specific features (`stream_options`, `json_schema`
+response format) that the Gemini endpoint doesn't support.
+
+## Alibaba Cloud (DashScope)
+
+Alibaba's Qwen models are accessed through the DashScope
+OpenAI-compatible endpoint. The wizard offers:
+
+- **`qwen-plus`** (default) — good balance of quality and cost
+- **`qwen-turbo`** — fastest, cheapest
+- **`qwen-max`** — highest quality
+
+Get a key: <https://dashscope.console.aliyun.com/>
+
+Override per-session: `M_MODEL=alibaba/qwen-plus m`
+
+Uses the same OpenAI-compatible adapter as Gemini.
 
 ## LiteLLM (proxy / self-hosted)
 

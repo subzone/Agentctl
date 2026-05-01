@@ -89,6 +89,8 @@ Slash commands work in both modes:
 | `/reset` | Clear conversation history |
 | `/compact` | Truncate to last 4 exchanges (frees context window) |
 | `/model <provider/model>` | Switch LLM mid-session (e.g. `/model ollama/qwen3-coder`) |
+| `/theme [name]` | List themes or switch (e.g. `/theme matrix`) |
+| `/config` | Manage providers and models (directs to `m config`) |
 | `/help` | List commands |
 
 The input line shows `ctx: N%` on the right — the percentage of the
@@ -138,6 +140,7 @@ m run <agent.md> "task"   # one-shot run
 m chat <agent.md>          # REPL with a specific agent
 m validate <agent.md>      # validate frontmatter without running
 m init                     # re-run the setup wizard
+m config                   # manage providers and models
 m changelog                # print release history
 ```
 

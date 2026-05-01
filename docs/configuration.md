@@ -14,8 +14,9 @@ own.
 
 | File | What it stores | Mode |
 |---|---|---|
-| `config.yaml` | provider choice, model id, optional base URL | 0600 |
+| `config.yaml` | provider choice, model id, optional base URL, default agent | 0600 |
 | `state.yaml` | last version whose release notes have been shown | 0644 |
+| `theme.yaml` | TUI color theme (optional, matrix theme used if absent) | 0644 |
 
 ### Locations
 
@@ -50,8 +51,25 @@ fine).
 ### Example `state.yaml`
 
 ```yaml
-last_seen_version: 0.0.2
+last_seen_version: 0.0.12
 ```
+
+### Example `theme.yaml`
+
+```yaml
+name: my-theme
+banner: "#ff6600"
+user: "#00ccff"
+assistant: ""
+tool: "#888888"
+error: "#ff0000"
+dim: "#555555"
+prompt: "#00ccff"
+```
+
+Built-in themes: `matrix` (green monochrome, default), `default`
+(blue/yellow), `minimal` (no color). Switch with `/theme <name>` in
+chat or edit the file directly.
 
 This is automatic; `m` writes it after showing release notes for a
 version. Delete it to force the next launch to re-show notes.
@@ -94,13 +112,17 @@ supplement what's in `config.yaml`.
 
 | Variable | Purpose |
 |---|---|
-| `M_MODEL` | One-shot override; format `provider/model`. Skips config-derived model for this invocation only. |
-| `ANTHROPIC_API_KEY` | Used directly if set, falling back to keychain. |
-| `OPENAI_API_KEY` | Same idea for OpenAI. |
-| `OPENAI_BASE_URL` | Custom OpenAI-compatible endpoint (Azure, proxy). |
-| `OLLAMA_HOST` | Non-default Ollama host (e.g. remote box: `http://10.0.0.1:11434`). |
-| `LITELLM_API_KEY` | LiteLLM proxy key. Hydrated from keychain when provider is `litellm`. |
-| `LITELLM_BASE_URL` | LiteLLM proxy URL. Hydrated from `config.yaml`. |
+| `M_MODEL` | One-shot override; format `provider/model`. |
+| `ANTHROPIC_API_KEY` | Anthropic key (falls back to keychain). |
+| `OPENAI_API_KEY` | OpenAI key. |
+| `OPENAI_BASE_URL` | Custom OpenAI-compatible endpoint. |
+| `GEMINI_API_KEY` | Google Gemini key. |
+| `GEMINI_BASE_URL` | Custom Gemini endpoint (rare). |
+| `DASHSCOPE_API_KEY` | Alibaba DashScope key. |
+| `DASHSCOPE_BASE_URL` | Custom DashScope endpoint (rare). |
+| `OLLAMA_HOST` | Non-default Ollama host. |
+| `LITELLM_API_KEY` | LiteLLM proxy key. |
+| `LITELLM_BASE_URL` | LiteLLM proxy URL. |
 
 Setting an env var means: `m` skips the keychain lookup for that
 provider for the current process only.

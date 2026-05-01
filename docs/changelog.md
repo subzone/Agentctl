@@ -17,6 +17,51 @@ page is kept in sync.
 
 ---
 
+## v0.0.12 — 2026-05-01
+
+- **Theme system** — built-in themes (matrix, default, minimal) + custom
+  themes via `~/.config/m/theme.yaml`.
+- **Matrix theme** is the new default: green monochrome.
+- **`/theme`** command: list themes or switch live.
+- **Responsive layout** — header collapses on small terminals.
+- **Tool activity visible in TUI** — `→ fs_list` / `← 245 bytes`.
+- **Visual message styling** — user (bold), tools (faint), errors (red).
+- **`/config` and `/theme`** work in both TUI and REPL.
+- **Gemini/Alibaba/LiteLLM fix** — `WithCompat()` disables
+  OpenAI-specific `stream_options` that broke tool calling.
+
+## v0.0.11 — 2026-05-01
+
+- **Google Gemini provider** — gemini-2.5-pro/flash via OpenAI-compat.
+- **Alibaba Cloud provider** — qwen-plus/turbo/max via DashScope.
+- **`m config` command** — interactive provider/model manager with
+  model discovery (scans provider APIs).
+- **Wizard updated** to 6 providers.
+- **Full provider/model label** below the token box in TUI.
+
+## v0.0.10 — 2026-05-01
+
+- **Structured output post-processing** — engine buffers JSON, extracts
+  `answer` field for display, validates, rewrites history for hub.
+- **Anthropic response-tool extraction** — synthetic tool call
+  intercepted, not executed.
+- **Parallel tool execution** — multiple tool calls run concurrently.
+- **Ports/adapters layer** — ConfigSource, Secrets, StateStore
+  interfaces + MemoryStore adapter.
+
+## v0.0.9 — 2026-05-01
+
+- **Engine-enforced structured output** — `response_schema` in agent
+  frontmatter constrains model to valid JSON via provider-native
+  mechanisms.
+- **Hub-and-spoke agents** — orchestrator + spoke-coder/reviewer/planner
+  with citations and confidence levels.
+- **429 retry with backoff** for Anthropic and OpenAI.
+- **Anthropic model picker** in wizard.
+- **Ollama output cap** — `num_predict` defaults to 8192.
+- **Assertive system prompt** forces tool use.
+- **cwd injected** into system prompt.
+
 ## v0.0.8 — 2026-05-01
 
 - **`/model <provider/model>`** — switch LLM mid-session. History is
