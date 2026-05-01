@@ -113,7 +113,7 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 			Temperature: agent.Temperature,
 			MaxTokens:   maxTokens,
 			Out:         &streamWriter{ch: streamCh},
-			Status:      io.Discard, // tool-use status not surfaced in the TUI yet
+			Status:      &streamWriter{ch: streamCh}, // surface tool activity in TUI
 		})
 		return runTUI(ctx, sess, streamCh, agent.Name, providerName, model)
 	}

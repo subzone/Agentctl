@@ -183,7 +183,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendHistory(fmt.Sprintf("unknown command %q (try /help)\n", line))
 				return m, nil
 			}
-			m.appendHistory("» " + line + "\n")
+			m.appendHistory(userStyle.Render("» "+line) + "\n")
 			m.thinking = true
 			return m, tea.Batch(
 				runStepCmd(m.ctx, m.sess, m.streamCh, line),
@@ -197,13 +197,18 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.usage = msg.usage
 			m.lastIn = msg.lastIn
 			if msg.err != nil {
-				m.appendHistory(fmt.Sprintf("\nerror: %v\n", msg.err))
+				m.appendHistory(errorStyle.Render(fmt.Sprintf("error: %v", msg.err)) + "\n")
 			} else {
 				m.appendHistory("\n")
 			}
 			return m, nil
 		}
-		m.appendHistory(msg.chunk)
+		// Style tool activity indicators from the engine's Status writer.
+		chunk := msg.chunk
+		if strings.HasPrefix(chunk, "→ ") || strings.HasPrefix(chunk, "← ") {
+			chunk = toolStyle.Render(strings.TrimRight(chunk, "\n")) + "\n"
+		}
+		m.appendHistory(chunk)
 		return m, listenStreamCmd(m.streamCh)
 
 	case statsTickMsg:
@@ -276,7 +281,7 @@ func (m tuiModel) View() string {
 
 	header := lipgloss.JoinHorizontal(lipgloss.Top, bannerBox, spacerL, tokenBox, spacerR, statsBox)
 
-	cmdsBar := cmdBarStyle.Render("/exit  /reset  /compact  /model <provider/model>  /help")
+	cmdsBar := cmdBarStyle.Render("/exit  /reset  /compact  /model  /config  /help")
 
 	cwdLabel := ""
 	if cwd, err := os.Getwd(); err == nil {
@@ -321,6 +326,9 @@ var (
 	statsBox = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1)
 
 	cmdBarStyle = lipgloss.NewStyle().Faint(true).Padding(0, 2)
+	userStyle  = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("12"))  // bright blue
+	toolStyle  = lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("11")) // yellow
+	errorStyle = lipgloss.NewStyle().Foreground(lipgloss.Color("9"))              // red
 )
 
 func renderStatsTable(s sysStats) string {
