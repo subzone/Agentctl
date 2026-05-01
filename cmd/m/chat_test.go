@@ -46,7 +46,7 @@ func TestChatLoopGreetsAndExits(t *testing.T) {
 	in := strings.NewReader("hello\n/exit\n")
 	sess := newChatTestSession(p, &out, &status)
 
-	if err := chatLoop(context.Background(), sess, in, &out, &status, "tester"); err != nil {
+	if err := chatLoop(context.Background(), sess, nil, in, &out, &status, "tester"); err != nil {
 		t.Fatalf("chatLoop: %v", err)
 	}
 	got := out.String()
@@ -72,7 +72,7 @@ func TestChatLoopMultiTurn(t *testing.T) {
 	var out, status bytes.Buffer
 	in := strings.NewReader("first\nsecond\n/exit\n")
 	sess := newChatTestSession(p, &out, &status)
-	if err := chatLoop(context.Background(), sess, in, &out, &status, "agent"); err != nil {
+	if err := chatLoop(context.Background(), sess, nil, in, &out, &status, "agent"); err != nil {
 		t.Fatalf("chatLoop: %v", err)
 	}
 	if p.calls != 2 {
@@ -94,7 +94,7 @@ func TestChatLoopReset(t *testing.T) {
 	var out, status bytes.Buffer
 	in := strings.NewReader("hello\n/reset\nagain\n/exit\n")
 	sess := newChatTestSession(p, &out, &status)
-	if err := chatLoop(context.Background(), sess, in, &out, &status, "a"); err != nil {
+	if err := chatLoop(context.Background(), sess, nil, in, &out, &status, "a"); err != nil {
 		t.Fatalf("chatLoop: %v", err)
 	}
 	if !strings.Contains(status.String(), "history cleared") {
@@ -114,7 +114,7 @@ func TestChatLoopHelpAndUnknownSlash(t *testing.T) {
 	var out, status bytes.Buffer
 	in := strings.NewReader("/help\n/whatever\n/exit\n")
 	sess := newChatTestSession(p, &out, &status)
-	if err := chatLoop(context.Background(), sess, in, &out, &status, "a"); err != nil {
+	if err := chatLoop(context.Background(), sess, nil, in, &out, &status, "a"); err != nil {
 		t.Fatalf("chatLoop: %v", err)
 	}
 	if !strings.Contains(status.String(), "commands:") {
@@ -135,7 +135,7 @@ func TestChatLoopSkipsBlankLines(t *testing.T) {
 	var out, status bytes.Buffer
 	in := strings.NewReader("\n   \nactual\n/exit\n")
 	sess := newChatTestSession(p, &out, &status)
-	if err := chatLoop(context.Background(), sess, in, &out, &status, "a"); err != nil {
+	if err := chatLoop(context.Background(), sess, nil, in, &out, &status, "a"); err != nil {
 		t.Fatalf("chatLoop: %v", err)
 	}
 	if p.calls != 1 {
@@ -152,7 +152,7 @@ func TestChatLoopExitsOnEOF(t *testing.T) {
 	sess := newChatTestSession(p, &out, &status)
 	done := make(chan error, 1)
 	go func() {
-		done <- chatLoop(context.Background(), sess, in, &out, &status, "a")
+		done <- chatLoop(context.Background(), sess, nil, in, &out, &status, "a")
 	}()
 	select {
 	case err := <-done:
@@ -174,7 +174,7 @@ func TestChatLoopExitsOnContextCancel(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() {
-		done <- chatLoop(ctx, sess, in, &out, &status, "a")
+		done <- chatLoop(ctx, sess, nil, in, &out, &status, "a")
 	}()
 	// Give the loop a moment to dispatch into Step.
 	time.Sleep(50 * time.Millisecond)
@@ -216,7 +216,7 @@ func TestChatLoopHistoryTruncatesAcrossManyTurns(t *testing.T) {
 	}
 	lines.WriteString("/exit\n")
 	sess := newChatTestSession(p, &out, &status)
-	if err := chatLoop(context.Background(), sess, strings.NewReader(lines.String()), &out, &status, "a"); err != nil {
+	if err := chatLoop(context.Background(), sess, nil, strings.NewReader(lines.String()), &out, &status, "a"); err != nil {
 		t.Fatalf("chatLoop: %v", err)
 	}
 	// History should contain at most chatMaxExchanges*2 messages (u/a per exchange).
@@ -228,7 +228,7 @@ func TestChatLoopHistoryTruncatesAcrossManyTurns(t *testing.T) {
 func TestHandleSlashUnknown(t *testing.T) {
 	sess := newChatTestSession(&chatScriptedProvider{}, io.Discard, io.Discard)
 	var status bytes.Buffer
-	handled, exit := handleSlash("/dunno", sess, &status)
+	handled, exit := handleSlash("/dunno", sess, nil, &status)
 	if !handled || exit {
 		t.Errorf("expected handled=true exit=false, got %v %v", handled, exit)
 	}
@@ -239,7 +239,7 @@ func TestHandleSlashUnknown(t *testing.T) {
 
 func TestHandleSlashNonCommandPassesThrough(t *testing.T) {
 	sess := newChatTestSession(&chatScriptedProvider{}, io.Discard, io.Discard)
-	handled, _ := handleSlash("hello world", sess, io.Discard)
+	handled, _ := handleSlash("hello world", sess, nil, io.Discard)
 	if handled {
 		t.Error("regular input should not be reported as handled")
 	}
@@ -257,7 +257,7 @@ func TestHandleSlashCompact(t *testing.T) {
 	var out, status bytes.Buffer
 	in := strings.NewReader("a\nb\nc\nd\ne\nf\n/compact\n/exit\n")
 	sess := newChatTestSession(p, &out, &status)
-	if err := chatLoop(context.Background(), sess, in, &out, &status, "a"); err != nil {
+	if err := chatLoop(context.Background(), sess, nil, in, &out, &status, "a"); err != nil {
 		t.Fatalf("chatLoop: %v", err)
 	}
 	if !strings.Contains(status.String(), "compacted") {
@@ -278,7 +278,7 @@ func TestHandleSlashModelSwitch(t *testing.T) {
 	})
 	sess := newChatTestSession(&chatScriptedProvider{}, io.Discard, io.Discard)
 	var status bytes.Buffer
-	handled, exit := handleSlash("/model testprov/new-model", sess, &status)
+	handled, exit := handleSlash("/model testprov/new-model", sess, nil, &status)
 	if !handled || exit {
 		t.Errorf("handled=%v exit=%v", handled, exit)
 	}
@@ -293,7 +293,7 @@ func TestHandleSlashModelSwitch(t *testing.T) {
 func TestHandleSlashModelInvalid(t *testing.T) {
 	sess := newChatTestSession(&chatScriptedProvider{}, io.Discard, io.Discard)
 	var status bytes.Buffer
-	handled, _ := handleSlash("/model badformat", sess, &status)
+	handled, _ := handleSlash("/model badformat", sess, nil, &status)
 	if !handled {
 		t.Error("should be handled")
 	}

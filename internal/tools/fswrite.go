@@ -7,34 +7,84 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 )
 
 // ConfirmFunc asks the user to approve an action. Returns true if approved.
-// Implementations live in the CLI layer (stdin prompt, TUI dialog, etc.).
-// A nil ConfirmFunc auto-approves everything (useful for non-interactive runs).
 type ConfirmFunc func(ctx context.Context, prompt string) (bool, error)
 
-// FSWriteTool writes or patches a UTF-8 text file on disk. Every write is
-// gated by a ConfirmFunc so the user sees the proposed change before it
-// lands. If Confirm is nil, writes are auto-approved.
+// UndoStack tracks file states for rollback. Thread-safe.
+type UndoStack struct {
+	mu    sync.Mutex
+	stack []undoEntry
+}
+
+type undoEntry struct {
+	path    string
+	content []byte // nil means file didn't exist (was created)
+	existed bool
+}
+
+// Push saves the current state of a file before modification.
+func (u *UndoStack) Push(path string) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	content, err := os.ReadFile(path)
+	if err != nil {
+		u.stack = append(u.stack, undoEntry{path: path, existed: false})
+	} else {
+		u.stack = append(u.stack, undoEntry{path: path, content: content, existed: true})
+	}
+}
+
+// Pop reverts the most recent file change. Returns a description or error.
+func (u *UndoStack) Pop() (string, error) {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	if len(u.stack) == 0 {
+		return "", errors.New("nothing to undo")
+	}
+	e := u.stack[len(u.stack)-1]
+	u.stack = u.stack[:len(u.stack)-1]
+	if !e.existed {
+		if err := os.Remove(e.path); err != nil && !os.IsNotExist(err) {
+			return "", fmt.Errorf("undo: remove %s: %w", e.path, err)
+		}
+		return fmt.Sprintf("removed %s (was newly created)", e.path), nil
+	}
+	if err := os.WriteFile(e.path, e.content, 0o644); err != nil {
+		return "", fmt.Errorf("undo: restore %s: %w", e.path, err)
+	}
+	return fmt.Sprintf("restored %s (%d bytes)", e.path, len(e.content)), nil
+}
+
+// Len returns the number of undoable operations.
+func (u *UndoStack) Len() int {
+	u.mu.Lock()
+	defer u.mu.Unlock()
+	return len(u.stack)
+}
+
+// FSWriteTool writes or patches a UTF-8 text file on disk with diff preview,
+// user confirmation, and undo support.
 type FSWriteTool struct {
 	Confirm  ConfirmFunc
+	Undo     *UndoStack
 	MaxBytes int
 }
 
-// NewFSWrite returns an FSWriteTool. Pass a ConfirmFunc to gate writes;
-// nil means auto-approve.
-func NewFSWrite(confirm ConfirmFunc) *FSWriteTool {
-	return &FSWriteTool{Confirm: confirm, MaxBytes: 1 << 20}
+func NewFSWrite(confirm ConfirmFunc, undo *UndoStack) *FSWriteTool {
+	return &FSWriteTool{Confirm: confirm, Undo: undo, MaxBytes: 1 << 20}
 }
 
 func (f *FSWriteTool) Name() string { return "fs_write" }
 
 func (f *FSWriteTool) Description() string {
-	return "Write content to a file on disk. The user will be asked to confirm " +
-		"the proposed change before it is applied. Creates parent directories " +
-		"if needed. Use mode 'create' to write the full file, or 'patch' to " +
-		"replace a specific substring."
+	return "Write content to a file on disk. Shows a diff preview before " +
+		"applying. The user confirms every change. Creates parent directories " +
+		"if needed. Use mode 'create' for full file, 'patch' for find-and-replace. " +
+		"Changes can be reverted with /undo."
 }
 
 func (f *FSWriteTool) InputSchema() json.RawMessage {
@@ -65,7 +115,6 @@ func (f *FSWriteTool) Run(ctx context.Context, input json.RawMessage) (string, e
 	if args.Path == "" {
 		return "", errors.New("path is required")
 	}
-
 	switch args.Mode {
 	case "create":
 		return f.runCreate(ctx, args.Path, args.Content)
@@ -81,10 +130,9 @@ func (f *FSWriteTool) runCreate(ctx context.Context, path, content string) (stri
 		return "", fmt.Errorf("content too large (%d bytes, max %d)", len(content), f.maxBytes())
 	}
 
-	prompt := fmt.Sprintf("Write %d bytes to %s?", len(content), path)
-	if existing, err := os.ReadFile(path); err == nil {
-		prompt = fmt.Sprintf("Overwrite %s (%d → %d bytes)?", path, len(existing), len(content))
-	}
+	existing, _ := os.ReadFile(path)
+	diff := unifiedDiff(path, string(existing), content)
+	prompt := fmt.Sprintf("Write %s:\n%s", path, diff)
 
 	ok, err := f.confirm(ctx, prompt)
 	if err != nil {
@@ -94,6 +142,9 @@ func (f *FSWriteTool) runCreate(ctx context.Context, path, content string) (stri
 		return "user declined the write", nil
 	}
 
+	if f.Undo != nil {
+		f.Undo.Push(path)
+	}
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return "", err
 	}
@@ -107,24 +158,23 @@ func (f *FSWriteTool) runPatch(ctx context.Context, path, oldStr, newStr string)
 	if oldStr == "" {
 		return "", errors.New("old_str is required for mode=patch")
 	}
-
 	existing, err := os.ReadFile(path)
 	if err != nil {
 		return "", err
 	}
 	src := string(existing)
-
 	idx := indexOf(src, oldStr)
 	if idx < 0 {
 		return "", fmt.Errorf("old_str not found in %s", path)
 	}
-
 	patched := src[:idx] + newStr + src[idx+len(oldStr):]
 	if len(patched) > f.maxBytes() {
 		return "", fmt.Errorf("patched file too large (%d bytes, max %d)", len(patched), f.maxBytes())
 	}
 
-	prompt := fmt.Sprintf("Patch %s: replace %d chars with %d chars?", path, len(oldStr), len(newStr))
+	diff := unifiedDiff(path, src, patched)
+	prompt := fmt.Sprintf("Patch %s:\n%s", path, diff)
+
 	ok, err := f.confirm(ctx, prompt)
 	if err != nil {
 		return "", err
@@ -133,6 +183,9 @@ func (f *FSWriteTool) runPatch(ctx context.Context, path, oldStr, newStr string)
 		return "user declined the patch", nil
 	}
 
+	if f.Undo != nil {
+		f.Undo.Push(path)
+	}
 	if err := os.WriteFile(path, []byte(patched), 0o644); err != nil {
 		return "", err
 	}
@@ -154,10 +207,79 @@ func (f *FSWriteTool) maxBytes() int {
 }
 
 func indexOf(s, sub string) int {
-	for i := 0; i+len(sub) <= len(s); i++ {
+	for i := 0; i + len(sub) <= len(s); i++ {
 		if s[i:i+len(sub)] == sub {
 			return i
 		}
 	}
 	return -1
+}
+
+// unifiedDiff produces a simple unified-diff-style preview. Not a full
+// diff algorithm — shows removed/added lines around the change for
+// quick visual confirmation.
+func unifiedDiff(path, old, new string) string {
+	oldLines := strings.Split(old, "\n")
+	newLines := strings.Split(new, "\n")
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "--- %s\n+++ %s\n", path, path)
+
+	// Simple line-by-line diff: show first differing region with context.
+	const ctx = 3
+	firstDiff := -1
+	for i := 0; i < len(oldLines) || i < len(newLines); i++ {
+		oldL, newL := "", ""
+		if i < len(oldLines) {
+			oldL = oldLines[i]
+		}
+		if i < len(newLines) {
+			newL = newLines[i]
+		}
+		if oldL != newL && firstDiff < 0 {
+			firstDiff = i
+		}
+	}
+	if firstDiff < 0 {
+		b.WriteString("(no changes)\n")
+		return b.String()
+	}
+
+	start := firstDiff - ctx
+	if start < 0 {
+		start = 0
+	}
+
+	// Show up to 20 lines of diff to keep it readable.
+	shown := 0
+	maxShow := 20
+	for i := start; i < len(oldLines) || i < len(newLines); i++ {
+		if shown >= maxShow {
+			b.WriteString("  ...\n")
+			break
+		}
+		oldL, newL := "", ""
+		haveOld, haveNew := i < len(oldLines), i < len(newLines)
+		if haveOld {
+			oldL = oldLines[i]
+		}
+		if haveNew {
+			newL = newLines[i]
+		}
+		if oldL == newL {
+			if i >= firstDiff+ctx && i < firstDiff+maxShow-ctx {
+				continue // skip unchanged middle
+			}
+			fmt.Fprintf(&b, "  %s\n", oldL)
+		} else {
+			if haveOld && oldL != "" {
+				fmt.Fprintf(&b, "- %s\n", oldL)
+			}
+			if haveNew && newL != "" {
+				fmt.Fprintf(&b, "+ %s\n", newL)
+			}
+		}
+		shown++
+	}
+	return b.String()
 }

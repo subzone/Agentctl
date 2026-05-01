@@ -17,6 +17,7 @@ import (
 	"github.com/subzone/m/internal/config"
 	"github.com/subzone/m/internal/engine"
 	"github.com/subzone/m/internal/llm"
+	"github.com/subzone/m/internal/tools"
 )
 
 const (
@@ -81,18 +82,15 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 	out := cmd.OutOrStdout()
 	stderr := cmd.ErrOrStderr()
 
+	undoStack := &tools.UndoStack{}
 	hubSpawner := &spawner{
 		docs:       docs,
 		out:        out,
 		status:     stderr,
 		confirm:    stdinConfirm(stderr, cmd.InOrStdin()),
+		undo:       undoStack,
 		spawnDepth: 1,
 	}
-	rt, err := buildAgentRuntime(ctx, agent, docs, hubSpawner, stderr)
-	if err != nil {
-		return err
-	}
-	defer rt.close()
 
 	maxTokens := defaultMaxTokens
 	if agent.MaxTokens != nil {
@@ -105,6 +103,19 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 	// keep working with bytes.Buffer.
 	if isInteractiveChat(cmd.InOrStdin(), out, stderr) {
 		streamCh := make(chan streamMsg, 64)
+		statusWriter := &streamWriter{ch: streamCh}
+		// In TUI mode, auto-approve writes but log them to the viewport
+		// so the user sees what happened. stdin is owned by bubbletea so
+		// we can't prompt interactively.
+		hubSpawner.confirm = func(_ context.Context, prompt string) (bool, error) {
+			statusWriter.Write([]byte("→ " + prompt + " [auto-approved in TUI]\n"))
+			return true, nil
+		}
+		rt, err := buildAgentRuntime(ctx, agent, docs, hubSpawner, stderr)
+		if err != nil {
+			return err
+		}
+		defer rt.close()
 		sess := engine.NewSession(engine.Config{
 			Provider:    provider,
 			Model:       model,
@@ -115,8 +126,15 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 			Out:         &streamWriter{ch: streamCh},
 			Status:      &streamWriter{ch: streamCh}, // surface tool activity in TUI
 		})
-		return runTUI(ctx, sess, streamCh, agent.Name, providerName, model)
+		return runTUI(ctx, sess, streamCh, agent.Name, providerName, model, undoStack)
 	}
+
+	// REPL mode: stdin-based confirmation for fs_write.
+	rt, err := buildAgentRuntime(ctx, agent, docs, hubSpawner, stderr)
+	if err != nil {
+		return err
+	}
+	defer rt.close()
 
 	sess := engine.NewSession(engine.Config{
 		Provider:    provider,
@@ -128,7 +146,7 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 		Out:         out,
 		Status:      stderr,
 	})
-	return chatLoop(ctx, sess, cmd.InOrStdin(), out, stderr, agent.Name)
+	return chatLoop(ctx, sess, undoStack, cmd.InOrStdin(), out, stderr, agent.Name)
 }
 
 // isInteractiveChat reports whether all three IO streams are TTYs.
@@ -153,7 +171,7 @@ func isInteractiveChat(in io.Reader, out, status io.Writer) bool {
 // cancellation (typically Ctrl-C) interrupts the prompt as well as any
 // in-flight Step. Slash commands (/exit, /reset, /help) are handled
 // locally; everything else is passed to sess.Step.
-func chatLoop(ctx context.Context, sess *engine.Session, in io.Reader, out, status io.Writer, name string) error {
+func chatLoop(ctx context.Context, sess *engine.Session, undo *tools.UndoStack, in io.Reader, out, status io.Writer, name string) error {
 	fmt.Fprintf(status, "chat with %s — /exit to quit, /reset to clear history, /help for more\n", name)
 
 	lines := readLines(in)
@@ -174,7 +192,7 @@ func chatLoop(ctx context.Context, sess *engine.Session, in io.Reader, out, stat
 			if line == "" {
 				continue
 			}
-			if handled, exit := handleSlash(line, sess, status); handled {
+			if handled, exit := handleSlash(line, sess, undo, status); handled {
 				if exit {
 					return nil
 				}
@@ -196,7 +214,7 @@ func chatLoop(ctx context.Context, sess *engine.Session, in io.Reader, out, stat
 // true if the line was a command (or at least started with `/`); exit is
 // true if the loop should terminate. Non-command input returns (false,
 // false) and the caller should pass it to the model.
-func handleSlash(line string, sess *engine.Session, status io.Writer) (handled, exit bool) {
+func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, status io.Writer) (handled, exit bool) {
 	switch line {
 	case "/exit", "/quit":
 		return true, true
@@ -208,11 +226,23 @@ func handleSlash(line string, sess *engine.Session, status io.Writer) (handled, 
 		sess.Truncate(4)
 		fmt.Fprintln(status, "(compacted to last 4 exchanges)")
 		return true, false
+	case "/undo":
+		if undo == nil {
+			fmt.Fprintln(status, "undo not available")
+			return true, false
+		}
+		msg, err := undo.Pop()
+		if err != nil {
+			fmt.Fprintf(status, "undo: %v\n", err)
+		} else {
+			fmt.Fprintln(status, msg)
+		}
+		return true, false
 	case "/config":
 		fmt.Fprintln(status, "run `m config` from the shell to manage providers and models")
 		return true, false
 	case "/help":
-		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /model <provider/model> /theme [name] /config /help")
+		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /undo /model <provider/model> /theme [name] /config /help")
 		return true, false
 	}
 	if strings.HasPrefix(line, "/model ") {

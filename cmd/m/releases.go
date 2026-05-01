@@ -25,6 +25,19 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.14",
+		Date:    "2026-05-01",
+		Highlights: []string{
+			"Diff preview: fs_write shows a unified diff before every write so you see exactly what changes.",
+			"Undo stack: /undo reverts the last file write. Works in both TUI and REPL.",
+			"Git builtin tool: status, diff, log, add, commit, branch, checkout, stash.",
+			"Test runner tool: test_run executes tests and returns pass/fail with output for edit-test-fix loops.",
+			"Project context auto-detection: scans for go.mod, package.json, Cargo.toml etc. and injects language/build/test into system prompt.",
+			"TUI fs_write fix: auto-approves in TUI mode (bubbletea owns stdin), shows action in viewport.",
+			"Default agent updated with git + test_run tools and development workflow instructions.",
+		},
+	},
+	{
 		Version: "0.0.12",
 		Date:    "2026-05-01",
 		Highlights: []string{

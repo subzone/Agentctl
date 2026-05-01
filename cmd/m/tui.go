@@ -14,6 +14,7 @@ import (
 
 	"github.com/subzone/m/internal/engine"
 	"github.com/subzone/m/internal/llm"
+	"github.com/subzone/m/internal/tools"
 )
 
 // streamMsg unifies model-text chunks and the final completion event.
@@ -79,13 +80,14 @@ type tuiModel struct {
 	thinking bool
 	theme    *Theme
 	styles   Styles
+	undo     *tools.UndoStack
 
 	width  int
 	height int
 	name   string
 }
 
-func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, name, provider, model string) tuiModel {
+func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, name, provider, model string, undo *tools.UndoStack) tuiModel {
 	in := textinput.New()
 	in.Prompt = "» "
 	in.Placeholder = "type a message, /exit to quit"
@@ -116,6 +118,7 @@ func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, n
 		name:     name,
 		theme:    t,
 		styles:   s,
+		undo:     undo,
 	}
 }
 
@@ -161,7 +164,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendHistory("(history cleared)\n")
 				return m, nil
 			case "/help":
-				m.appendHistory("commands: /exit /quit /reset /compact /model <provider/model> /theme [name] /config /help\n")
+				m.appendHistory("commands: /exit /quit /reset /compact /undo /model <provider/model> /theme [name] /config /help\n")
 				return m, nil
 			case "/config":
 				m.appendHistory("run `m config` from the shell to manage providers and models\n")
@@ -183,6 +186,16 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if line == "/compact" {
 				m.sess.Truncate(4)
 				m.appendHistory("(compacted to last 4 exchanges)\n")
+				return m, nil
+			}
+			if line == "/undo" {
+				if m.undo == nil {
+					m.appendHistory("undo not available\n")
+				} else if msg, err := m.undo.Pop(); err != nil {
+					m.appendHistory(fmt.Sprintf("undo: %v\n", err))
+				} else {
+					m.appendHistory(msg + "\n")
+				}
 				return m, nil
 			}
 			if strings.HasPrefix(line, "/theme") {
@@ -320,7 +333,7 @@ func (m tuiModel) View() string {
 
 	header := lipgloss.JoinHorizontal(lipgloss.Top, bannerBox, spacerL, tokenBox, spacerR, statsBox)
 
-	cmdsBar := m.styles.Dim.Padding(0, 2).Render("/exit  /reset  /compact  /model  /config  /theme  /help")
+	cmdsBar := m.styles.Dim.Padding(0, 2).Render("/exit /reset /compact /undo /model /config /theme /help")
 
 	cwdLabel := ""
 	if cwd, err := os.Getwd(); err == nil {
@@ -473,8 +486,8 @@ var tokenBoxStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(
 // having wired sess.Out to a streamWriter pointing at streamCh — that
 // happens in runChatWithDoc so the engine starts streaming the moment
 // Step is called.
-func runTUI(ctx context.Context, sess *engine.Session, streamCh chan streamMsg, name, provider, model string) error {
-	m := newTUIModel(ctx, sess, streamCh, name, provider, model)
+func runTUI(ctx context.Context, sess *engine.Session, streamCh chan streamMsg, name, provider, model string, undo *tools.UndoStack) error {
+	m := newTUIModel(ctx, sess, streamCh, name, provider, model, undo)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	_, err := p.Run()
 	return err

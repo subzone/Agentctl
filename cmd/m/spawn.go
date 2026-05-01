@@ -27,6 +27,7 @@ type spawner struct {
 	out        io.Writer
 	status     io.Writer
 	confirm    tools.ConfirmFunc
+	undo       *tools.UndoStack
 	spawnDepth int // depth of the agent that this spawner.spawn() will create
 }
 
@@ -61,6 +62,7 @@ func (s *spawner) spawn(ctx context.Context, name, task string) (string, error) 
 		out:        s.out,
 		status:     s.status,
 		confirm:    s.confirm,
+		undo:       s.undo,
 		spawnDepth: s.spawnDepth + 1,
 	}
 
@@ -134,7 +136,7 @@ func buildAgentRuntime(
 	if sp != nil {
 		confirm = sp.confirm
 	}
-	combined := tools.Builtins(confirm)
+	combined := tools.Builtins(confirm, sp.undo)
 
 	if len(spec.MCP) > 0 {
 		specs, missing := mcp.Resolve(docs, spec.MCP)
@@ -159,7 +161,7 @@ func buildAgentRuntime(
 		// No allowlist: builtins only, plus delegate if available, no MCP. The
 		// rationale is the same as M5 — third-party servers shouldn't be
 		// auto-exposed; users opt in via `tools:`.
-		out := tools.Builtins(confirm)
+		out := tools.Builtins(confirm, sp.undo)
 		if d, ok := combined.Get("delegate"); ok {
 			out = tools.Merge(out, tools.NewRegistry(d))
 		}

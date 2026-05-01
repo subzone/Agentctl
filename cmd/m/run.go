@@ -73,6 +73,7 @@ func runAgent(cmd *cobra.Command, args []string) error {
 		out:        out,
 		status:     stderr,
 		confirm:    stdinConfirm(stderr, os.Stdin),
+		undo:       &tools.UndoStack{},
 		spawnDepth: 1, // children of the hub run at depth 1
 	}
 
@@ -163,10 +164,15 @@ func readTask(cmd *cobra.Command, rest []string) (string, error) {
 
 // systemWithCwd appends the current working directory to a system prompt.
 func systemWithCwd(body string) string {
-	if cwd, err := os.Getwd(); err == nil {
-		return body + fmt.Sprintf("\n\nCurrent working directory: %s", cwd)
+	cwd, err := os.Getwd()
+	if err != nil {
+		return body
 	}
-	return body
+	result := body + fmt.Sprintf("\n\nCurrent working directory: %s", cwd)
+	if ctx := detectProjectContext(cwd); ctx != "" {
+		result += ctx
+	}
+	return result
 }
 
 // stdinConfirm returns a ConfirmFunc that prints the prompt to w and reads

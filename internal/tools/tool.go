@@ -87,8 +87,11 @@ func (r *Registry) Run(ctx context.Context, name string, input json.RawMessage) 
 
 // Builtins returns a registry preloaded with the always-available tools.
 // confirm gates fs_write; pass nil for auto-approve (non-interactive runs).
-func Builtins(confirm ConfirmFunc) *Registry {
-	return NewRegistry(NewShell(), NewFSRead(), NewFSWrite(confirm), NewFSList())
+func Builtins(confirm ConfirmFunc, undo *UndoStack) *Registry {
+	return NewRegistry(
+		NewShell(), NewFSRead(), NewFSWrite(confirm, undo),
+		NewFSList(), NewGit(), NewTestRun(),
+	)
 }
 
 // Merge combines registries into a single one. Later registries override
