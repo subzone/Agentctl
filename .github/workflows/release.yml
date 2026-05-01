@@ -53,7 +53,7 @@ jobs:
 
   macos:
     name: macOS (.pkg)
-    needs: gate
+    needs: linux
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

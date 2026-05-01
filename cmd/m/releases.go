@@ -29,10 +29,13 @@ var releases = []release{
 		Date:    "2026-05-01",
 		Highlights: []string{
 			"Token count and estimated cost displayed in the TUI header between the M banner and system stats.",
+			"Model name shown in the token box (provider/model, truncated to fit).",
+			"Cost always visible ($0.0000 for local models).",
+			"Persistent commands bar (/exit /reset /help) below the header.",
 			"All three providers (Anthropic, OpenAI, Ollama) now emit usage events with input/output token counts.",
-			"Cost estimation for Claude, GPT-4o/4.1, o3/o4 models; local models show tokens only.",
+			"Cost estimation for Claude, GPT-4o/4.1, o3/o4 models.",
 			"golangci-lint fixes: bodyclose, unused fields, capitalized error strings, empty branches.",
-			"golangci-lint v2 config with correct format.",
+			"Release pipeline: macOS job runs after Linux to avoid goreleaser race.",
 		},
 	},
 	{

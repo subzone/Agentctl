@@ -75,7 +75,20 @@ func TestEstimateCost(t *testing.T) {
 	}
 
 	// Unknown model returns 0.
-	if got := estimateCost(u, "ollama/qwen3-coder"); got != 0 {
+	if got := estimateCost(u, "qwen3-coder"); got != 0 {
 		t.Errorf("unknown model cost = %f, want 0", got)
+	}
+}
+
+func TestTruncModel(t *testing.T) {
+	if got := truncModel("short"); got != "short" {
+		t.Errorf("got %q", got)
+	}
+	got := truncModel("claude-sonnet-4-6")
+	if got == "claude-sonnet-4-6" {
+		t.Error("should have been truncated")
+	}
+	if !strings.HasSuffix(got, "…") {
+		t.Errorf("got %q, want ellipsis suffix", got)
 	}
 }

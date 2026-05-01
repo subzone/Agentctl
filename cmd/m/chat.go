@@ -66,6 +66,9 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 		return err
 	}
 
+	// Extract provider name for TUI display (e.g. "anthropic" from "anthropic/claude-sonnet-4-6").
+	providerName, _, _ := strings.Cut(agent.Model, "/")
+
 	ctx, cancel := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
 
@@ -105,7 +108,7 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 			Out:         &streamWriter{ch: streamCh},
 			Status:      io.Discard, // tool-use status not surfaced in the TUI yet
 		})
-		return runTUI(ctx, sess, streamCh, agent.Name, model)
+		return runTUI(ctx, sess, streamCh, agent.Name, providerName, model)
 	}
 
 	sess := engine.NewSession(engine.Config{

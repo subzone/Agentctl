@@ -76,7 +76,8 @@ type tuiModel struct {
 	history  *strings.Builder
 	stats    sysStats
 	usage    llm.Usage
-	model    string
+	provider string // e.g. "anthropic"
+	model    string // bare model id, e.g. "claude-sonnet-4-6"
 	thinking bool
 
 	width  int
@@ -84,7 +85,7 @@ type tuiModel struct {
 	name   string
 }
 
-func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, name, model string) tuiModel {
+func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, name, provider, model string) tuiModel {
 	in := textinput.New()
 	in.Prompt = "» "
 	in.Placeholder = "type a message, /exit to quit"
@@ -106,6 +107,7 @@ func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, n
 		spinner:  sp,
 		history:  &strings.Builder{},
 		stats:    blankStats(),
+		provider: provider,
 		model:    model,
 		name:     name,
 	}
@@ -220,7 +222,7 @@ func (m *tuiModel) appendHistory(s string) {
 // resizes. Header height is fixed at the banner's row count plus a
 // border; input is one row plus padding.
 func (m *tuiModel) layout() {
-	const headerHeight = 8 // banner (6) + border (2)
+	const headerHeight = 9 // banner (6) + commands bar (1) + border (2)
 	const inputHeight = 1
 	bodyHeight := m.height - headerHeight - inputHeight - 2 // 2 for body borders
 	if bodyHeight < 3 {
@@ -237,7 +239,7 @@ func (m *tuiModel) layout() {
 // flush regardless of terminal width.
 func (m tuiModel) View() string {
 	bannerBox := bannerStyle.Render(strings.TrimLeft(banner, "\n"))
-	tokenBox := renderTokenBox(m.usage, m.model)
+	tokenBox := renderTokenBox(m.usage, m.provider, m.model)
 	statsBox := renderStatsTable(m.stats)
 
 	boxes := lipgloss.Width(bannerBox) + lipgloss.Width(tokenBox) + lipgloss.Width(statsBox)
@@ -252,6 +254,8 @@ func (m tuiModel) View() string {
 
 	header := lipgloss.JoinHorizontal(lipgloss.Top, bannerBox, spacerL, tokenBox, spacerR, statsBox)
 
+	cmdsBar := cmdBarStyle.Render("/exit  /reset  /help")
+
 	body := m.viewport.View()
 	if m.thinking {
 		body += "\n" + dimStyle.Render(m.spinner.View()+" thinking…")
@@ -260,6 +264,7 @@ func (m tuiModel) View() string {
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		header,
+		cmdsBar,
 		bodyStyle.Render(body),
 		inputStyle.Render(m.input.View()),
 	)
@@ -273,9 +278,11 @@ var (
 	inputStyle = lipgloss.NewStyle().Padding(0, 1)
 	dimStyle   = lipgloss.NewStyle().Faint(true)
 
-	statsKey = lipgloss.NewStyle().Width(5)
-	statsVal = lipgloss.NewStyle().Align(lipgloss.Right).Width(6)
+	statsKey = lipgloss.NewStyle().Width(6)
+	statsVal = lipgloss.NewStyle().Align(lipgloss.Right).Width(8)
 	statsBox = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1)
+
+	cmdBarStyle = lipgloss.NewStyle().Faint(true).Padding(0, 2)
 )
 
 func renderStatsTable(s sysStats) string {
@@ -291,17 +298,29 @@ func renderStatsTable(s sysStats) string {
 // renderTokenBox shows cumulative token counts and estimated cost for the
 // session. Cost is a rough estimate based on published per-1M-token rates;
 // models not in the table show tokens only.
-func renderTokenBox(u llm.Usage, model string) string {
+func renderTokenBox(u llm.Usage, provider, model string) string {
 	total := u.InputTokens + u.OutputTokens
+	modelLabel := model
+	if provider != "" {
+		modelLabel = provider + "/" + model
+	}
 	rows := []string{
+		statsKey.Render("Model") + statsVal.Render(truncModel(modelLabel)),
 		statsKey.Render("In") + statsVal.Render(formatTokens(u.InputTokens)),
 		statsKey.Render("Out") + statsVal.Render(formatTokens(u.OutputTokens)),
 		statsKey.Render("Total") + statsVal.Render(formatTokens(total)),
 	}
-	if cost := estimateCost(u, model); cost > 0 {
-		rows = append(rows, statsKey.Render("Cost") + statsVal.Render(formatCost(cost)))
-	}
+	cost := estimateCost(u, model)
+	rows = append(rows, statsKey.Render("Cost") + statsVal.Render(formatCost(cost)))
 	return tokenBoxStyle.Render(strings.Join(rows, "\n"))
+}
+
+func truncModel(s string) string {
+	const max = 8
+	if len(s) <= max {
+		return s
+	}
+	return s[:max-1] + "…"
 }
 
 func formatTokens(n int) string {
@@ -354,8 +373,8 @@ var tokenBoxStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(
 // having wired sess.Out to a streamWriter pointing at streamCh — that
 // happens in runChatWithDoc so the engine starts streaming the moment
 // Step is called.
-func runTUI(ctx context.Context, sess *engine.Session, streamCh chan streamMsg, name, model string) error {
-	m := newTUIModel(ctx, sess, streamCh, name, model)
+func runTUI(ctx context.Context, sess *engine.Session, streamCh chan streamMsg, name, provider, model string) error {
+	m := newTUIModel(ctx, sess, streamCh, name, provider, model)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	_, err := p.Run()
 	return err
