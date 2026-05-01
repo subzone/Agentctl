@@ -11,7 +11,9 @@ import (
 	"github.com/subzone/m/internal/userconfig"
 
 	// Side-effect: register LLM providers.
+	_ "github.com/subzone/m/internal/llm/alibaba"
 	_ "github.com/subzone/m/internal/llm/anthropic"
+	_ "github.com/subzone/m/internal/llm/gemini"
 	_ "github.com/subzone/m/internal/llm/litellm"
 	_ "github.com/subzone/m/internal/llm/ollama"
 	_ "github.com/subzone/m/internal/llm/openai"
@@ -47,6 +49,7 @@ func main() {
 	root.AddCommand(newRunCmd())
 	root.AddCommand(newChatCmd())
 	root.AddCommand(newInitCmd())
+	root.AddCommand(newConfigCmd())
 	root.AddCommand(newChangelogCmd())
 
 	if err := root.Execute(); err != nil {
@@ -135,6 +138,18 @@ func applyConfig(cfg *userconfig.Config) error {
 			return fmt.Errorf("read openai key from keychain: %w", err)
 		}
 		os.Setenv("OPENAI_API_KEY", key)
+	case userconfig.ProviderGemini:
+		key, err := userconfig.GetAPIKey(cfg.Provider)
+		if err != nil {
+			return fmt.Errorf("read gemini key from keychain: %w", err)
+		}
+		os.Setenv("GEMINI_API_KEY", key)
+	case userconfig.ProviderAlibaba:
+		key, err := userconfig.GetAPIKey(cfg.Provider)
+		if err != nil {
+			return fmt.Errorf("read alibaba key from keychain: %w", err)
+		}
+		os.Setenv("DASHSCOPE_API_KEY", key)
 	case userconfig.ProviderLiteLLM:
 		key, err := userconfig.GetAPIKey(cfg.Provider)
 		if err != nil {

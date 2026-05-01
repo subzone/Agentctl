@@ -338,27 +338,18 @@ func renderStatsTable(s sysStats) string {
 // models not in the table show tokens only.
 func renderTokenBox(u llm.Usage, provider, model string) string {
 	total := u.InputTokens + u.OutputTokens
-	modelLabel := model
-	if provider != "" {
-		modelLabel = provider + "/" + model
-	}
 	rows := []string{
-		statsKey.Render("Model") + statsVal.Render(truncModel(modelLabel)),
 		statsKey.Render("In") + statsVal.Render(formatTokens(u.InputTokens)),
 		statsKey.Render("Out") + statsVal.Render(formatTokens(u.OutputTokens)),
 		statsKey.Render("Total") + statsVal.Render(formatTokens(total)),
 	}
 	cost := estimateCost(u, model)
 	rows = append(rows, statsKey.Render("Cost") + statsVal.Render(formatCost(cost)))
-	return tokenBoxStyle.Render(strings.Join(rows, "\n"))
-}
-
-func truncModel(s string) string {
-	const max = 8
-	if len(s) <= max {
-		return s
-	}
-	return s[:max-1] + "…"
+	box := tokenBoxStyle.Render(strings.Join(rows, "\n"))
+	// Show full provider/model below the box so it's always readable.
+	label := provider + "/" + model
+	labelStyled := dimStyle.Align(lipgloss.Center).Width(lipgloss.Width(box)).Render(label)
+	return lipgloss.JoinVertical(lipgloss.Center, box, labelStyled)
 }
 
 func formatTokens(n int) string {
@@ -395,10 +386,14 @@ var modelPricing = map[string]pricing{
 	"o3":                       {2.0, 8.0},
 	"o3-mini":                  {1.10, 4.40},
 	"o4-mini":                  {1.10, 4.40},
+	"gemini-2.5-pro":           {1.25, 10.0},
+	"gemini-2.5-flash":         {0.15, 0.60},
+	"gemini-2.0-flash":         {0.10, 0.40},
+	"qwen-plus":               {0.80, 2.0},
+	"qwen-max":                {2.0, 6.0},
+	"qwen-turbo":              {0.30, 0.60},
 }
 
-// modelContextWindow maps bare model ids to their context window size in
-// tokens. Used to show context usage %. Models not in the map show no %.
 var modelContextWindow = map[string]int{
 	"claude-sonnet-4-6":        200_000,
 	"claude-sonnet-4-20250514": 200_000,
@@ -412,6 +407,12 @@ var modelContextWindow = map[string]int{
 	"o3":                       200_000,
 	"o3-mini":                  200_000,
 	"o4-mini":                  200_000,
+	"gemini-2.5-pro":           1_000_000,
+	"gemini-2.5-flash":         1_000_000,
+	"gemini-2.0-flash":         1_000_000,
+	"qwen-plus":               131_072,
+	"qwen-max":                32_768,
+	"qwen-turbo":              131_072,
 }
 
 func contextPercent(lastInputTokens int, model string) int {

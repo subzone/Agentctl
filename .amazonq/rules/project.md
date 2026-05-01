@@ -10,19 +10,23 @@ Ollama, or LiteLLM backends. Binary name is `m`, module path is
 ## Architecture
 
 ```
-cmd/m/                  # cobra CLI: main, run, chat, validate, init, releases, tui
+cmd/m/                  # cobra CLI: main, run, chat, validate, init, config, releases, tui
 internal/
-  engine/               # agent loop, tool dispatch, session (provider-agnostic)
+  engine/               # agent loop, tool dispatch, session, structured output
   config/               # MD frontmatter parser + schema + validator
   llm/                  # Provider interface + registry
     anthropic/          # Messages API, SSE streaming, stdlib-only
     openai/             # Chat Completions, SSE streaming, stdlib-only
     ollama/             # /api/chat, NDJSON streaming, stdlib-only
     litellm/            # thin wrapper over openai with custom base URL
-  tools/                # Tool interface, Registry, builtins: shell, fs_read, delegate
+    gemini/             # thin wrapper over openai for Google AI Studio
+    alibaba/            # thin wrapper over openai for DashScope
+  tools/                # Tool interface, Registry, builtins: shell, fs_read, fs_write, fs_list, delegate
   mcp/                  # MCP client (stdio JSON-RPC), manager, tool adapter
   userconfig/           # ~/.config/m/config.yaml, OS keychain (macOS/Linux), state
-examples/agents/        # example .md agent files
+  ports/                # ConfigSource, Secrets, StateStore interfaces
+  adapters/             # MemoryStore (in-memory StateStore)
+examples/agents/        # example .md agent files (17 docs)
 ```
 
 ### Hard Rules

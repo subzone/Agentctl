@@ -21,6 +21,8 @@ const (
 	ProviderOllama    Provider = "ollama"
 	ProviderAnthropic Provider = "anthropic"
 	ProviderOpenAI    Provider = "openai"
+	ProviderGemini    Provider = "gemini"
+	ProviderAlibaba   Provider = "alibaba"
 	ProviderLiteLLM   Provider = "litellm"
 )
 

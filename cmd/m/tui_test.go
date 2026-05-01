@@ -80,18 +80,6 @@ func TestEstimateCost(t *testing.T) {
 	}
 }
 
-func TestTruncModel(t *testing.T) {
-	if got := truncModel("short"); got != "short" {
-		t.Errorf("got %q", got)
-	}
-	got := truncModel("claude-sonnet-4-6")
-	if got == "claude-sonnet-4-6" {
-		t.Error("should have been truncated")
-	}
-	if !strings.HasSuffix(got, "…") {
-		t.Errorf("got %q, want ellipsis suffix", got)
-	}
-}
 
 func TestContextPercent(t *testing.T) {
 	// Known model.

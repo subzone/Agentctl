@@ -25,6 +25,21 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.11",
+		Date:    "2026-05-01",
+		Highlights: []string{
+			"Google Gemini provider — gemini-2.5-pro/flash/2.0-flash via OpenAI-compatible endpoint, 1M context.",
+			"Alibaba Cloud (DashScope) provider — qwen-plus/turbo/max via OpenAI-compatible endpoint.",
+			"`m config` command — interactive provider/model manager: scan available models, set default, add providers.",
+			"Model discovery — queries Anthropic, OpenAI, Gemini, Alibaba, and Ollama APIs for available models.",
+			"`/config` slash command — directs to `m config` from within chat.",
+			"Wizard updated with 6 provider options: Ollama, Anthropic, OpenAI, Gemini, Alibaba, LiteLLM.",
+			"Model pickers for Anthropic (sonnet/haiku/opus), Gemini (flash/pro), Alibaba (plus/turbo/max).",
+			"Full provider/model label shown below the token box in TUI (no more truncation).",
+			"Pricing and context windows for Gemini and Alibaba models.",
+		},
+	},
+	{
 		Version: "0.0.10",
 		Date:    "2026-05-01",
 		Highlights: []string{

@@ -64,10 +64,12 @@ func runWizard(in io.Reader, out, status io.Writer) (*userconfig.Config, error) 
 	fmt.Fprintln(out, "  1) Ollama + Qwen3-Coder      — local, free, ~5–20 GB download")
 	fmt.Fprintln(out, "  2) Anthropic (Claude)        — best quality, paid API")
 	fmt.Fprintln(out, "  3) OpenAI (GPT)              — paid API")
-	fmt.Fprintln(out, "  4) LiteLLM proxy             — self-hosted / custom endpoint")
+	fmt.Fprintln(out, "  4) Google Gemini             — 1M context, paid API")
+	fmt.Fprintln(out, "  5) Alibaba (Qwen Cloud)      — DashScope API")
+	fmt.Fprintln(out, "  6) LiteLLM proxy             — self-hosted / custom endpoint")
 	fmt.Fprintln(out)
 
-	choice, err := w.prompt("Choice [1-4]: ")
+	choice, err := w.prompt("Choice [1-6]: ")
 	if err != nil {
 		return nil, err
 	}
@@ -80,9 +82,13 @@ func runWizard(in io.Reader, out, status io.Writer) (*userconfig.Config, error) 
 	case "3":
 		cfg, err = setupHostedKey(w, userconfig.ProviderOpenAI, "OpenAI", "gpt-4o-mini", "sk-")
 	case "4":
+		cfg, err = setupGemini(w)
+	case "5":
+		cfg, err = setupAlibaba(w)
+	case "6":
 		cfg, err = setupLiteLLM(w)
 	default:
-		return nil, fmt.Errorf("invalid choice %q (expected 1-4)", choice)
+		return nil, fmt.Errorf("invalid choice %q (expected 1-6)", choice)
 	}
 	if err != nil {
 		return nil, err
@@ -433,6 +439,74 @@ func setupAnthropic(w *wiz) (*userconfig.Config, error) {
 	}
 
 	return setupHostedKey(w, userconfig.ProviderAnthropic, "Anthropic", model, "sk-ant-")
+}
+
+func setupGemini(w *wiz) (*userconfig.Config, error) {
+	fmt.Fprintln(w.out, "\nGoogle Gemini model:")
+	fmt.Fprintln(w.out, "  1) gemini-2.5-flash    — fast, cheap, 1M context (recommended)")
+	fmt.Fprintln(w.out, "  2) gemini-2.5-pro      — highest quality, 1M context")
+	fmt.Fprintln(w.out, "  3) gemini-2.0-flash    — previous gen, fast")
+	fmt.Fprintln(w.out, "  4) custom              — enter a model id")
+
+	choice, err := w.prompt("Choice [1-4, default 1]: ")
+	if err != nil {
+		return nil, err
+	}
+	var model string
+	switch choice {
+	case "1", "":
+		model = "gemini-2.5-flash"
+	case "2":
+		model = "gemini-2.5-pro"
+	case "3":
+		model = "gemini-2.0-flash"
+	case "4":
+		model, err = w.prompt("Model id: ")
+		if err != nil {
+			return nil, err
+		}
+		if model == "" {
+			return nil, errors.New("no model provided")
+		}
+	default:
+		return nil, fmt.Errorf("invalid choice %q", choice)
+	}
+
+	return setupHostedKey(w, userconfig.ProviderGemini, "Gemini", model, "")
+}
+
+func setupAlibaba(w *wiz) (*userconfig.Config, error) {
+	fmt.Fprintln(w.out, "\nAlibaba Cloud Qwen model:")
+	fmt.Fprintln(w.out, "  1) qwen-plus           — good balance of quality and cost (recommended)")
+	fmt.Fprintln(w.out, "  2) qwen-turbo          — fastest, cheapest")
+	fmt.Fprintln(w.out, "  3) qwen-max            — highest quality")
+	fmt.Fprintln(w.out, "  4) custom              — enter a model id")
+
+	choice, err := w.prompt("Choice [1-4, default 1]: ")
+	if err != nil {
+		return nil, err
+	}
+	var model string
+	switch choice {
+	case "1", "":
+		model = "qwen-plus"
+	case "2":
+		model = "qwen-turbo"
+	case "3":
+		model = "qwen-max"
+	case "4":
+		model, err = w.prompt("Model id: ")
+		if err != nil {
+			return nil, err
+		}
+		if model == "" {
+			return nil, errors.New("no model provided")
+		}
+	default:
+		return nil, fmt.Errorf("invalid choice %q", choice)
+	}
+
+	return setupHostedKey(w, userconfig.ProviderAlibaba, "Alibaba DashScope", model, "sk-")
 }
 
 func setupLiteLLM(w *wiz) (*userconfig.Config, error) {

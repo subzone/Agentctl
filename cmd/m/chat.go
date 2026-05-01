@@ -208,6 +208,9 @@ func handleSlash(line string, sess *engine.Session, status io.Writer) (handled, 
 		sess.Truncate(4)
 		fmt.Fprintln(status, "(compacted to last 4 exchanges)")
 		return true, false
+	case "/config":
+		fmt.Fprintln(status, "run `m config` from the shell to manage providers and models")
+		return true, false
 	case "/help":
 		fmt.Fprintln(status, "commands: /exit, /quit, /reset, /compact, /model <provider/model>, /help")
 		return true, false
