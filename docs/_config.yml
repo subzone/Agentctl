@@ -1,0 +1,11 @@
+title: m
+description: MD-driven agent CLI for code, infra, and automation
+theme: jekyll-theme-cayman
+show_downloads: false
+github:
+  repository_url: https://github.com/subzone/m
+defaults:
+  - scope:
+      path: ""
+    values:
+      layout: default
