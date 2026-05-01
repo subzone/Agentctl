@@ -212,7 +212,7 @@ func handleSlash(line string, sess *engine.Session, status io.Writer) (handled, 
 		fmt.Fprintln(status, "run `m config` from the shell to manage providers and models")
 		return true, false
 	case "/help":
-		fmt.Fprintln(status, "commands: /exit, /quit, /reset, /compact, /model <provider/model>, /help")
+		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /model <provider/model> /theme [name] /config /help")
 		return true, false
 	}
 	if strings.HasPrefix(line, "/model ") {
@@ -224,6 +224,25 @@ func handleSlash(line string, sess *engine.Session, status io.Writer) (handled, 
 		}
 		sess.SetModel(p, model)
 		fmt.Fprintf(status, "switched to %s\n", newModel)
+		return true, false
+	}
+	if strings.HasPrefix(line, "/theme") {
+		arg := strings.TrimSpace(strings.TrimPrefix(line, "/theme"))
+		if arg == "" {
+			names := []string{}
+			for n := range Builtin {
+				names = append(names, n)
+			}
+			fmt.Fprintf(status, "themes: %s\n", strings.Join(names, ", "))
+			return true, false
+		}
+		t := ByName(arg)
+		if t == nil {
+			fmt.Fprintf(status, "unknown theme %q\n", arg)
+			return true, false
+		}
+		_ = Save(t)
+		fmt.Fprintf(status, "theme set to %s (visible in TUI mode)\n", arg)
 		return true, false
 	}
 	if strings.HasPrefix(line, "/") {

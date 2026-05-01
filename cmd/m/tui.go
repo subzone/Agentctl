@@ -161,7 +161,10 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendHistory("(history cleared)\n")
 				return m, nil
 			case "/help":
-				m.appendHistory("commands: /exit, /quit, /reset, /compact, /model <provider/model>, /help\n")
+				m.appendHistory("commands: /exit /quit /reset /compact /model <provider/model> /theme [name] /config /help\n")
+				return m, nil
+			case "/config":
+				m.appendHistory("run `m config` from the shell to manage providers and models\n")
 				return m, nil
 			}
 			if strings.HasPrefix(line, "/model ") {
