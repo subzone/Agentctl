@@ -25,6 +25,16 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.3",
+		Date:    "2026-05-01",
+		Highlights: []string{
+			"New chat TUI: persistent header with the M banner on the left and a live system-stats table (CPU, RAM, GPU, Disk) on the right, scrolling chat viewport in the middle, input pinned at the bottom. Auto-falls-back to the line-oriented REPL when stdin/stdout/stderr aren't all terminals (so scripts and tests stay clean).",
+			"Animated `thinking…` indicator while waiting for the model's first streamed token; disappears the moment text starts flowing.",
+			"GPU stat shows `n/a` for now — Apple Silicon has no clean public API; Linux NVIDIA via `nvidia-smi` is planned.",
+			"Stats refresh once per second via `gopsutil`.",
+		},
+	},
+	{
 		Version: "0.0.2",
 		Date:    "2026-05-01",
 		Highlights: []string{

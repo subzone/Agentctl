@@ -12,6 +12,7 @@ import (
 	"syscall"
 
 	"github.com/spf13/cobra"
+	"golang.org/x/term"
 
 	"github.com/subzone/m/internal/config"
 	"github.com/subzone/m/internal/engine"
@@ -88,6 +89,25 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 		maxTokens = *agent.MaxTokens
 	}
 
+	// Branch on tty: a real terminal gets the bubbletea TUI (banner +
+	// stats + scrolling viewport); piped or scripted invocations fall
+	// back to the line-oriented chatLoop so logs stay clean and tests
+	// keep working with bytes.Buffer.
+	if isInteractiveChat(cmd.InOrStdin(), out, stderr) {
+		streamCh := make(chan streamMsg, 64)
+		sess := engine.NewSession(engine.Config{
+			Provider:    provider,
+			Model:       model,
+			System:      doc.Body,
+			Tools:       rt.registry,
+			Temperature: agent.Temperature,
+			MaxTokens:   maxTokens,
+			Out:         &streamWriter{ch: streamCh},
+			Status:      io.Discard, // tool-use status not surfaced in the TUI yet
+		})
+		return runTUI(ctx, sess, streamCh, agent.Name)
+	}
+
 	sess := engine.NewSession(engine.Config{
 		Provider:    provider,
 		Model:       model,
@@ -98,8 +118,22 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 		Out:         out,
 		Status:      stderr,
 	})
-
 	return chatLoop(ctx, sess, cmd.InOrStdin(), out, stderr, agent.Name)
+}
+
+// isInteractiveChat reports whether all three IO streams are TTYs.
+// Bubbletea needs both stdin (key reads) and stdout (rendering) to be
+// terminals; we also require stderr so non-TUI output (the engine's
+// status messages, when re-enabled later) renders cleanly. Anything
+// else falls back to chatLoop.
+func isInteractiveChat(in io.Reader, out, status io.Writer) bool {
+	for _, w := range []any{in, out, status} {
+		f, ok := w.(*os.File)
+		if !ok || !term.IsTerminal(int(f.Fd())) {
+			return false
+		}
+	}
+	return true
 }
 
 // chatLoop drives an interactive REPL against sess. Extracted so it can be

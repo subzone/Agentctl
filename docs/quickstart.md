@@ -51,18 +51,49 @@ chat.
 
 ## Chatting
 
-The REPL prompt is `»`. Type a message and hit Enter; the model replies
-inline. Slash commands:
+In an interactive terminal, `m` opens a full-screen TUI:
+
+```
+┌──────────────────────────────────────────────┐
+│ ███╗   ███╗      ┌──────────────┐            │
+│ ████╗ ████║      │ CPU    12 %  │            │
+│ ██╔████╔██║      │ RAM    45 %  │            │
+│ ██║╚██╔╝██║      │ GPU      -   │            │
+│ ██║ ╚═╝ ██║      │ Disk   78 %  │            │
+│ ╚═╝     ╚═╝      └──────────────┘            │
+├──────────────────────────────────────────────┤
+│ chat scrolls here                            │
+│ » hello                                      │
+│ Hello! How can I help today?                 │
+├──────────────────────────────────────────────┤
+│ » _                                          │
+└──────────────────────────────────────────────┘
+```
+
+The header (banner + system stats) stays pinned; the chat viewport in
+the middle scrolls; the input is at the bottom. Stats refresh every
+second.
+
+If you pipe input or run `m` in a script (any of stdin/stdout/stderr
+not a TTY), it falls back to the line-oriented REPL — same prompt
+(`»`), same slash commands, plain stream of text.
+
+Slash commands work in both modes:
 
 - `/exit` or `/quit` — end the session
 - `/reset` — clear conversation history
 - `/help` — list commands
 
-```
-» hello
-Hello! How can I help you today?
-» /exit
-```
+While the model is preparing its reply, an animated `thinking…`
+indicator appears at the bottom of the chat area; it clears the moment
+streaming starts.
+
+**GPU stat:** shows `n/a` in v0.0.3. There's no clean public API for
+Apple Silicon GPU usage, and Linux NVIDIA support via `nvidia-smi` is
+planned for a later release.
+
+**Ctrl-C** quits the TUI cleanly and restores your previous shell
+content (alt-screen mode).
 
 ## Re-running the wizard
 

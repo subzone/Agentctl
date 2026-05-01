@@ -17,6 +17,25 @@ page is kept in sync.
 
 ---
 
+## v0.0.3 — 2026-05-01
+
+- **Chat TUI** — bare `m` now opens a full-screen TUI when launched in
+  a real terminal. Layout: persistent header with the M banner on the
+  left and a live system-stats table on the right (CPU, RAM, GPU,
+  Disk), a scrolling chat viewport, and a pinned input at the bottom.
+- **Auto-fallback to line REPL** — when stdin/stdout/stderr aren't
+  all TTYs (piped input, scripts, CI), `m` skips the TUI and uses the
+  original line-oriented REPL. No surprises in non-interactive contexts.
+- **`thinking…` spinner** — animated indicator while waiting for the
+  model's first streamed token; disappears the moment text starts
+  flowing.
+- **GPU = `n/a`** for now. Apple Silicon has no clean public API and
+  shelling out to `powermetrics` needs sudo. Linux NVIDIA via
+  `nvidia-smi` is on the roadmap.
+- **Stats refresh** at 1 Hz via `gopsutil`. CPU is overall system
+  usage; RAM is overall used percent; Disk is `/` used percent. No
+  per-process metrics in this release.
+
 ## v0.0.2 — 2026-05-01
 
 - **Ollama daemon detection** — `m init` now polls `localhost:11434`

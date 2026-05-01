@@ -1,0 +1,283 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"strings"
+
+	"github.com/charmbracelet/bubbles/spinner"
+	"github.com/charmbracelet/bubbles/textinput"
+	"github.com/charmbracelet/bubbles/viewport"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+
+	"github.com/subzone/m/internal/engine"
+)
+
+// streamMsg unifies model-text chunks and the final completion event.
+// One channel per session; bubbletea's single-threaded Update reads
+// them in order. runStepCmd pushes the terminal {done: true} after
+// sess.Step returns so the UI knows to re-enable input.
+type streamMsg struct {
+	chunk string
+	done  bool
+	err   error
+}
+
+// streamWriter is the io.Writer wired into engine.Config.Out. Each
+// engine Write becomes one streamMsg{chunk}; the buffered channel
+// gives the UI breathing room while engine streams faster than the
+// renderer flushes a frame.
+type streamWriter struct {
+	ch chan<- streamMsg
+}
+
+func (w *streamWriter) Write(p []byte) (int, error) {
+	if len(p) > 0 {
+		w.ch <- streamMsg{chunk: string(p)}
+	}
+	return len(p), nil
+}
+
+func listenStreamCmd(ch <-chan streamMsg) tea.Cmd {
+	return func() tea.Msg { return <-ch }
+}
+
+func runStepCmd(ctx context.Context, sess *engine.Session, ch chan<- streamMsg, line string) tea.Cmd {
+	return func() tea.Msg {
+		err := sess.Step(ctx, line)
+		ch <- streamMsg{done: true, err: err}
+		return nil
+	}
+}
+
+// tuiHistoryCap bounds the in-memory chat transcript. Way past anything
+// a single session is realistically going to produce; the truncation
+// halves the buffer when crossed so we don't pay a sliding-window cost
+// on every keystroke.
+const tuiHistoryCap = 64 * 1024
+
+type tuiModel struct {
+	sess     *engine.Session
+	ctx      context.Context
+	streamCh chan streamMsg
+
+	viewport viewport.Model
+	input    textinput.Model
+	spinner  spinner.Model
+
+	history  strings.Builder
+	stats    sysStats
+	thinking bool
+
+	width  int
+	height int
+	name   string
+}
+
+func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, name string) tuiModel {
+	in := textinput.New()
+	in.Prompt = "» "
+	in.Placeholder = "type a message, /exit to quit"
+	in.Focus()
+	in.CharLimit = 4000
+
+	sp := spinner.New()
+	sp.Spinner = spinner.Dot
+
+	vp := viewport.New(80, 10)
+	vp.SetContent(fmt.Sprintf("chat with %s — /exit to quit, /reset to clear history, /help for more\n\n", name))
+
+	return tuiModel{
+		sess:     sess,
+		ctx:      ctx,
+		streamCh: ch,
+		viewport: vp,
+		input:    in,
+		spinner:  sp,
+		stats:    blankStats(),
+		name:     name,
+	}
+}
+
+func (m tuiModel) Init() tea.Cmd {
+	return tea.Batch(
+		textinput.Blink,
+		m.spinner.Tick,
+		statsSampleCmd(),
+		statsTickCmd(),
+	)
+}
+
+func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		m.layout()
+		return m, nil
+
+	case tea.KeyMsg:
+		if msg.Type == tea.KeyCtrlC {
+			return m, tea.Quit
+		}
+		if m.thinking {
+			// Block all input while a turn is in flight, including
+			// printable characters — otherwise the user can queue text
+			// that gets misinterpreted when the next prompt is ready.
+			return m, nil
+		}
+		if msg.Type == tea.KeyEnter {
+			line := strings.TrimSpace(m.input.Value())
+			m.input.SetValue("")
+			if line == "" {
+				return m, nil
+			}
+			switch line {
+			case "/exit", "/quit":
+				return m, tea.Quit
+			case "/reset":
+				m.sess.Reset()
+				m.appendHistory("(history cleared)\n")
+				return m, nil
+			case "/help":
+				m.appendHistory("commands: /exit, /quit, /reset, /help\n")
+				return m, nil
+			}
+			if strings.HasPrefix(line, "/") {
+				m.appendHistory(fmt.Sprintf("unknown command %q (try /help)\n", line))
+				return m, nil
+			}
+			m.appendHistory("» " + line + "\n")
+			m.thinking = true
+			return m, tea.Batch(
+				runStepCmd(m.ctx, m.sess, m.streamCh, line),
+				listenStreamCmd(m.streamCh),
+			)
+		}
+
+	case streamMsg:
+		if msg.done {
+			m.thinking = false
+			if msg.err != nil {
+				m.appendHistory(fmt.Sprintf("\nerror: %v\n", msg.err))
+			} else {
+				m.appendHistory("\n")
+			}
+			return m, nil
+		}
+		m.appendHistory(msg.chunk)
+		return m, listenStreamCmd(m.streamCh)
+
+	case statsTickMsg:
+		return m, tea.Batch(statsSampleCmd(), statsTickCmd())
+
+	case statsMsg:
+		m.stats = sysStats(msg)
+		return m, nil
+
+	case spinner.TickMsg:
+		var cmd tea.Cmd
+		m.spinner, cmd = m.spinner.Update(msg)
+		return m, cmd
+	}
+
+	var cmd tea.Cmd
+	m.input, cmd = m.input.Update(msg)
+	return m, cmd
+}
+
+// appendHistory mutates the receiver via pointer; the caller's value
+// shares the same strings.Builder, viewport, etc. since those are
+// internally pointer-y. Truncation halves the buffer when the cap is
+// crossed; an approximate cut is fine because the user only sees the
+// tail.
+func (m *tuiModel) appendHistory(s string) {
+	m.history.WriteString(s)
+	if m.history.Len() > tuiHistoryCap {
+		full := m.history.String()
+		m.history.Reset()
+		m.history.WriteString(full[len(full)/2:])
+	}
+	m.viewport.SetContent(m.history.String())
+	m.viewport.GotoBottom()
+}
+
+// layout recomputes child component sizes whenever the terminal
+// resizes. Header height is fixed at the banner's row count plus a
+// border; input is one row plus padding.
+func (m *tuiModel) layout() {
+	const headerHeight = 8 // banner (6) + border (2)
+	const inputHeight = 1
+	bodyHeight := m.height - headerHeight - inputHeight - 2 // 2 for body borders
+	if bodyHeight < 3 {
+		bodyHeight = 3
+	}
+	m.viewport.Width = m.width - 2
+	m.viewport.Height = bodyHeight
+	m.input.Width = m.width - 4
+}
+
+// View renders the static-header / scrolling-body / input layout. The
+// header places the M banner on the left and the system-stats table
+// on the right; lipgloss handles the alignment so the box edges stay
+// flush regardless of terminal width.
+func (m tuiModel) View() string {
+	bannerBox := bannerStyle.Render(strings.TrimLeft(banner, "\n"))
+	statsBox := renderStatsTable(m.stats)
+
+	gap := m.width - lipgloss.Width(bannerBox) - lipgloss.Width(statsBox)
+	if gap < 0 {
+		gap = 0
+	}
+	spacer := lipgloss.NewStyle().Width(gap).Render("")
+
+	header := lipgloss.JoinHorizontal(lipgloss.Top, bannerBox, spacer, statsBox)
+
+	body := m.viewport.View()
+	if m.thinking {
+		body += "\n" + dimStyle.Render(m.spinner.View()+" thinking…")
+	}
+
+	return lipgloss.JoinVertical(
+		lipgloss.Left,
+		header,
+		bodyStyle.Render(body),
+		inputStyle.Render(m.input.View()),
+	)
+}
+
+var (
+	bannerStyle = lipgloss.NewStyle().Padding(0, 2)
+	bodyStyle   = lipgloss.NewStyle().
+			Padding(0, 1).
+			Border(lipgloss.NormalBorder(), true, false)
+	inputStyle = lipgloss.NewStyle().Padding(0, 1)
+	dimStyle   = lipgloss.NewStyle().Faint(true)
+
+	statsKey = lipgloss.NewStyle().Width(5)
+	statsVal = lipgloss.NewStyle().Align(lipgloss.Right).Width(6)
+	statsBox = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1)
+)
+
+func renderStatsTable(s sysStats) string {
+	rows := []string{
+		statsKey.Render("CPU") + statsVal.Render(s.CPU),
+		statsKey.Render("RAM") + statsVal.Render(s.RAM),
+		statsKey.Render("GPU") + statsVal.Render(s.GPU),
+		statsKey.Render("Disk") + statsVal.Render(s.Disk),
+	}
+	return statsBox.Render(strings.Join(rows, "\n"))
+}
+
+// runTUI runs the bubbletea program. The caller is responsible for
+// having wired sess.Out to a streamWriter pointing at streamCh — that
+// happens in runChatWithDoc so the engine starts streaming the moment
+// Step is called.
+func runTUI(ctx context.Context, sess *engine.Session, streamCh chan streamMsg, name string) error {
+	m := newTUIModel(ctx, sess, streamCh, name)
+	p := tea.NewProgram(m, tea.WithAltScreen())
+	_, err := p.Run()
+	return err
+}
