@@ -20,7 +20,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 COPY . .
 
 # Build-cache mounts shave seconds off rebuilds; output is a static binary
-# placed at /out/agent. Cross-compile via TARGETOS/TARGETARCH so buildx
+# placed at /out/m. Cross-compile via TARGETOS/TARGETARCH so buildx
 # can produce amd64 + arm64 artifacts from a single source tree.
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
@@ -28,15 +28,15 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go build \
         -trimpath \
         -ldflags "-s -w -X main.Version=${VERSION}" \
-        -o /out/agent \
-        ./cmd/agent
+        -o /out/m \
+        ./cmd/m
 
 # Runtime stage: distroless static keeps the image to ~12-15 MB and ships
 # no shell/package manager, which matches the project's "small footprint"
 # goal in PLAN.md. The :nonroot variant runs as UID 65532.
 FROM gcr.io/distroless/static-debian12:nonroot
 
-COPY --from=build /out/agent /agent
+COPY --from=build /out/m /m
 
 # Bundle the example agent docs at /examples so users can demo the image
 # without mounting anything: `docker run … run /examples/agents/hello.md "hi"`.
@@ -45,4 +45,4 @@ COPY --from=build /src/examples /examples
 WORKDIR /work
 USER nonroot:nonroot
 
-ENTRYPOINT ["/agent"]
+ENTRYPOINT ["/m"]

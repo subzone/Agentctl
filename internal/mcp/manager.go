@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/milenkom81/m/internal/config"
-	"github.com/milenkom81/m/internal/tools"
+	"github.com/subzone/m/internal/config"
+	"github.com/subzone/m/internal/tools"
 )
 
 // Manager owns a set of running MCP clients and exposes their tools as

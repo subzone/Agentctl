@@ -23,7 +23,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/milenkom81/m/internal/llm"
+	"github.com/subzone/m/internal/llm"
 )
 
 const defaultBaseURL = "https://api.openai.com"

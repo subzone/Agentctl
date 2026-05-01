@@ -8,8 +8,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/milenkom81/m/internal/engine"
-	"github.com/milenkom81/m/internal/llm"
+	"github.com/subzone/m/internal/engine"
+	"github.com/subzone/m/internal/llm"
 )
 
 // chatScriptedProvider replays one or more turns. Unlike the engine_test

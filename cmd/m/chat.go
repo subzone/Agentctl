@@ -13,9 +13,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/milenkom81/m/internal/config"
-	"github.com/milenkom81/m/internal/engine"
-	"github.com/milenkom81/m/internal/llm"
+	"github.com/subzone/m/internal/config"
+	"github.com/subzone/m/internal/engine"
+	"github.com/subzone/m/internal/llm"
 )
 
 const (
@@ -42,9 +42,16 @@ func runChat(cmd *cobra.Command, args []string) error {
 	if err != nil {
 		return err
 	}
+	return runChatWithDoc(cmd, doc, loadCompanionDocs(args[0]))
+}
+
+// runChatWithDoc drives the chat REPL against a parsed agent document.
+// docs is the companion-doc set used to resolve MCP/subagent references;
+// pass nil when there is no project layout (e.g. the embedded default agent).
+func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Document) error {
 	agent, ok := doc.Spec.(*config.AgentSpec)
 	if !ok {
-		return fmt.Errorf("%s: not an agent (type=%s)", args[0], doc.Meta().Type)
+		return fmt.Errorf("not an agent (type=%s)", doc.Meta().Type)
 	}
 	if issues := config.Validate(doc); len(issues) > 0 {
 		for _, iss := range issues {
@@ -64,7 +71,6 @@ func runChat(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
 	stderr := cmd.ErrOrStderr()
 
-	docs := loadCompanionDocs(args[0])
 	hubSpawner := &spawner{
 		docs:       docs,
 		out:        out,

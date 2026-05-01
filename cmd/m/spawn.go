@@ -7,11 +7,11 @@ import (
 	"io"
 	"strings"
 
-	"github.com/milenkom81/m/internal/config"
-	"github.com/milenkom81/m/internal/engine"
-	"github.com/milenkom81/m/internal/llm"
-	"github.com/milenkom81/m/internal/mcp"
-	"github.com/milenkom81/m/internal/tools"
+	"github.com/subzone/m/internal/config"
+	"github.com/subzone/m/internal/engine"
+	"github.com/subzone/m/internal/llm"
+	"github.com/subzone/m/internal/mcp"
+	"github.com/subzone/m/internal/tools"
 )
 
 // MaxSubagentDepth caps recursive delegation. The hub runs at depth 0; a

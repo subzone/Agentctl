@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/milenkom81/m/internal/config"
+	"github.com/subzone/m/internal/config"
 )
 
 func newValidateCmd() *cobra.Command {

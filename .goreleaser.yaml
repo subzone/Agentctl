@@ -1,0 +1,53 @@
+version: 2
+
+project_name: m
+
+before:
+  hooks:
+    - go mod tidy
+
+builds:
+  - id: m
+    main: ./cmd/m
+    binary: m
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.Version={{.Version}}
+
+archives:
+  - id: tarball
+    formats: [tar.gz]
+    name_template: >-
+      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+
+nfpms:
+  - id: deb
+    package_name: m
+    vendor: subzone
+    homepage: https://github.com/subzone/m
+    maintainer: Milenko Mitrovic <milenkom81@gmail.com>
+    description: MD-driven agent for code, infra, and automation work
+    formats:
+      - deb
+    bindir: /usr/local/bin
+
+checksum:
+  name_template: "checksums.txt"
+
+release:
+  draft: false
+  prerelease: auto
+
+changelog:
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^chore:"

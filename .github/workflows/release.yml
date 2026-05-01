@@ -1,0 +1,77 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  linux:
+    name: Linux (.deb + tarballs)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: '~> v2'
+          args: release --clean
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  macos:
+    name: macOS (.pkg)
+    needs: linux
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Build universal binary
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          mkdir -p dist/pkgroot/usr/local/bin
+          GOOS=darwin GOARCH=amd64 go build \
+            -ldflags "-s -w -X main.Version=${VERSION}" \
+            -o dist/m-amd64 ./cmd/m
+          GOOS=darwin GOARCH=arm64 go build \
+            -ldflags "-s -w -X main.Version=${VERSION}" \
+            -o dist/m-arm64 ./cmd/m
+          lipo -create -output dist/pkgroot/usr/local/bin/m \
+            dist/m-amd64 dist/m-arm64
+          chmod +x dist/pkgroot/usr/local/bin/m
+
+      - name: Build .pkg
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          pkgbuild \
+            --root dist/pkgroot \
+            --identifier com.subzone.m \
+            --version "${VERSION}" \
+            --install-location / \
+            "dist/m_${VERSION}_macos_universal.pkg"
+
+      - name: Upload .pkg to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release upload "${GITHUB_REF_NAME}" \
+            "dist/m_${VERSION}_macos_universal.pkg" \
+            --clobber

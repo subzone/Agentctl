@@ -11,9 +11,9 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/milenkom81/m/internal/config"
-	"github.com/milenkom81/m/internal/engine"
-	"github.com/milenkom81/m/internal/llm"
+	"github.com/subzone/m/internal/config"
+	"github.com/subzone/m/internal/engine"
+	"github.com/subzone/m/internal/llm"
 )
 
 // defaultMaxTokens is used when an agent's frontmatter doesn't specify one.

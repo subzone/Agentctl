@@ -20,7 +20,7 @@ import (
 	"os"
 	"strings"
 
-	"github.com/milenkom81/m/internal/llm"
+	"github.com/subzone/m/internal/llm"
 )
 
 const defaultBaseURL = "http://localhost:11434"

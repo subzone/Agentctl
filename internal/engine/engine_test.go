@@ -8,8 +8,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/milenkom81/m/internal/llm"
-	"github.com/milenkom81/m/internal/tools"
+	"github.com/subzone/m/internal/llm"
+	"github.com/subzone/m/internal/tools"
 )
 
 // scriptedProvider replays a pre-built sequence of event-streams, one per

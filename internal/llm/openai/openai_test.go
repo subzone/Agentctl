@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/milenkom81/m/internal/llm"
+	"github.com/subzone/m/internal/llm"
 )
 
 func TestParseSSEHappyText(t *testing.T) {

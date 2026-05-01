@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/milenkom81/m/internal/config"
-	"github.com/milenkom81/m/internal/engine"
-	"github.com/milenkom81/m/internal/llm"
+	"github.com/subzone/m/internal/config"
+	"github.com/subzone/m/internal/engine"
+	"github.com/subzone/m/internal/llm"
 )
 
 // runHub is a small helper that drives engine.Run for a synthetic hub agent.
