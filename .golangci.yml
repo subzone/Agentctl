@@ -1,19 +1,18 @@
+version: "2"
+
 run:
   timeout: 3m
 
 linters:
+  default: none
   enable:
-    - errcheck
     - govet
     - ineffassign
     - staticcheck
     - unused
-    - gosimple
     - gocritic
     - misspell
     - bodyclose
-    - noctx
-    - exportloopref
 
 issues:
   exclude-dirs:

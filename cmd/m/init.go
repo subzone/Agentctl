@@ -204,7 +204,7 @@ func installOllama(w *wiz) error {
 	switch runtime.GOOS {
 	case "darwin":
 		if _, err := exec.LookPath("brew"); err != nil {
-			return errors.New("Homebrew not found. Install ollama from https://ollama.com/download then re-run `m init`")
+			return errors.New("homebrew not found; install ollama from https://ollama.com/download then re-run `m init`")
 		}
 		cmdline = "brew install ollama"
 	case "linux":

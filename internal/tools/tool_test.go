@@ -3,7 +3,6 @@ package tools
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"testing"
 )
 
@@ -119,9 +118,6 @@ func TestFSReadMissing(t *testing.T) {
 	_, err := NewFSRead().Run(context.Background(), json.RawMessage(`{"path":"/nonexistent/zzz"}`))
 	if err == nil {
 		t.Fatal("expected error for missing file")
-	}
-	if errors.Is(err, errors.ErrUnsupported) {
-		// just ensures errors.Is link compiles
 	}
 }
 

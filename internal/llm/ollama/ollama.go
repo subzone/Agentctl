@@ -131,13 +131,13 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 	}
 	httpReq.Header.Set("Content-Type", "application/json")
 
-	resp, err := p.client.Do(httpReq)
+	resp, err := p.client.Do(httpReq) //nolint:bodyclose // closed in goroutine below
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		defer resp.Body.Close()
 		slurp, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		resp.Body.Close()
 		return nil, fmt.Errorf("ollama %s: %s", resp.Status, strings.TrimSpace(string(slurp)))
 	}
 
@@ -233,9 +233,11 @@ type streamChunk struct {
 			} `json:"function"`
 		} `json:"tool_calls"`
 	} `json:"message"`
-	Done       bool   `json:"done"`
-	DoneReason string `json:"done_reason"`
-	Error      string `json:"error"`
+	Done            bool   `json:"done"`
+	DoneReason      string `json:"done_reason"`
+	Error           string `json:"error"`
+	PromptEvalCount int    `json:"prompt_eval_count"`
+	EvalCount       int    `json:"eval_count"`
 }
 
 // parseStream reads NDJSON chunks and forwards relevant events.
@@ -294,6 +296,14 @@ func parseStream(ctx context.Context, r io.Reader, out chan<- llm.Event) error {
 			stop := normalizeStop(chunk.DoneReason)
 			if hadToolCall {
 				stop = "tool_use"
+			}
+			if chunk.PromptEvalCount > 0 || chunk.EvalCount > 0 {
+				if err := send(llm.Event{Kind: llm.EventUsage, Usage: llm.Usage{
+					InputTokens:  chunk.PromptEvalCount,
+					OutputTokens: chunk.EvalCount,
+				}}); err != nil {
+					return err
+				}
 			}
 			return send(llm.Event{Kind: llm.EventDone, StopReason: stop})
 		}

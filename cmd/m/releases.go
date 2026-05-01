@@ -25,6 +25,17 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.6",
+		Date:    "2026-05-01",
+		Highlights: []string{
+			"Token count and estimated cost displayed in the TUI header between the M banner and system stats.",
+			"All three providers (Anthropic, OpenAI, Ollama) now emit usage events with input/output token counts.",
+			"Cost estimation for Claude, GPT-4o/4.1, o3/o4 models; local models show tokens only.",
+			"golangci-lint fixes: bodyclose, unused fields, capitalized error strings, empty branches.",
+			"golangci-lint v2 config with correct format.",
+		},
+	},
+	{
 		Version: "0.0.5",
 		Date:    "2026-05-01",
 		Highlights: []string{

@@ -105,7 +105,7 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 			Out:         &streamWriter{ch: streamCh},
 			Status:      io.Discard, // tool-use status not surfaced in the TUI yet
 		})
-		return runTUI(ctx, sess, streamCh, agent.Name)
+		return runTUI(ctx, sess, streamCh, agent.Name, model)
 	}
 
 	sess := engine.NewSession(engine.Config{

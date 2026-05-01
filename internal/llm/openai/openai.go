@@ -76,12 +76,17 @@ func getenvOr(k, dflt string) string {
 }
 
 type chatPayload struct {
-	Model       string     `json:"model"`
-	Messages    []chatMsg  `json:"messages"`
-	Tools       []chatTool `json:"tools,omitempty"`
-	Temperature *float64   `json:"temperature,omitempty"`
-	MaxTokens   int        `json:"max_tokens,omitempty"`
-	Stream      bool       `json:"stream"`
+	Model         string          `json:"model"`
+	Messages      []chatMsg       `json:"messages"`
+	Tools         []chatTool      `json:"tools,omitempty"`
+	Temperature   *float64        `json:"temperature,omitempty"`
+	MaxTokens     int             `json:"max_tokens,omitempty"`
+	Stream        bool            `json:"stream"`
+	StreamOptions *streamOptions  `json:"stream_options,omitempty"`
+}
+
+type streamOptions struct {
+	IncludeUsage bool `json:"include_usage"`
 }
 
 type chatMsg struct {
@@ -117,12 +122,13 @@ type chatToolFunction struct {
 // streamed events onto the returned channel.
 func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Event, error) {
 	body, err := json.Marshal(chatPayload{
-		Model:       req.Model,
-		Messages:    buildMessages(req.System, req.Messages),
-		Tools:       buildTools(req.Tools),
-		Temperature: req.Temperature,
-		MaxTokens:   req.MaxTokens,
-		Stream:      true,
+		Model:         req.Model,
+		Messages:      buildMessages(req.System, req.Messages),
+		Tools:         buildTools(req.Tools),
+		Temperature:   req.Temperature,
+		MaxTokens:     req.MaxTokens,
+		Stream:        true,
+		StreamOptions: &streamOptions{IncludeUsage: true},
 	})
 	if err != nil {
 		return nil, err
@@ -136,13 +142,13 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 	httpReq.Header.Set("Accept", "text/event-stream")
 	httpReq.Header.Set("Authorization", "Bearer "+p.apiKey)
 
-	resp, err := p.client.Do(httpReq)
+	resp, err := p.client.Do(httpReq) //nolint:bodyclose // closed in goroutine below
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		defer resp.Body.Close()
 		slurp, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		resp.Body.Close()
 		return nil, fmt.Errorf("openai %s: %s", resp.Status, strings.TrimSpace(string(slurp)))
 	}
 
@@ -323,7 +329,11 @@ func parseSSE(ctx context.Context, r io.Reader, out chan<- llm.Event) error {
 
 		var chunk struct {
 			Choices []chunkChoice `json:"choices"`
-			Error   *struct {
+			Usage   *struct {
+				PromptTokens     int `json:"prompt_tokens"`
+				CompletionTokens int `json:"completion_tokens"`
+			} `json:"usage"`
+			Error *struct {
 				Type    string `json:"type"`
 				Message string `json:"message"`
 			} `json:"error"`
@@ -363,6 +373,14 @@ func parseSSE(ctx context.Context, r io.Reader, out chan<- llm.Event) error {
 		if c.FinishReason != "" {
 			if err := flushToolCalls(); err != nil {
 				return err
+			}
+			if chunk.Usage != nil && (chunk.Usage.PromptTokens > 0 || chunk.Usage.CompletionTokens > 0) {
+				if err := send(llm.Event{Kind: llm.EventUsage, Usage: llm.Usage{
+					InputTokens:  chunk.Usage.PromptTokens,
+					OutputTokens: chunk.Usage.CompletionTokens,
+				}}); err != nil {
+					return err
+				}
 			}
 			if err := send(llm.Event{
 				Kind:       llm.EventDone,

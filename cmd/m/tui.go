@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/subzone/m/internal/engine"
+	"github.com/subzone/m/internal/llm"
 )
 
 // streamMsg unifies model-text chunks and the final completion event.
@@ -22,6 +23,7 @@ type streamMsg struct {
 	chunk string
 	done  bool
 	err   error
+	usage llm.Usage // cumulative snapshot after Step completes
 }
 
 // streamWriter is the io.Writer wired into engine.Config.Out. Each
@@ -46,7 +48,7 @@ func listenStreamCmd(ch <-chan streamMsg) tea.Cmd {
 func runStepCmd(ctx context.Context, sess *engine.Session, ch chan<- streamMsg, line string) tea.Cmd {
 	return func() tea.Msg {
 		err := sess.Step(ctx, line)
-		ch <- streamMsg{done: true, err: err}
+		ch <- streamMsg{done: true, err: err, usage: sess.Usage()}
 		return nil
 	}
 }
@@ -73,6 +75,8 @@ type tuiModel struct {
 	// across all copies, so writes land on the same backing buffer.
 	history  *strings.Builder
 	stats    sysStats
+	usage    llm.Usage
+	model    string
 	thinking bool
 
 	width  int
@@ -80,7 +84,7 @@ type tuiModel struct {
 	name   string
 }
 
-func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, name string) tuiModel {
+func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, name, model string) tuiModel {
 	in := textinput.New()
 	in.Prompt = "» "
 	in.Placeholder = "type a message, /exit to quit"
@@ -102,6 +106,7 @@ func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, n
 		spinner:  sp,
 		history:  &strings.Builder{},
 		stats:    blankStats(),
+		model:    model,
 		name:     name,
 	}
 }
@@ -166,6 +171,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case streamMsg:
 		if msg.done {
 			m.thinking = false
+			m.usage = msg.usage
 			if msg.err != nil {
 				m.appendHistory(fmt.Sprintf("\nerror: %v\n", msg.err))
 			} else {
@@ -231,15 +237,20 @@ func (m *tuiModel) layout() {
 // flush regardless of terminal width.
 func (m tuiModel) View() string {
 	bannerBox := bannerStyle.Render(strings.TrimLeft(banner, "\n"))
+	tokenBox := renderTokenBox(m.usage, m.model)
 	statsBox := renderStatsTable(m.stats)
 
-	gap := m.width - lipgloss.Width(bannerBox) - lipgloss.Width(statsBox)
-	if gap < 0 {
-		gap = 0
+	boxes := lipgloss.Width(bannerBox) + lipgloss.Width(tokenBox) + lipgloss.Width(statsBox)
+	gapTotal := m.width - boxes
+	if gapTotal < 0 {
+		gapTotal = 0
 	}
-	spacer := lipgloss.NewStyle().Width(gap).Render("")
+	gapLeft := gapTotal / 2
+	gapRight := gapTotal - gapLeft
+	spacerL := lipgloss.NewStyle().Width(gapLeft).Render("")
+	spacerR := lipgloss.NewStyle().Width(gapRight).Render("")
 
-	header := lipgloss.JoinHorizontal(lipgloss.Top, bannerBox, spacer, statsBox)
+	header := lipgloss.JoinHorizontal(lipgloss.Top, bannerBox, spacerL, tokenBox, spacerR, statsBox)
 
 	body := m.viewport.View()
 	if m.thinking {
@@ -277,12 +288,74 @@ func renderStatsTable(s sysStats) string {
 	return statsBox.Render(strings.Join(rows, "\n"))
 }
 
+// renderTokenBox shows cumulative token counts and estimated cost for the
+// session. Cost is a rough estimate based on published per-1M-token rates;
+// models not in the table show tokens only.
+func renderTokenBox(u llm.Usage, model string) string {
+	total := u.InputTokens + u.OutputTokens
+	rows := []string{
+		statsKey.Render("In") + statsVal.Render(formatTokens(u.InputTokens)),
+		statsKey.Render("Out") + statsVal.Render(formatTokens(u.OutputTokens)),
+		statsKey.Render("Total") + statsVal.Render(formatTokens(total)),
+	}
+	if cost := estimateCost(u, model); cost > 0 {
+		rows = append(rows, statsKey.Render("Cost") + statsVal.Render(formatCost(cost)))
+	}
+	return tokenBoxStyle.Render(strings.Join(rows, "\n"))
+}
+
+func formatTokens(n int) string {
+	if n >= 1_000_000 {
+		return fmt.Sprintf("%.1fM", float64(n)/1_000_000)
+	}
+	if n >= 1_000 {
+		return fmt.Sprintf("%.1fk", float64(n)/1_000)
+	}
+	return fmt.Sprintf("%d", n)
+}
+
+func formatCost(dollars float64) string {
+	if dollars < 0.01 {
+		return fmt.Sprintf("$%.4f", dollars)
+	}
+	return fmt.Sprintf("$%.2f", dollars)
+}
+
+// pricing is per-million-token rates (input, output). Rough estimates from
+// published pricing pages; updated as of mid-2025.
+type pricing struct{ input, output float64 }
+
+var modelPricing = map[string]pricing{
+	"claude-sonnet-4-6":       {3.0, 15.0},
+	"claude-sonnet-4-20250514": {3.0, 15.0},
+	"claude-haiku-3-5":        {0.80, 4.0},
+	"claude-opus-4":           {15.0, 75.0},
+	"gpt-4o":                  {2.50, 10.0},
+	"gpt-4o-mini":             {0.15, 0.60},
+	"gpt-4.1":                 {2.0, 8.0},
+	"gpt-4.1-mini":            {0.40, 1.60},
+	"gpt-4.1-nano":            {0.10, 0.40},
+	"o3":                      {2.0, 8.0},
+	"o3-mini":                 {1.10, 4.40},
+	"o4-mini":                 {1.10, 4.40},
+}
+
+func estimateCost(u llm.Usage, model string) float64 {
+	p, ok := modelPricing[model]
+	if !ok {
+		return 0
+	}
+	return (float64(u.InputTokens)*p.input + float64(u.OutputTokens)*p.output) / 1_000_000
+}
+
+var tokenBoxStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1)
+
 // runTUI runs the bubbletea program. The caller is responsible for
 // having wired sess.Out to a streamWriter pointing at streamCh — that
 // happens in runChatWithDoc so the engine starts streaming the moment
 // Step is called.
-func runTUI(ctx context.Context, sess *engine.Session, streamCh chan streamMsg, name string) error {
-	m := newTUIModel(ctx, sess, streamCh, name)
+func runTUI(ctx context.Context, sess *engine.Session, streamCh chan streamMsg, name, model string) error {
+	m := newTUIModel(ctx, sess, streamCh, name, model)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	_, err := p.Run()
 	return err

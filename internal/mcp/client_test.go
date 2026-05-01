@@ -20,14 +20,10 @@ type fakeServer struct {
 	callIsErr bool
 
 	gotInitialized bool
-	callsMu        chanmu
 	calls          []toolsCallParams
 
 	t *testing.T
 }
-
-// chanmu is a no-op stand-in to keep the file focused.
-type chanmu struct{}
 
 func newFakeServer(t *testing.T, tools []Tool) *fakeServer {
 	return &fakeServer{tools: tools, t: t}

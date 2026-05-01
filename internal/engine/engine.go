@@ -62,7 +62,11 @@ type Session struct {
 	maxTurns int
 	schemas  []llm.ToolSchema
 	messages []llm.Message
+	usage    llm.Usage // cumulative across all Steps
 }
+
+// Usage returns the cumulative token counts across all Steps in this session.
+func (s *Session) Usage() llm.Usage { return s.usage }
 
 // NewSession constructs a Session. It validates required Config fields
 // lazily on the first Step call (so a Session can be built before all
@@ -182,6 +186,9 @@ func (s *Session) Step(ctx context.Context, task string) error {
 					ToolName:  ev.ToolName,
 					ToolInput: ev.ToolInput,
 				})
+			case llm.EventUsage:
+				s.usage.InputTokens += ev.Usage.InputTokens
+				s.usage.OutputTokens += ev.Usage.OutputTokens
 			case llm.EventDone:
 				stopReason = ev.StopReason
 			case llm.EventError:

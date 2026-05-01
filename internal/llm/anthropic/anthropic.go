@@ -119,13 +119,13 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 	httpReq.Header.Set("x-api-key", p.apiKey)
 	httpReq.Header.Set("anthropic-version", apiVersion)
 
-	resp, err := p.client.Do(httpReq)
+	resp, err := p.client.Do(httpReq) //nolint:bodyclose // closed in goroutine below
 	if err != nil {
 		return nil, err
 	}
 	if resp.StatusCode != http.StatusOK {
-		defer resp.Body.Close()
 		slurp, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
+		resp.Body.Close()
 		return nil, fmt.Errorf("anthropic %s: %s", resp.Status, strings.TrimSpace(string(slurp)))
 	}
 
@@ -227,6 +227,7 @@ func parseSSE(ctx context.Context, r io.Reader, out chan<- llm.Event) error {
 		data       strings.Builder
 		stopReason string
 		blocks     = map[int]*blockState{}
+		usage      llm.Usage
 	)
 
 	send := func(ev llm.Event) error {
@@ -313,18 +314,38 @@ func parseSSE(ctx context.Context, r io.Reader, out chan<- llm.Event) error {
 				}
 			}
 			delete(blocks, d.Index)
+		case "message_start":
+			var d struct {
+				Message struct {
+					Usage struct {
+						InputTokens int `json:"input_tokens"`
+					} `json:"usage"`
+				} `json:"message"`
+			}
+			if err := json.Unmarshal([]byte(dat), &d); err == nil {
+				usage.InputTokens += d.Message.Usage.InputTokens
+			}
 		case "message_delta":
 			var d struct {
 				Delta struct {
 					StopReason string `json:"stop_reason"`
 				} `json:"delta"`
+				Usage struct {
+					OutputTokens int `json:"output_tokens"`
+				} `json:"usage"`
 			}
 			if err := json.Unmarshal([]byte(dat), &d); err == nil {
 				if d.Delta.StopReason != "" {
 					stopReason = d.Delta.StopReason
 				}
+				usage.OutputTokens += d.Usage.OutputTokens
 			}
 		case "message_stop":
+			if usage.InputTokens > 0 || usage.OutputTokens > 0 {
+				if err := send(llm.Event{Kind: llm.EventUsage, Usage: usage}); err != nil {
+					return err
+				}
+			}
 			return send(llm.Event{Kind: llm.EventDone, StopReason: stopReason})
 		case "error":
 			var d struct {

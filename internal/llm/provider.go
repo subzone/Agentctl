@@ -77,6 +77,12 @@ type Request struct {
 	MaxTokens   int
 }
 
+// Usage carries token counts for a single provider round-trip.
+type Usage struct {
+	InputTokens  int
+	OutputTokens int
+}
+
 // EventKind discriminates streamed Event payloads.
 type EventKind int
 
@@ -89,6 +95,9 @@ const (
 	// EventDone is emitted once when the model has finished its turn.
 	// StopReason carries the reason ("end_turn", "tool_use", "max_tokens"...).
 	EventDone
+	// EventUsage is emitted once per response with token counts. Providers
+	// that don't report usage simply omit this event.
+	EventUsage
 	// EventError is a terminal failure event; the channel closes after.
 	EventError
 )
@@ -107,6 +116,9 @@ type Event struct {
 
 	// EventDone
 	StopReason string
+
+	// EventUsage
+	Usage Usage
 
 	// EventError
 	Err error
