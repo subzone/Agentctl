@@ -79,6 +79,7 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 		docs:       docs,
 		out:        out,
 		status:     stderr,
+		confirm:    stdinConfirm(stderr, cmd.InOrStdin()),
 		spawnDepth: 1,
 	}
 	rt, err := buildAgentRuntime(ctx, agent, docs, hubSpawner, stderr)

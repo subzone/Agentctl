@@ -25,6 +25,18 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.7",
+		Date:    "2026-05-01",
+		Highlights: []string{
+			"`fs_write` tool: create files or patch existing ones with user confirmation before every write.",
+			"`fs_list` tool: list directory contents, optionally recursive, skips .git/node_modules.",
+			"Default agent now has full filesystem access: shell, fs_read, fs_write, fs_list.",
+			"New example agents: reviewer (read-only code review), writer (docs/README), devops (CI/infra), local (Ollama, no API key).",
+			"Updated coder, qwen-coder, summarize, planner agents with new tools.",
+			"Fixed stale fs.read → fs_read in code-review skill.",
+		},
+	},
+	{
 		Version: "0.0.6",
 		Date:    "2026-05-01",
 		Highlights: []string{

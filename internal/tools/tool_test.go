@@ -146,7 +146,7 @@ func TestFSReadInvalidInput(t *testing.T) {
 }
 
 func TestBuiltinsContainsShellAndFSRead(t *testing.T) {
-	r := Builtins()
+	r := Builtins(nil)
 	if _, ok := r.Get("shell"); !ok {
 		t.Error("missing shell")
 	}

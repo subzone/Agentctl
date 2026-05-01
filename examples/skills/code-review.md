@@ -4,7 +4,7 @@ type: skill
 description: Review a diff for correctness, style, and obvious risks.
 version: 1
 tools:
-  - fs.read
+  - fs_read
 ---
 When asked to review code:
 

@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bufio"
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -14,6 +16,7 @@ import (
 	"github.com/subzone/m/internal/config"
 	"github.com/subzone/m/internal/engine"
 	"github.com/subzone/m/internal/llm"
+	"github.com/subzone/m/internal/tools"
 )
 
 // defaultMaxTokens is used when an agent's frontmatter doesn't specify one.
@@ -67,6 +70,7 @@ func runAgent(cmd *cobra.Command, args []string) error {
 		docs:       docs,
 		out:        out,
 		status:     stderr,
+		confirm:    stdinConfirm(stderr, os.Stdin),
 		spawnDepth: 1, // children of the hub run at depth 1
 	}
 
@@ -153,6 +157,20 @@ func readTask(cmd *cobra.Command, rest []string) (string, error) {
 		return "", fmt.Errorf("stdin was empty")
 	}
 	return t, nil
+}
+
+// stdinConfirm returns a ConfirmFunc that prints the prompt to w and reads
+// y/n from r. Used by both `m run` and the line-oriented `m chat` REPL.
+func stdinConfirm(w io.Writer, r io.Reader) tools.ConfirmFunc {
+	sc := bufio.NewScanner(r)
+	return func(_ context.Context, prompt string) (bool, error) {
+		fmt.Fprintf(w, "%s [y/N]: ", prompt)
+		if !sc.Scan() {
+			return false, nil
+		}
+		ans := strings.TrimSpace(strings.ToLower(sc.Text()))
+		return ans == "y" || ans == "yes", nil
+	}
 }
 
 // stdinIsPipe reports whether r is a piped *os.File (i.e. not a terminal).
