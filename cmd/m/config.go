@@ -126,7 +126,11 @@ func discoverModels(ctx context.Context, cfg *userconfig.Config) ([]string, erro
 	case userconfig.ProviderGemini:
 		return discoverGemini(ctx)
 	case userconfig.ProviderAlibaba:
-		return discoverOpenAI(ctx, "https://dashscope.aliyuncs.com/compatible-mode/v1", "DASHSCOPE_API_KEY")
+		key, err := apiKeyFromEnvOrKeychain("DASHSCOPE_API_KEY")
+		if err != nil {
+			return nil, err
+		}
+		return discoverDashScope(ctx, key)
 	case userconfig.ProviderOllama:
 		return discoverOllama(ctx)
 	case userconfig.ProviderLiteLLM:
@@ -253,6 +257,35 @@ func discoverGemini(ctx context.Context) ([]string, error) {
 		if strings.Contains(name, "gemini") {
 			out = append(out, name)
 		}
+	}
+	return out, nil
+}
+
+// discoverDashScope queries the Alibaba DashScope models endpoint.
+// Returns all model IDs without filtering.
+func discoverDashScope(ctx context.Context, key string) ([]string, error) {
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet,
+		"https://dashscope.aliyuncs.com/compatible-mode/v1/models", nil)
+	req.Header.Set("Authorization", "Bearer "+key)
+	resp, err := http.DefaultClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("DashScope API returned %s", resp.Status)
+	}
+	var result struct {
+		Data []struct {
+			ID string `json:"id"`
+		} `json:"data"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return nil, err
+	}
+	var out []string
+	for _, m := range result.Data {
+		out = append(out, m.ID)
 	}
 	return out, nil
 }

@@ -476,37 +476,82 @@ func setupGemini(w *wiz) (*userconfig.Config, error) {
 }
 
 func setupAlibaba(w *wiz) (*userconfig.Config, error) {
-	fmt.Fprintln(w.out, "\nAlibaba Cloud Qwen model:")
-	fmt.Fprintln(w.out, "  1) qwen-plus           — good balance of quality and cost (recommended)")
-	fmt.Fprintln(w.out, "  2) qwen-turbo          — fastest, cheapest")
-	fmt.Fprintln(w.out, "  3) qwen-max            — highest quality")
-	fmt.Fprintln(w.out, "  4) custom              — enter a model id")
-
-	choice, err := w.prompt("Choice [1-4, default 1]: ")
+	fmt.Fprintln(w.out, "\nAlibaba Cloud (DashScope) API key:")
+	key, err := w.promptSecret("Paste key (input hidden): ")
 	if err != nil {
 		return nil, err
 	}
+	if key == "" {
+		return nil, errors.New("empty api key")
+	}
+
+	if err := saveKeyWithRetry(w, userconfig.ProviderAlibaba, key); err != nil {
+		return nil, fmt.Errorf("save key to keychain: %w", err)
+	}
+	fmt.Fprintln(w.out, "\u2713 key saved to OS keychain")
+
+	os.Setenv("DASHSCOPE_API_KEY", key)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	models, scanErr := discoverDashScope(ctx, key)
+
 	var model string
-	switch choice {
-	case "1", "":
-		model = "qwen-plus"
-	case "2":
-		model = "qwen-turbo"
-	case "3":
-		model = "qwen-max"
-	case "4":
-		model, err = w.prompt("Model id: ")
+	if scanErr == nil && len(models) > 0 {
+		fmt.Fprintf(w.out, "\nFound %d models on DashScope:\n", len(models))
+		for i, m := range models {
+			fmt.Fprintf(w.out, "  %d) %s\n", i+1, m)
+		}
+		fmt.Fprintln(w.out)
+		pick, err := w.prompt(fmt.Sprintf("Choice [1-%d, or type a model id]: ", len(models)))
 		if err != nil {
 			return nil, err
 		}
-		if model == "" {
-			return nil, errors.New("no model provided")
+		var idx int
+		if _, serr := fmt.Sscanf(pick, "%d", &idx); serr == nil && idx >= 1 && idx <= len(models) {
+			model = models[idx-1]
+		} else {
+			model = strings.TrimSpace(pick)
 		}
-	default:
-		return nil, fmt.Errorf("invalid choice %q", choice)
+	} else {
+		if scanErr != nil {
+			fmt.Fprintf(w.out, "\nCould not scan models: %v\n", scanErr)
+		}
+		fmt.Fprintln(w.out, "\nSelect a model manually:")
+		fmt.Fprintln(w.out, "  1) qwen-plus           \u2014 good balance (recommended)")
+		fmt.Fprintln(w.out, "  2) qwen-turbo          \u2014 fastest, cheapest")
+		fmt.Fprintln(w.out, "  3) qwen-max            \u2014 highest quality")
+		fmt.Fprintln(w.out, "  4) custom              \u2014 enter a model id")
+		choice, err := w.prompt("Choice [1-4, default 1]: ")
+		if err != nil {
+			return nil, err
+		}
+		switch choice {
+		case "1", "":
+			model = "qwen-plus"
+		case "2":
+			model = "qwen-turbo"
+		case "3":
+			model = "qwen-max"
+		case "4":
+			model, err = w.prompt("Model id: ")
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, fmt.Errorf("invalid choice %q", choice)
+		}
 	}
 
-	return setupHostedKey(w, userconfig.ProviderAlibaba, "Alibaba DashScope", model, "sk-")
+	if model == "" {
+		return nil, errors.New("no model selected")
+	}
+
+	fmt.Fprintf(w.out, "\u2713 using model %s\n", model)
+	return &userconfig.Config{
+		Provider: userconfig.ProviderAlibaba,
+		Model:    model,
+	}, nil
 }
 
 func setupLiteLLM(w *wiz) (*userconfig.Config, error) {
