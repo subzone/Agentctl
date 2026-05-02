@@ -36,10 +36,11 @@ func init() {
 
 // Provider is an OpenAI Chat Completions client.
 type Provider struct {
-	apiKey  string
-	baseURL string
-	client  *http.Client
-	compat  bool // true when targeting a non-OpenAI endpoint (Gemini, Alibaba, LiteLLM)
+	apiKey   string
+	baseURL  string
+	client   *http.Client
+	compat   bool
+	chatPath string // defaults to "/v1/chat/completions"
 }
 
 // Option configures a Provider.
@@ -50,6 +51,9 @@ func WithAPIKey(k string) Option { return func(p *Provider) { p.apiKey = k } }
 
 // WithBaseURL points the client at a custom origin (Azure, proxies, tests).
 func WithBaseURL(u string) Option { return func(p *Provider) { p.baseURL = u } }
+
+// WithChatPath overrides the chat completions path (default "/v1/chat/completions").
+func WithChatPath(p string) Option { return func(pr *Provider) { pr.chatPath = p } }
 
 // WithCompat marks this provider as targeting a non-OpenAI endpoint.
 // Disables stream_options and other OpenAI-specific features.
@@ -168,7 +172,11 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 		return nil, err
 	}
 
-	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+"/v1/chat/completions", bytes.NewReader(body))
+	chatPath := p.chatPath
+	if chatPath == "" {
+		chatPath = "/v1/chat/completions"
+	}
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, p.baseURL+chatPath, bytes.NewReader(body))
 	if err != nil {
 		return nil, err
 	}
