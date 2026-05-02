@@ -408,71 +408,164 @@ func setupHostedKey(w *wiz, provider userconfig.Provider, label, defaultModel, e
 }
 
 func setupAnthropic(w *wiz) (*userconfig.Config, error) {
-	fmt.Fprintln(w.out, "\nAnthropic Claude model:")
-	fmt.Fprintln(w.out, "  1) claude-sonnet-4-6    — best balance of quality and cost (recommended)")
-	fmt.Fprintln(w.out, "  2) claude-haiku-3-5     — fastest, cheapest")
-	fmt.Fprintln(w.out, "  3) claude-opus-4        — highest quality, most expensive")
-	fmt.Fprintln(w.out, "  4) custom               — enter a model id")
-
-	choice, err := w.prompt("Choice [1-4, default 1]: ")
+	fmt.Fprintln(w.out, "\nAnthropic API key:")
+	key, err := w.promptSecret("Paste key (input hidden): ")
 	if err != nil {
 		return nil, err
 	}
+	if key == "" {
+		return nil, errors.New("empty api key")
+	}
+	if !strings.HasPrefix(key, "sk-ant-") {
+		fmt.Fprintln(w.out, "  warning: key does not start with \"sk-ant-\" \u2014 proceeding anyway")
+	}
+
+	if err := saveKeyWithRetry(w, userconfig.ProviderAnthropic, key); err != nil {
+		return nil, fmt.Errorf("save key to keychain: %w", err)
+	}
+	fmt.Fprintln(w.out, "\u2713 key saved to OS keychain")
+
+	os.Setenv("ANTHROPIC_API_KEY", key)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	models, scanErr := discoverAnthropic(ctx)
+
 	var model string
-	switch choice {
-	case "1", "":
-		model = "claude-sonnet-4-6"
-	case "2":
-		model = "claude-haiku-3-5"
-	case "3":
-		model = "claude-opus-4"
-	case "4":
-		model, err = w.prompt("Model id: ")
+	if scanErr == nil && len(models) > 0 {
+		fmt.Fprintf(w.out, "\nFound %d models on Anthropic:\n", len(models))
+		for i, m := range models {
+			fmt.Fprintf(w.out, "  %d) %s\n", i+1, m)
+		}
+		fmt.Fprintln(w.out)
+		pick, err := w.prompt(fmt.Sprintf("Choice [1-%d, or type a model id]: ", len(models)))
 		if err != nil {
 			return nil, err
 		}
-		if model == "" {
-			return nil, errors.New("no model provided")
+		var idx int
+		if _, serr := fmt.Sscanf(pick, "%d", &idx); serr == nil && idx >= 1 && idx <= len(models) {
+			model = models[idx-1]
+		} else {
+			model = strings.TrimSpace(pick)
 		}
-	default:
-		return nil, fmt.Errorf("invalid choice %q", choice)
+	} else {
+		if scanErr != nil {
+			fmt.Fprintf(w.out, "\nCould not scan models: %v\n", scanErr)
+		}
+		fmt.Fprintln(w.out, "\nSelect a model manually:")
+		fmt.Fprintln(w.out, "  1) claude-sonnet-4-6    \u2014 best balance (recommended)")
+		fmt.Fprintln(w.out, "  2) claude-haiku-3-5     \u2014 fastest, cheapest")
+		fmt.Fprintln(w.out, "  3) claude-opus-4        \u2014 highest quality")
+		fmt.Fprintln(w.out, "  4) custom               \u2014 enter a model id")
+		choice, err := w.prompt("Choice [1-4, default 1]: ")
+		if err != nil {
+			return nil, err
+		}
+		switch choice {
+		case "1", "":
+			model = "claude-sonnet-4-6"
+		case "2":
+			model = "claude-haiku-3-5"
+		case "3":
+			model = "claude-opus-4"
+		case "4":
+			model, err = w.prompt("Model id: ")
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, fmt.Errorf("invalid choice %q", choice)
+		}
 	}
 
-	return setupHostedKey(w, userconfig.ProviderAnthropic, "Anthropic", model, "sk-ant-")
+	if model == "" {
+		return nil, errors.New("no model selected")
+	}
+
+	fmt.Fprintf(w.out, "\u2713 using model %s\n", model)
+	return &userconfig.Config{
+		Provider: userconfig.ProviderAnthropic,
+		Model:    model,
+	}, nil
 }
 
 func setupGemini(w *wiz) (*userconfig.Config, error) {
-	fmt.Fprintln(w.out, "\nGoogle Gemini model:")
-	fmt.Fprintln(w.out, "  1) gemini-2.5-flash    — fast, cheap, 1M context (recommended)")
-	fmt.Fprintln(w.out, "  2) gemini-2.5-pro      — highest quality, 1M context")
-	fmt.Fprintln(w.out, "  3) gemini-2.0-flash    — previous gen, fast")
-	fmt.Fprintln(w.out, "  4) custom              — enter a model id")
-
-	choice, err := w.prompt("Choice [1-4, default 1]: ")
+	fmt.Fprintln(w.out, "\nGoogle Gemini API key:")
+	key, err := w.promptSecret("Paste key (input hidden): ")
 	if err != nil {
 		return nil, err
 	}
+	if key == "" {
+		return nil, errors.New("empty api key")
+	}
+
+	if err := saveKeyWithRetry(w, userconfig.ProviderGemini, key); err != nil {
+		return nil, fmt.Errorf("save key to keychain: %w", err)
+	}
+	fmt.Fprintln(w.out, "\u2713 key saved to OS keychain")
+
+	os.Setenv("GEMINI_API_KEY", key)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	defer cancel()
+
+	models, scanErr := discoverGemini(ctx)
+
 	var model string
-	switch choice {
-	case "1", "":
-		model = "gemini-2.5-flash"
-	case "2":
-		model = "gemini-2.5-pro"
-	case "3":
-		model = "gemini-2.0-flash"
-	case "4":
-		model, err = w.prompt("Model id: ")
+	if scanErr == nil && len(models) > 0 {
+		fmt.Fprintf(w.out, "\nFound %d Gemini models:\n", len(models))
+		for i, m := range models {
+			fmt.Fprintf(w.out, "  %d) %s\n", i+1, m)
+		}
+		fmt.Fprintln(w.out)
+		pick, err := w.prompt(fmt.Sprintf("Choice [1-%d, or type a model id]: ", len(models)))
 		if err != nil {
 			return nil, err
 		}
-		if model == "" {
-			return nil, errors.New("no model provided")
+		var idx int
+		if _, serr := fmt.Sscanf(pick, "%d", &idx); serr == nil && idx >= 1 && idx <= len(models) {
+			model = models[idx-1]
+		} else {
+			model = strings.TrimSpace(pick)
 		}
-	default:
-		return nil, fmt.Errorf("invalid choice %q", choice)
+	} else {
+		if scanErr != nil {
+			fmt.Fprintf(w.out, "\nCould not scan models: %v\n", scanErr)
+		}
+		fmt.Fprintln(w.out, "\nSelect a model manually:")
+		fmt.Fprintln(w.out, "  1) gemini-2.5-flash    \u2014 fast, cheap, 1M context (recommended)")
+		fmt.Fprintln(w.out, "  2) gemini-2.5-pro      \u2014 highest quality, 1M context")
+		fmt.Fprintln(w.out, "  3) gemini-2.0-flash    \u2014 previous gen, fast")
+		fmt.Fprintln(w.out, "  4) custom              \u2014 enter a model id")
+		choice, err := w.prompt("Choice [1-4, default 1]: ")
+		if err != nil {
+			return nil, err
+		}
+		switch choice {
+		case "1", "":
+			model = "gemini-2.5-flash"
+		case "2":
+			model = "gemini-2.5-pro"
+		case "3":
+			model = "gemini-2.0-flash"
+		case "4":
+			model, err = w.prompt("Model id: ")
+			if err != nil {
+				return nil, err
+			}
+		default:
+			return nil, fmt.Errorf("invalid choice %q", choice)
+		}
 	}
 
-	return setupHostedKey(w, userconfig.ProviderGemini, "Gemini", model, "")
+	if model == "" {
+		return nil, errors.New("no model selected")
+	}
+
+	fmt.Fprintf(w.out, "\u2713 using model %s\n", model)
+	return &userconfig.Config{
+		Provider: userconfig.ProviderGemini,
+		Model:    model,
+	}, nil
 }
 
 func setupAlibaba(w *wiz) (*userconfig.Config, error) {
