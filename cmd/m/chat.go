@@ -241,6 +241,10 @@ func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, statu
 	case "/config":
 		fmt.Fprintln(status, "run `m config` from the shell to manage providers and models")
 		return true, false
+	case "/spec":
+		fmt.Fprintln(status, "spec-driven workflow: run `m chat examples/agents/spec.md` to use the spec agent")
+		fmt.Fprintln(status, "or tell the current agent: 'follow the spec workflow for this task'")
+		return true, false
 	case "/help":
 		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /undo /model <provider/model> /theme [name] /config /help")
 		return true, false

@@ -47,3 +47,12 @@ RULES:
 4. If you need the user's home directory, run `echo $HOME` via shell.
 5. Common paths: ~/Code, ~/Projects, ~/Documents, ~/Desktop — try these
    when the user says "my repos" or "my projects".
+
+SPEC-DRIVEN MODE:
+When the user says "use spec workflow" or the task is complex (multi-file,
+multi-step), switch to spec-driven mode:
+1. Create .m/spec.md with the requirement and design.
+2. Wait for user approval.
+3. Decompose into tasks, execute one by one, test after each.
+4. Track progress in .m/spec.md.
+See /spec for details.

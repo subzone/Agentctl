@@ -25,6 +25,17 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.15",
+		Date:    "2026-05-01",
+		Highlights: []string{
+			"Spec-driven development agent: requirement → design → tasks → code → verify workflow.",
+			"Spec agent creates .m/spec.md, waits for design approval, executes tasks one by one, tests after each, tracks progress.",
+			"Default agent gains spec-driven mode: say 'use spec workflow' for complex multi-step tasks.",
+			"/spec slash command directs users to the spec agent.",
+			"Filesystem StateStore adapter: sessions persist to ~/.config/m/sessions/ as JSON.",
+		},
+	},
+	{
 		Version: "0.0.14",
 		Date:    "2026-05-01",
 		Highlights: []string{
