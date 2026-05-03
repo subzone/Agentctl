@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Architecture — m</title>
-<meta name="description" content="How m works — hexagonal architecture, provider system, engine loop, tool dispatch.">
+<meta name="description" content="How m works — hexagonal architecture, provider system, engine loop, tool dispatch, MCP integration.">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="css/style.css">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -23,74 +23,243 @@
 
 <section class="page-hero">
   <h1><i class="fa-solid fa-sitemap" style="color:var(--accent)"></i> Architecture</h1>
-  <p>A single binary, hexagonal design, zero SDK dependencies.</p>
+  <p>A single binary, hexagonal design, zero SDK dependencies. Here's how it all fits together.</p>
 </section>
 
-<!-- Overview -->
+<!-- High-level layers -->
 <section class="section">
   <div class="section-inner">
     <div class="section-header">
       <div class="section-label">Overview</div>
-      <h2>How m is built</h2>
-      <p>Ports-and-adapters pattern. The engine core has no knowledge of specific providers, tools, or transports.</p>
+      <h2>Layered architecture</h2>
+      <p>Ports-and-adapters pattern. Each layer depends only on the interfaces below it.</p>
     </div>
-    <div class="arch-grid">
-      <div class="arch-card"><i class="fa-solid fa-terminal"></i><h4>CLI Layer</h4><p>Cobra commands, TUI, REPL, wizard, config manager</p></div>
-      <div class="arch-card"><i class="fa-solid fa-gears"></i><h4>Engine</h4><p>Session, Step, tool dispatch, auto-continue, structured output</p></div>
-      <div class="arch-card"><i class="fa-solid fa-satellite-dish"></i><h4>LLM Providers</h4><p>6 adapters, self-registering, stdlib-only HTTP clients</p></div>
-      <div class="arch-card"><i class="fa-solid fa-screwdriver-wrench"></i><h4>Tools</h4><p>7 builtins + MCP tools, registry, confirm gate, undo stack</p></div>
-      <div class="arch-card"><i class="fa-solid fa-plug"></i><h4>MCP Client</h4><p>Stdio JSON-RPC, tool adapter, namespace isolation</p></div>
-      <div class="arch-card"><i class="fa-solid fa-shield-halved"></i><h4>Ports &amp; Adapters</h4><p>ConfigSource, Secrets, StateStore interfaces</p></div>
+    <div class="flow">
+      <div class="flow-col">
+        <div class="flow-box flow-primary" style="width:100%;max-width:500px">
+          <i class="fa-solid fa-terminal"></i> &nbsp;CLI Layer
+          <div style="font-weight:400;font-size:0.75rem;margin-top:4px;opacity:0.85">main · run · chat · validate · init · config · TUI · REPL</div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-accent" style="width:100%;max-width:500px">
+          <i class="fa-solid fa-gears"></i> &nbsp;Engine
+          <div style="font-weight:400;font-size:0.75rem;margin-top:4px">Session · Step · tool dispatch · auto-continue · structured output</div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-row" style="width:100%;max-width:500px">
+          <div class="flow-box flow-purple flow-small"><i class="fa-solid fa-satellite-dish"></i> LLM</div>
+          <div class="flow-box flow-green flow-small"><i class="fa-solid fa-screwdriver-wrench"></i> Tools</div>
+          <div class="flow-box flow-orange flow-small"><i class="fa-solid fa-plug"></i> MCP</div>
+          <div class="flow-box flow-pink flow-small"><i class="fa-solid fa-file-code"></i> Config</div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-secondary" style="width:100%;max-width:500px">
+          <i class="fa-solid fa-shield-halved"></i> &nbsp;Ports &amp; Adapters
+          <div style="font-weight:400;font-size:0.75rem;margin-top:4px">ConfigSource · Secrets (OS Keychain) · StateStore · MemoryStore</div>
+        </div>
+      </div>
     </div>
   </div>
 </section>
 
-<!-- Diagram -->
+<!-- Engine loop -->
 <section class="section section-alt">
   <div class="section-inner">
-    <div class="section-header"><div class="section-label">Data Flow</div><h2>Engine loop</h2></div>
-    <div class="diagram"><pre>
-  User message
-      │
-      ▼
-┌─────────────┐
-│ Session.Step │──→ Provider.Stream() ──→ Events channel
-└─────┬───────┘
-      │
-      ▼
-  ┌─────────────────────────────────────────┐
-  │ Event loop:                              │
-  │   EventText      → stream to terminal    │
-  │   EventToolCall  → collect tool calls    │
-  │   EventUsage     → accumulate tokens     │
-  │   EventDone      → check stop reason     │
-  │   EventError     → return error          │
-  └─────────┬───────────────────────────────┘
-            │
-            ▼
-  stop_reason?
-  ├── "end_turn"   → done, return
-  ├── "tool_use"   → execute tools (parallel) → loop
-  └── "max_tokens" → auto-inject "continue"  → loop
-    </pre></div>
+    <div class="section-header"><div class="section-label">Core</div><h2>Engine loop</h2><p>Every user message goes through the same cycle. The engine is provider-agnostic — it only sees events.</p></div>
+    <div class="flow">
+      <div class="flow-col">
+        <div class="flow-box flow-secondary"><i class="fa-solid fa-user"></i> &nbsp;User message</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-primary"><i class="fa-solid fa-play"></i> &nbsp;Session.Step()</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-purple"><i class="fa-solid fa-satellite-dish"></i> &nbsp;Provider.Stream()</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+
+        <div class="flow-group">
+          <div class="flow-group-title"><i class="fa-solid fa-rotate"></i> &nbsp;Event Loop</div>
+          <div class="flow-grid">
+            <div class="flow-box flow-secondary"><i class="fa-solid fa-font"></i><br>EventText<div class="flow-label">stream to terminal</div></div>
+            <div class="flow-box flow-orange"><i class="fa-solid fa-wrench"></i><br>EventToolCall<div class="flow-label">collect calls</div></div>
+            <div class="flow-box flow-green"><i class="fa-solid fa-chart-bar"></i><br>EventUsage<div class="flow-label">count tokens</div></div>
+            <div class="flow-box flow-accent"><i class="fa-solid fa-flag-checkered"></i><br>EventDone<div class="flow-label">check stop reason</div></div>
+            <div class="flow-box flow-pink"><i class="fa-solid fa-triangle-exclamation"></i><br>EventError<div class="flow-label">return error</div></div>
+          </div>
+        </div>
+
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-row">
+          <div class="flow-box flow-green flow-small"><i class="fa-solid fa-check"></i> end_turn<div class="flow-label">done, return</div></div>
+          <div class="flow-box flow-orange flow-small"><i class="fa-solid fa-wrench"></i> tool_use<div class="flow-label">execute → loop</div></div>
+          <div class="flow-box flow-purple flow-small"><i class="fa-solid fa-forward"></i> max_tokens<div class="flow-label">continue → loop</div></div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- Provider architecture -->
+<!-- Provider resolution -->
 <section class="section">
   <div class="section-inner">
-    <div class="section-header"><div class="section-label">Providers</div><h2>Self-registering, zero coupling</h2><p>Providers register via <code>init()</code> + <code>llm.Register()</code>. The engine never imports a provider directly.</p></div>
-    <div class="diagram"><pre>
-  llm.Resolve("anthropic/claude-sonnet-4-6")
-      │
-      ├── anthropic/  → Custom SSE (Messages API)
-      ├── openai/     → OpenAI SSE (Chat Completions)
-      ├── ollama/     → NDJSON streaming (/api/chat)
-      ├── gemini/     → OpenAI-compat (WithCompat)
-      ├── alibaba/    → OpenAI-compat (WithCompat)
-      └── litellm/    → OpenAI-compat (WithCompat)
-    </pre></div>
-    <div class="callout callout-info" style="max-width:720px;margin:24px auto"><strong>All LLM clients are stdlib-only</strong> — <code>net/http</code>, <code>bufio</code>, <code>encoding/json</code>. No SDK dependencies. Easy to debug and fork.</div>
+    <div class="section-header"><div class="section-label">Providers</div><h2>Self-registering, zero coupling</h2><p>Providers register via <code>init()</code> + <code>llm.Register()</code>. The engine calls <code>llm.Resolve("provider/model")</code> and gets back a <code>Provider</code> interface.</p></div>
+    <div class="flow">
+      <div class="flow-col">
+        <div class="flow-box flow-primary" style="max-width:400px"><i class="fa-solid fa-magnifying-glass"></i> &nbsp;llm.Resolve("provider/model")</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-group">
+          <div class="flow-group-title">Provider Registry</div>
+          <div class="flow-grid" style="grid-template-columns: repeat(3, 1fr)">
+            <div class="flow-box flow-orange flow-small"><i class="fa-solid fa-bolt"></i> Anthropic<div class="flow-label">Custom SSE</div></div>
+            <div class="flow-box flow-green flow-small"><i class="fa-solid fa-circle-nodes"></i> OpenAI<div class="flow-label">OpenAI SSE</div></div>
+            <div class="flow-box flow-purple flow-small"><i class="fa-solid fa-horse"></i> Ollama<div class="flow-label">NDJSON</div></div>
+            <div class="flow-box flow-accent flow-small"><i class="fa-solid fa-gem"></i> Gemini<div class="flow-label">Compat</div></div>
+            <div class="flow-box flow-pink flow-small"><i class="fa-solid fa-cloud"></i> Alibaba<div class="flow-label">Compat</div></div>
+            <div class="flow-box flow-secondary flow-small"><i class="fa-solid fa-shuffle"></i> LiteLLM<div class="flow-label">Compat</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="callout callout-info" style="max-width:720px;margin:24px auto"><strong>All LLM clients are stdlib-only</strong> — <code>net/http</code>, <code>bufio</code>, <code>encoding/json</code>. No SDK dependencies. Gemini, Alibaba, and LiteLLM use <code>WithCompat()</code> which disables OpenAI-specific features.</div>
+  </div>
+</section>
+
+<!-- Tool system -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Tools</div><h2>Tool dispatch &amp; safety</h2><p>Every tool call goes through the registry. File writes are gated by user confirmation. Undo reverts the last write.</p></div>
+    <div class="flow">
+      <div class="flow-col">
+        <div class="flow-box flow-primary"><i class="fa-solid fa-robot"></i> &nbsp;Model requests tool call</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-accent"><i class="fa-solid fa-book"></i> &nbsp;tools.Registry.Run()</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-group">
+          <div class="flow-group-title">Built-in Tools</div>
+          <div class="flow-grid" style="grid-template-columns: repeat(4, 1fr)">
+            <div class="flow-box flow-secondary flow-small"><i class="fa-solid fa-terminal"></i> shell</div>
+            <div class="flow-box flow-secondary flow-small"><i class="fa-solid fa-file"></i> fs_read</div>
+            <div class="flow-box flow-orange flow-small"><i class="fa-solid fa-pen"></i> fs_write<div class="flow-label">⚠️ confirm</div></div>
+            <div class="flow-box flow-secondary flow-small"><i class="fa-solid fa-folder-tree"></i> fs_list</div>
+            <div class="flow-box flow-secondary flow-small"><i class="fa-brands fa-git-alt"></i> git</div>
+            <div class="flow-box flow-secondary flow-small"><i class="fa-solid fa-vial"></i> test_run</div>
+            <div class="flow-box flow-purple flow-small"><i class="fa-solid fa-share"></i> delegate</div>
+            <div class="flow-box flow-green flow-small"><i class="fa-solid fa-plug"></i> MCP tools</div>
+          </div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-green"><i class="fa-solid fa-reply"></i> &nbsp;Result → back to model as tool_result</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Hub and spoke -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Delegation</div><h2>Hub-and-spoke pattern</h2><p>Orchestrator agents delegate to specialists. Spokes return structured JSON. Multiple delegations run in parallel.</p></div>
+    <div class="flow">
+      <div class="flow-col">
+        <div class="flow-box flow-secondary"><i class="fa-solid fa-user"></i> &nbsp;User request</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-primary" style="max-width:300px"><i class="fa-solid fa-diagram-project"></i> &nbsp;Hub Agent<div style="font-weight:400;font-size:0.75rem;margin-top:4px">Decomposes task, delegates, synthesizes</div></div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-row">
+          <div class="flow-col" style="gap:4px">
+            <div class="flow-box flow-purple flow-small"><i class="fa-solid fa-code"></i> spoke-coder</div>
+            <div class="flow-label">own model + tools</div>
+          </div>
+          <div class="flow-col" style="gap:4px">
+            <div class="flow-box flow-green flow-small"><i class="fa-solid fa-magnifying-glass"></i> spoke-reviewer</div>
+            <div class="flow-label">read-only</div>
+          </div>
+          <div class="flow-col" style="gap:4px">
+            <div class="flow-box flow-orange flow-small"><i class="fa-solid fa-list-check"></i> spoke-planner</div>
+            <div class="flow-label">plans only</div>
+          </div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-group" style="max-width:400px;margin:0 auto">
+          <div class="flow-group-title">Structured JSON Response</div>
+          <div style="font-family:var(--mono);font-size:0.75rem;color:var(--fg2);line-height:1.6;text-align:left">
+            { <span style="color:var(--accent)">"answer"</span>: "...",<br>
+            &nbsp;&nbsp;<span style="color:var(--accent)">"sources"</span>: [{ file, summary }],<br>
+            &nbsp;&nbsp;<span style="color:var(--accent)">"confidence"</span>: "high",<br>
+            &nbsp;&nbsp;<span style="color:var(--accent)">"caveats"</span>: ["..."] }
+          </div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-accent"><i class="fa-solid fa-quote-left"></i> &nbsp;Hub synthesizes with citations<div style="font-weight:400;font-size:0.75rem;margin-top:4px">[spoke-coder: main.go:10-25] ...</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MCP flow -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">MCP</div><h2>MCP integration flow</h2><p>Agent references an MCP server by name. The manager spawns it, handshakes, discovers tools, and namespaces them.</p></div>
+    <div class="flow">
+      <div class="flow-col">
+        <div class="flow-box flow-secondary" style="max-width:350px;font-family:var(--mono);font-size:0.8rem">mcp: [jira, confluence]<div class="flow-label">agent frontmatter</div></div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-primary"><i class="fa-solid fa-play"></i> &nbsp;mcp.Manager.Open()</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-row">
+          <div class="flow-col" style="gap:4px">
+            <div class="flow-box flow-accent flow-small"><i class="fa-solid fa-rocket"></i> Spawn process</div>
+            <div class="flow-label">stdio transport</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-col" style="gap:4px">
+            <div class="flow-box flow-green flow-small"><i class="fa-solid fa-handshake"></i> JSON-RPC handshake</div>
+            <div class="flow-label">initialize + initialized</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-col" style="gap:4px">
+            <div class="flow-box flow-purple flow-small"><i class="fa-solid fa-list"></i> tools/list</div>
+            <div class="flow-label">discover tools</div>
+          </div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-group">
+          <div class="flow-group-title">Namespaced Tools (via ToolAdapter)</div>
+          <div class="flow-grid" style="grid-template-columns: repeat(3, 1fr)">
+            <div class="flow-box flow-accent flow-small">jira__get_issue</div>
+            <div class="flow-box flow-accent flow-small">jira__search</div>
+            <div class="flow-box flow-accent flow-small">jira__add_comment</div>
+            <div class="flow-box flow-green flow-small">confluence__get_page</div>
+            <div class="flow-box flow-green flow-small">confluence__search</div>
+            <div class="flow-box flow-green flow-small">confluence__update_page</div>
+          </div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-secondary"><i class="fa-solid fa-merge"></i> &nbsp;Merged into tools.Registry alongside builtins</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Structured output -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Structured Output</div><h2>Provider-native JSON enforcement</h2><p>When <code>response_schema</code> is set in frontmatter, the engine enforces valid JSON via each provider's native mechanism.</p></div>
+    <div class="flow">
+      <div class="flow-col">
+        <div class="flow-box flow-secondary" style="max-width:350px;font-family:var(--mono);font-size:0.8rem">response_schema: { type: object, ... }<div class="flow-label">agent frontmatter</div></div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-row">
+          <div class="flow-box flow-orange flow-small"><i class="fa-solid fa-bolt"></i> Anthropic<div class="flow-label">response-tool + forced tool_choice</div></div>
+          <div class="flow-box flow-green flow-small"><i class="fa-solid fa-circle-nodes"></i> OpenAI<div class="flow-label">json_schema strict mode</div></div>
+          <div class="flow-box flow-purple flow-small"><i class="fa-solid fa-horse"></i> Ollama<div class="flow-label">format field</div></div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-accent"><i class="fa-solid fa-filter"></i> &nbsp;Engine buffers full response (no streaming)</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-row">
+          <div class="flow-box flow-green flow-small"><i class="fa-solid fa-user"></i> Extract "answer"<div class="flow-label">display to user</div></div>
+          <div class="flow-box flow-purple flow-small"><i class="fa-solid fa-database"></i> Store full JSON<div class="flow-label">hub sees structured data</div></div>
+        </div>
+      </div>
+    </div>
   </div>
 </section>
 
@@ -110,7 +279,7 @@
           <tr><td><strong>Sub-agents</strong></td><td class="check">✓ Hub-and-spoke</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td></tr>
           <tr><td><strong>Structured output</strong></td><td class="check">✓ JSON schema</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td></tr>
           <tr><td><strong>File write confirm</strong></td><td class="check">✓ Always</td><td class="check">✓ Diff view</td><td class="partial">~ Auto</td><td class="check">✓</td><td class="check">✓</td></tr>
-          <tr><td><strong>Version control</strong></td><td class="check">✓ Git tool built-in</td><td class="partial">~ IDE git</td><td class="partial">~ IDE git</td><td class="check">✓ Auto-commit</td><td class="cross">✗</td></tr>
+          <tr><td><strong>Version control</strong></td><td class="check">✓ Git built-in</td><td class="partial">~ IDE git</td><td class="partial">~ IDE git</td><td class="check">✓ Auto-commit</td><td class="cross">✗</td></tr>
           <tr><td><strong>Binary size</strong></td><td>7.8 MB</td><td>~500 MB</td><td>Plugin</td><td>pip install</td><td>Plugin</td></tr>
           <tr><td><strong>Dependencies</strong></td><td class="check">✓ Zero</td><td>Electron</td><td>VS Code</td><td>Python</td><td>VS Code</td></tr>
           <tr><td><strong>Price</strong></td><td>Free (+ API costs)</td><td>$20/mo</td><td>$10/mo</td><td>Free (+ API)</td><td>Free (+ API)</td></tr>
