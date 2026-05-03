@@ -25,6 +25,19 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.17",
+		Date:    "2026-05-03",
+		Highlights: []string{
+			"Professional product landing page at subzone.github.io/m — pure HTML/CSS, Font Awesome icons, no Jekyll.",
+			"7-page documentation site: home, install (platform tabs), agents gallery, architecture (comparison table vs Cursor/Copilot/Aider), MCP servers, changelog timeline, support/troubleshooting.",
+			"ASCII art M banner in site nav and footer.",
+			"DevOps agents: k8s-debug (Kubernetes triage), terraform-plan (plan review), helm-deploy (chart management).",
+			"Jira/Confluence integration: ticket-worker (ticket → branch → code → test → update), ticket-reviewer (review against acceptance criteria).",
+			"MCP server definitions for Jira and Confluence (mcp-server-atlassian).",
+			"Steva Đubre and Steve Trash personality agents (Serbian/English, multiple model variants).",
+		},
+	},
+	{
 		Version: "0.0.16",
 		Date:    "2026-05-01",
 		Highlights: []string{
