@@ -1,0 +1,416 @@
+/* ============================================================
+   m docs — custom theme overrides
+   Dark terminal aesthetic matching the matrix TUI theme
+   ============================================================ */
+
+/* ---------- Color scheme ---------- */
+:root {
+  --m-bg:         #0a0e14;
+  --m-bg-alt:     #0f1419;
+  --m-surface:    #131920;
+  --m-border:     #1e2a35;
+  --m-fg:         #c5cdd9;
+  --m-fg-muted:   #6b7d8e;
+  --m-green:      #00e676;
+  --m-green-dim:  #00c853;
+  --m-green-glow: rgba(0, 230, 118, 0.08);
+  --m-blue:       #40c4ff;
+  --m-yellow:     #ffd740;
+  --m-red:        #ff5252;
+  --m-purple:     #b388ff;
+  --m-cyan:       #18ffff;
+  --m-mono:       "JetBrains Mono", "Fira Code", "SF Mono", "Cascadia Code", ui-monospace, monospace;
+}
+
+/* ---------- Body ---------- */
+body {
+  background: var(--m-bg) !important;
+  color: var(--m-fg) !important;
+}
+
+/* ---------- Sidebar ---------- */
+.side-bar {
+  background: var(--m-bg-alt) !important;
+  border-right: 1px solid var(--m-border) !important;
+}
+
+.site-title {
+  font-family: var(--m-mono) !important;
+  font-size: 1.6rem !important;
+  font-weight: 800 !important;
+  color: var(--m-green) !important;
+  letter-spacing: 3px !important;
+  text-transform: uppercase !important;
+  text-shadow: 0 0 20px rgba(0, 230, 118, 0.3) !important;
+}
+
+.site-title:hover {
+  color: #fff !important;
+  text-shadow: 0 0 30px rgba(0, 230, 118, 0.5) !important;
+}
+
+/* Nav links */
+.nav-list-link {
+  color: var(--m-fg-muted) !important;
+  font-size: 0.85rem !important;
+  letter-spacing: 0.3px !important;
+  padding: 6px 16px !important;
+  border-radius: 6px !important;
+  margin: 1px 8px !important;
+  transition: all 0.15s ease !important;
+}
+
+.nav-list-link:hover {
+  color: var(--m-green) !important;
+  background: var(--m-green-glow) !important;
+}
+
+.nav-list-link.active,
+.nav-list-item .nav-list-link.active {
+  color: var(--m-green) !important;
+  background: var(--m-green-glow) !important;
+  font-weight: 600 !important;
+  border-left: 2px solid var(--m-green) !important;
+}
+
+/* ---------- Main content area ---------- */
+.main {
+  background: var(--m-bg) !important;
+}
+
+.main-content-wrap {
+  background: var(--m-bg) !important;
+}
+
+.main-content {
+  color: var(--m-fg) !important;
+  max-width: 52rem !important;
+}
+
+/* ---------- Header bar ---------- */
+.main-header {
+  background: var(--m-bg-alt) !important;
+  border-bottom: 1px solid var(--m-border) !important;
+}
+
+/* Search */
+.search-input {
+  background: var(--m-surface) !important;
+  border: 1px solid var(--m-border) !important;
+  color: var(--m-fg) !important;
+  border-radius: 8px !important;
+  font-family: var(--m-mono) !important;
+  font-size: 0.85rem !important;
+}
+
+.search-input:focus {
+  border-color: var(--m-green) !important;
+  box-shadow: 0 0 0 2px rgba(0, 230, 118, 0.15) !important;
+}
+
+.search-results {
+  background: var(--m-surface) !important;
+  border: 1px solid var(--m-border) !important;
+  border-radius: 8px !important;
+}
+
+.search-result {
+  border-bottom: 1px solid var(--m-border) !important;
+}
+
+.search-result-title {
+  color: var(--m-green) !important;
+}
+
+/* Aux nav (GitHub link) */
+.aux-nav-list-item .site-button {
+  color: var(--m-fg-muted) !important;
+  font-size: 0.8rem !important;
+  border: 1px solid var(--m-border) !important;
+  border-radius: 6px !important;
+  padding: 4px 12px !important;
+  transition: all 0.15s ease !important;
+}
+
+.aux-nav-list-item .site-button:hover {
+  color: var(--m-green) !important;
+  border-color: var(--m-green) !important;
+  background: var(--m-green-glow) !important;
+}
+
+/* ---------- Typography ---------- */
+h1, h2, h3, h4, h5, h6 {
+  color: #e8edf3 !important;
+  font-weight: 700 !important;
+}
+
+h1 {
+  font-size: 2rem !important;
+  letter-spacing: -0.5px !important;
+  margin-bottom: 0.5rem !important;
+  padding-bottom: 0.75rem !important;
+  border-bottom: 2px solid var(--m-border) !important;
+}
+
+h1::before {
+  content: "# " !important;
+  color: var(--m-green) !important;
+  font-family: var(--m-mono) !important;
+  font-weight: 400 !important;
+  opacity: 0.5 !important;
+}
+
+h2 {
+  font-size: 1.4rem !important;
+  margin-top: 2.5rem !important;
+  padding-bottom: 0.4rem !important;
+  border-bottom: 1px solid var(--m-border) !important;
+}
+
+h3 {
+  font-size: 1.15rem !important;
+  color: var(--m-blue) !important;
+  margin-top: 1.8rem !important;
+}
+
+p {
+  line-height: 1.75 !important;
+  margin-bottom: 1rem !important;
+}
+
+a {
+  color: var(--m-green) !important;
+  text-decoration: none !important;
+  transition: all 0.15s ease !important;
+}
+
+a:hover {
+  color: #fff !important;
+  text-decoration: underline !important;
+}
+
+strong {
+  color: #e8edf3 !important;
+}
+
+/* ---------- Code ---------- */
+code {
+  font-family: var(--m-mono) !important;
+  font-size: 0.82em !important;
+  background: var(--m-surface) !important;
+  color: var(--m-green) !important;
+  padding: 2px 7px !important;
+  border-radius: 4px !important;
+  border: 1px solid var(--m-border) !important;
+}
+
+pre {
+  background: var(--m-surface) !important;
+  border: 1px solid var(--m-border) !important;
+  border-radius: 8px !important;
+  padding: 1.2rem !important;
+  overflow-x: auto !important;
+  margin: 1.2rem 0 !important;
+  position: relative !important;
+}
+
+pre::before {
+  content: attr(data-lang);
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 2px 10px;
+  font-size: 0.7rem;
+  color: var(--m-fg-muted);
+  font-family: var(--m-mono);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+pre code {
+  background: none !important;
+  border: none !important;
+  padding: 0 !important;
+  color: var(--m-fg) !important;
+  font-size: 0.82em !important;
+  line-height: 1.6 !important;
+}
+
+/* Syntax highlighting hints */
+.highlight .k,
+.highlight .kd,
+.highlight .kn { color: var(--m-purple) !important; }
+.highlight .s,
+.highlight .s1,
+.highlight .s2 { color: var(--m-yellow) !important; }
+.highlight .c,
+.highlight .c1,
+.highlight .cm { color: var(--m-fg-muted) !important; font-style: italic !important; }
+.highlight .nf,
+.highlight .nb { color: var(--m-blue) !important; }
+.highlight .mi,
+.highlight .mf { color: var(--m-cyan) !important; }
+.highlight .err { color: var(--m-red) !important; }
+
+/* ---------- Tables ---------- */
+table {
+  width: 100% !important;
+  border-collapse: collapse !important;
+  margin: 1.5rem 0 !important;
+  font-size: 0.88rem !important;
+  border-radius: 8px !important;
+  overflow: hidden !important;
+}
+
+th {
+  background: var(--m-surface) !important;
+  color: var(--m-green) !important;
+  font-weight: 600 !important;
+  text-align: left !important;
+  padding: 10px 14px !important;
+  border: 1px solid var(--m-border) !important;
+  font-size: 0.82rem !important;
+  text-transform: uppercase !important;
+  letter-spacing: 0.5px !important;
+  font-family: var(--m-mono) !important;
+}
+
+td {
+  padding: 9px 14px !important;
+  border: 1px solid var(--m-border) !important;
+  color: var(--m-fg) !important;
+}
+
+tr:nth-child(even) {
+  background: rgba(15, 20, 25, 0.5) !important;
+}
+
+tr:hover {
+  background: var(--m-green-glow) !important;
+}
+
+/* ---------- Lists ---------- */
+ul, ol {
+  margin-bottom: 1rem !important;
+}
+
+li {
+  margin-bottom: 0.35rem !important;
+  line-height: 1.7 !important;
+}
+
+li::marker {
+  color: var(--m-green) !important;
+}
+
+/* ---------- Blockquote ---------- */
+blockquote {
+  border-left: 3px solid var(--m-green) !important;
+  background: var(--m-green-glow) !important;
+  padding: 0.8rem 1.2rem !important;
+  margin: 1.2rem 0 !important;
+  border-radius: 0 8px 8px 0 !important;
+  color: var(--m-fg) !important;
+}
+
+/* ---------- Horizontal rule ---------- */
+hr {
+  border: none !important;
+  border-top: 1px solid var(--m-border) !important;
+  margin: 2rem 0 !important;
+}
+
+/* ---------- Footer ---------- */
+.site-footer {
+  border-top: 1px solid var(--m-border) !important;
+  color: var(--m-fg-muted) !important;
+  font-size: 0.75rem !important;
+  padding: 1rem 16px !important;
+}
+
+footer {
+  color: var(--m-fg-muted) !important;
+}
+
+#back-to-top {
+  color: var(--m-fg-muted) !important;
+  font-size: 0.8rem !important;
+}
+
+#back-to-top:hover {
+  color: var(--m-green) !important;
+}
+
+/* ---------- Heading anchors ---------- */
+.anchor-heading svg {
+  color: var(--m-green) !important;
+  opacity: 0 !important;
+  transition: opacity 0.15s ease !important;
+}
+
+h1:hover .anchor-heading svg,
+h2:hover .anchor-heading svg,
+h3:hover .anchor-heading svg {
+  opacity: 0.4 !important;
+}
+
+/* ---------- Mobile menu button ---------- */
+.site-button.btn-reset {
+  color: var(--m-fg-muted) !important;
+}
+
+.site-button.btn-reset:hover {
+  color: var(--m-green) !important;
+}
+
+/* ---------- Emoji / status indicators ---------- */
+/* Make checkmarks and crosses pop in tables */
+td:first-child {
+  font-weight: 500 !important;
+}
+
+/* ---------- Scrollbar ---------- */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--m-bg);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--m-border);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--m-fg-muted);
+}
+
+/* ---------- Selection ---------- */
+::selection {
+  background: rgba(0, 230, 118, 0.2);
+  color: #fff;
+}
+
+/* ---------- Copy button on code blocks ---------- */
+.copy-code-button {
+  background: var(--m-surface) !important;
+  border: 1px solid var(--m-border) !important;
+  color: var(--m-fg-muted) !important;
+  border-radius: 4px !important;
+}
+
+.copy-code-button:hover {
+  color: var(--m-green) !important;
+  border-color: var(--m-green) !important;
+}
+
+/* ---------- Responsive polish ---------- */
+@media (max-width: 800px) {
+  h1 { font-size: 1.5rem !important; }
+  h2 { font-size: 1.2rem !important; }
+  table { font-size: 0.8rem !important; }
+  th, td { padding: 6px 8px !important; }
+}
