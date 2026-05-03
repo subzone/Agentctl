@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>m — MD-driven agent CLI for code, infra, and automation</title>
+<title>AgentCTL — MD-driven agent CLI for code, infra, and automation</title>
 <meta name="description" content="Agents are plain Markdown files with YAML frontmatter. The CLI runs them against 6 model backends with built-in tools, MCP, and sub-agent delegation.">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="css/style.css">
@@ -53,7 +53,7 @@
           <span class="terminal-dot r"></span>
           <span class="terminal-dot y"></span>
           <span class="terminal-dot g"></span>
-          <span class="terminal-title">m — terminal</span>
+          <span class="terminal-title">AgentCTL — terminal</span>
         </div>
         <div class="terminal-body">
 <span class="prompt">$</span> <span class="cmd">m</span>
@@ -280,7 +280,7 @@ Always consider security.
     <div class="faq-list">
       <div class="faq-item">
         <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
-          What models does m support? <span class="faq-arrow">+</span>
+          What models does AgentCTL support? <span class="faq-arrow">+</span>
         </button>
         <div class="faq-a">Any model from 6 providers: Ollama (local — Qwen, Llama, Mistral, etc.), Anthropic (Claude), OpenAI (GPT-4o, GPT-4.1), Google Gemini, Alibaba Cloud (Qwen, DeepSeek), or any OpenAI-compatible endpoint via LiteLLM. Switch models mid-session with <code>/model provider/model</code>.</div>
       </div>
@@ -288,7 +288,7 @@ Always consider security.
         <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
           Is it free? <span class="faq-arrow">+</span>
         </button>
-        <div class="faq-a">m itself is free and open source (MIT). With Ollama, everything runs locally at zero cost. Hosted providers (Anthropic, OpenAI, etc.) charge per-token — a typical coding session costs $0.01–$1.35 depending on the model.</div>
+        <div class="faq-a">AgentCTL itself is free and open source (MIT). With Ollama, everything runs locally at zero cost. Hosted providers (Anthropic, OpenAI, etc.) charge per-token — a typical coding session costs $0.01–$1.35 depending on the model.</div>
       </div>
       <div class="faq-item">
         <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
@@ -300,7 +300,7 @@ Always consider security.
         <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
           How is this different from Cursor / Copilot / Aider? <span class="faq-arrow">+</span>
         </button>
-        <div class="faq-a">m is CLI-first, not IDE-bound. Agents are plain Markdown files you version-control alongside your code. There's no vendor lock-in — switch providers with one line. The hub-and-spoke pattern lets you compose specialist agents that work together. And it's a single 7.8 MB binary with zero dependencies.</div>
+        <div class="faq-a">AgentCTL is CLI-first, not IDE-bound. Agents are plain Markdown files you version-control alongside your code. There's no vendor lock-in — switch providers with one line. The hub-and-spoke pattern lets you compose specialist agents that work together. And it's a single 7.8 MB binary with zero dependencies.</div>
       </div>
       <div class="faq-item">
         <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
@@ -363,8 +363,8 @@ Always consider security.
       </div>
     </div>
     <div class="footer-bottom">
-      <span>© 2025 m project</span>
-      <span>Built with <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/m"><i class="fa-brands fa-github"></i> subzone/m</a></span>
+      <span>© 2025 AgentCTL</span>
+      <span>Built with <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/m"><i class="fa-brands fa-github"></i> subzone/agentctl</a></span>
     </div>
   </div>
 </footer>

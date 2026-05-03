@@ -1,7 +1,6 @@
-# m
+# AgentCTL
 
-> Working title. The binary is `m` for now — the project will likely be renamed
-> before v0.1.0. See [Naming](#naming) below.
+> The CLI binary is `m` for ergonomics — the product name is **AgentCTL**.
 
 A small, single-binary CLI for running AI agents defined as Markdown files
 against your choice of LLM. Aimed at developers and DevOps people who live in
@@ -219,7 +218,7 @@ structured output mechanics), see the
 
 ## Known gaps
 
-These are real, not roadmap-ware. They affect what `m` can be used for today:
+These are real, not roadmap-ware. They affect what AgentCTL can be used for today:
 
 - **No codebase RAG / context retrieval.** Agents see what they explicitly
   read with `fs_read` / `fs_list`. There's no embedding store, no
@@ -245,9 +244,9 @@ The internal UX backlog is in [`UX_IMPROVEMENTS_PLAN.md`](UX_IMPROVEMENTS_PLAN.m
 
 Not built in. Three reasonable paths if you need it:
 
-1. **MCP route** — point `m` at any vector-store MCP server (Qdrant,
+1. **MCP route** — point AgentCTL at any vector-store MCP server (Qdrant,
    Chroma, etc.). The agent gets `vector__search` as a normal tool. No
-   `m` changes needed; this is how it'll work for now.
+   code changes needed; this is how it'll work for now.
 2. **A `code_search` built-in tool** that wraps `ripgrep` + a small in-memory
    index over the working tree. Cheaper than embeddings, often enough for
    "find similar functions". Probably the next logical addition.
@@ -260,21 +259,9 @@ If RAG matters for your use case, option 1 unblocks you today.
 
 ## Naming
 
-`m` is a placeholder. Reasons it's not the long-term name:
-
-- Two characters — un-Googleable.
-- Collides with several existing CLIs and shell builtins on different
-  distros.
-- Says nothing about what it does.
-
-Open to suggestions. Current shortlist (none decided):
-
-- `mdrun` — descriptive, googleable, says exactly what it does
-- `agentctl` — kubectl-style, says it's a CLI for agents
-- `quill` / `scroll` — leans into the "agents are scrolls" metaphor
-- `subzone` — the existing GitHub org as the product name
-
-If you have ideas, open an issue.
+The product is called **AgentCTL**. The CLI binary remains `m` for
+ergonomics — short to type, easy to alias, works in scripts. Think of it
+like how "Kubernetes" is the product but `kubectl` is the binary.
 
 ---
 
