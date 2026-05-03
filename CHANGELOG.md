@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.19] - 2026-07-04
+
+### Added
+- Homebrew install: `brew tap subzone/tap && brew install subzone/tap/m`
+- Auto-update Homebrew formula on every release via CI
+- SECURITY.md, CODE_OF_CONDUCT.md, CODEOWNERS
+- Issue templates (bug report, feature request) and PR template
+- CI workflow on every push/PR (vet, lint, race tests, build, validate agents)
+- Dependabot for Go modules and GitHub Actions
+- Branch protection, tag protection, repo topics
+- `.goreleaser.yml` explicit config
+
 ## [0.0.18] - 2026-07-04
 
 ### Added
@@ -67,6 +79,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Theme system (matrix, default, minimal)
 - System stats (CPU/RAM/GPU/Disk)
 
+[0.0.19]: https://github.com/subzone/Agentctl/compare/v0.0.18...v0.0.19
 [0.0.18]: https://github.com/subzone/Agentctl/compare/v0.0.17...v0.0.18
 [0.0.17]: https://github.com/subzone/Agentctl/compare/v0.0.16...v0.0.17
 [0.0.16]: https://github.com/subzone/Agentctl/compare/v0.0.15...v0.0.16

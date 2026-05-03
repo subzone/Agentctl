@@ -25,6 +25,17 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.19",
+		Date:    "2026-07-04",
+		Highlights: []string{
+			"Homebrew install: brew tap subzone/tap && brew install subzone/tap/m",
+			"Auto-update Homebrew formula on every release via CI.",
+			"SECURITY.md, CODE_OF_CONDUCT.md, CODEOWNERS, issue/PR templates.",
+			"CI on every push/PR (not just tags). Dependabot for Go modules.",
+			"Branch protection, tag protection, repo topics for discoverability.",
+		},
+	},
+	{
 		Version: "0.0.18",
 		Date:    "2026-07-04",
 		Highlights: []string{

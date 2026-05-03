@@ -7,11 +7,11 @@ against your choice of LLM. Aimed at developers and DevOps people who live in
 the terminal and want to script agentic work without IDE lock-in or SDK
 sprawl.
 
-**Current version:** v0.0.18 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
+**Current version:** v0.0.19 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
 
 **Status:** alpha. ~1 month of evenings of work. Works for the author's daily
 use, but expect breaking changes until v0.1.0. Tagged releases (`v0.0.1` →
-`v0.0.18`) ship as macOS `.pkg` and Linux `.deb`.
+`v0.0.19`) ship as macOS `.pkg` and Linux `.deb`.
 
 ```text
 $ m
@@ -32,9 +32,9 @@ Full docs site (EN + SR): **<https://subzone.github.io/Agentctl/>**
 ## Quick Start (5 minutes)
 
 ```bash
-# 1. Install (macOS)
-curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.18_macos.pkg -o m.pkg
-sudo installer -pkg m.pkg -target /
+# 1. Install (macOS — pick one)
+brew tap subzone/tap && brew install subzone/tap/m
+# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.19_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
 
 # 2. Run the setup wizard
 m
@@ -84,7 +84,8 @@ m chat examples/agents/coder.md
 
 | Platform | How |
 |----------|-----|
-| macOS    | Download `.pkg` from [latest release][releases] → double-click. Installs to `/usr/local/bin/m`. |
+| macOS (Homebrew) | `brew tap subzone/tap && brew install subzone/tap/m` |
+| macOS (pkg) | Download `.pkg` from [latest release][releases] → double-click. Installs to `/usr/local/bin/m`. |
 | Linux (Debian/Ubuntu) | `sudo dpkg -i m_*_linux_amd64.deb` |
 | Linux (other) | Tarball: `tar -xzf m_*_linux_amd64.tar.gz && sudo mv m /usr/local/bin/` |
 | From source | `go install github.com/subzone/Agentctl/cmd/m@latest` (requires Go 1.26+) |
@@ -247,7 +248,7 @@ internal/mcp/         JSON-RPC stdio client, tool adapter
 internal/config/      Frontmatter parsing, agent/MCP/skill schemas
 internal/ports/       ConfigSource, Secrets, StateStore interfaces
 internal/adapters/    Keychain (macOS/libsecret), file-backed stores
-examples/agents/      27 ready-to-use agents
+examples/agents/      32 ready-to-use agents
 examples/mcp/         3 MCP server definitions
 docs/                 Static product site (EN + SR), GitHub Pages
 ```
