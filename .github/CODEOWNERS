@@ -1,0 +1,9 @@
+# Default owner for everything
+* @subzone
+
+# Critical paths — require owner review
+internal/engine/     @subzone
+internal/llm/        @subzone
+internal/adapters/   @subzone
+cmd/m/main.go        @subzone
+.github/workflows/   @subzone
