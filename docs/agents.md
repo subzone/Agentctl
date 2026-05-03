@@ -115,9 +115,12 @@ The repo ships with these in [`examples/agents/`][examples]:
 | `k8s-debug.md` | Claude Sonnet | all + git | Kubernetes troubleshooting and triage |
 | `terraform-plan.md` | Claude Sonnet | all + git + test | Terraform plan review and module authoring |
 | `helm-deploy.md` | Claude Sonnet | all + git | Helm chart review, linting, and deployment |
+| `ticket-worker.md` | Claude Sonnet | all + Jira/Confluence MCP | Ticket-driven development (read ticket → implement → update) |
+| `ticket-reviewer.md` | Claude Sonnet | read + git + Jira/Confluence MCP | Review code against Jira ticket acceptance criteria |
 
 Read them as templates for your own. For DevOps-specific patterns and
-usage examples, see **[DevOps patterns](devops-patterns.html)**.
+usage examples, see **[DevOps patterns](devops-patterns.html)**. For
+Jira/Confluence workflows, see **[Jira & Confluence](jira-confluence.html)**.
 
 [examples]: https://github.com/subzone/m/tree/main/examples/agents
 

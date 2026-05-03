@@ -38,6 +38,7 @@ runs them against your choice of model backend.
 - [Model comparison & cost guide](models.html) — pricing, recommendations, Steva Đubre example
 - [Custom agents](agents.html) — writing agents, tools, hub-and-spoke
 - [DevOps patterns](devops-patterns.html) — K8s, Terraform, Helm agents and MCP
+- [Jira & Confluence](jira-confluence.html) — ticket-driven development and review
 - [Troubleshooting](troubleshooting.html) — common issues
 - [Changelog](changelog.html) — release history
 

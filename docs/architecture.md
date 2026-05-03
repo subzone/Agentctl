@@ -163,6 +163,13 @@ mcp.Manager.Open()
 
 Tools are namespaced: `github__create_issue` to avoid collisions.
 
+The repo ships MCP server definitions for GitHub, Jira, and Confluence
+in [`examples/mcp/`][mcp-examples]. Agents reference them by name:
+`mcp: [jira, confluence]`. See [Jira & Confluence](jira-confluence.html)
+for the full workflow.
+
+[mcp-examples]: https://github.com/subzone/m/tree/main/examples/mcp
+
 ## File layout
 
 ```
