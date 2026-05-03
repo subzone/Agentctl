@@ -294,7 +294,7 @@ func (s *Session) Step(ctx context.Context, task string) error {
 	if s.cfg.ContinueConfirm != nil {
 		ok, err := s.cfg.ContinueConfirm(ctx, s.maxTurns)
 		if err != nil {
-			return nil
+			return err
 		}
 		if ok {
 			// Reset turn counter and continue.
@@ -440,10 +440,13 @@ func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context
 	return llm.Message{Role: llm.RoleUser, Content: results}, nil
 }
 
+// readOnlyTools is the set of tool names that never need user confirmation
+// because they only read data without making any changes.
+var readOnlyTools = map[string]bool{"fs_read": true, "fs_list": true}
+
 func runToolBlock(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), status io.Writer, b llm.ContentBlock) llm.ContentBlock {
 	// Read-only tools skip confirmation.
-	readOnly := map[string]bool{"fs_read": true, "fs_list": true}
-	if confirm != nil && !readOnly[b.ToolName] {
+	if confirm != nil && !readOnlyTools[b.ToolName] {
 		ok, err := confirm(ctx, b.ToolName, b.ToolInput)
 		if err != nil {
 			return llm.ContentBlock{

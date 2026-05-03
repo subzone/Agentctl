@@ -3,7 +3,6 @@ package tools
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -79,13 +78,11 @@ func TestFSWriteDeclined(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	// With auto-approve logic, small files are auto-approved
-	// So we need to check that the file was written
-	if out != fmt.Sprintf("wrote %d bytes to %s", len("nope"), path) {
-		t.Errorf("out = %q", out)
+	if out != "user declined the write" {
+		t.Errorf("out = %q, want %q", out, "user declined the write")
 	}
-	if _, err := os.Stat(path); err != nil {
-		t.Error("file should exist after auto-approve")
+	if _, err := os.Stat(path); err == nil {
+		t.Error("file should NOT exist after user declined")
 	}
 }
 

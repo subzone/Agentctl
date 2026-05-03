@@ -132,21 +132,6 @@ func (f *FSWriteTool) runCreate(ctx context.Context, path, content string) (stri
 
 	existing, _ := os.ReadFile(path)
 	diff := unifiedDiff(path, string(existing), content)
-	
-	// Auto-approve for small files or simple changes
-	if shouldAutoApprove(path, string(existing), content, diff) {
-		if f.Undo != nil {
-			f.Undo.Push(path)
-		}
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			return "", err
-		}
-		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("wrote %d bytes to %s", len(content), path), nil
-	}
-	
 	prompt := fmt.Sprintf("Write %s:\n%s", path, diff)
 
 	ok, err := f.confirm(ctx, prompt)
@@ -157,13 +142,7 @@ func (f *FSWriteTool) runCreate(ctx context.Context, path, content string) (stri
 		return "user declined the write", nil
 	}
 
-	if f.Undo != nil {
-		f.Undo.Push(path)
-	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-		return "", err
-	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+	if err := f.commitWrite(path, []byte(content)); err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("wrote %d bytes to %s", len(content), path), nil
@@ -178,7 +157,7 @@ func (f *FSWriteTool) runPatch(ctx context.Context, path, oldStr, newStr string)
 		return "", err
 	}
 	src := string(existing)
-	idx := indexOf(src, oldStr)
+	idx := strings.Index(src, oldStr)
 	if idx < 0 {
 		return "", fmt.Errorf("old_str not found in %s", path)
 	}
@@ -188,18 +167,6 @@ func (f *FSWriteTool) runPatch(ctx context.Context, path, oldStr, newStr string)
 	}
 
 	diff := unifiedDiff(path, src, patched)
-	
-	// Auto-approve for small/simple patches
-	if shouldAutoApprove(path, src, patched, diff) {
-		if f.Undo != nil {
-			f.Undo.Push(path)
-		}
-		if err := os.WriteFile(path, []byte(patched), 0o644); err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("patched %s (%d → %d bytes)", path, len(existing), len(patched)), nil
-	}
-	
 	prompt := fmt.Sprintf("Patch %s:\n%s", path, diff)
 
 	ok, err := f.confirm(ctx, prompt)
@@ -210,13 +177,22 @@ func (f *FSWriteTool) runPatch(ctx context.Context, path, oldStr, newStr string)
 		return "user declined the patch", nil
 	}
 
-	if f.Undo != nil {
-		f.Undo.Push(path)
-	}
-	if err := os.WriteFile(path, []byte(patched), 0o644); err != nil {
+	if err := f.commitWrite(path, []byte(patched)); err != nil {
 		return "", err
 	}
 	return fmt.Sprintf("patched %s (%d → %d bytes)", path, len(existing), len(patched)), nil
+}
+
+// commitWrite saves the current state of path to the undo stack (if any),
+// creates parent directories, and atomically writes data.
+func (f *FSWriteTool) commitWrite(path string, data []byte) error {
+	if f.Undo != nil {
+		f.Undo.Push(path)
+	}
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		return err
+	}
+	return os.WriteFile(path, data, 0o644)
 }
 
 func (f *FSWriteTool) confirm(ctx context.Context, prompt string) (bool, error) {
@@ -231,15 +207,6 @@ func (f *FSWriteTool) maxBytes() int {
 		return 1 << 20
 	}
 	return f.MaxBytes
-}
-
-func indexOf(s, sub string) int {
-	for i := 0; i + len(sub) <= len(s); i++ {
-		if s[i:i+len(sub)] == sub {
-			return i
-		}
-	}
-	return -1
 }
 
 // unifiedDiff produces a simple unified-diff-style preview. Not a full
@@ -309,36 +276,4 @@ func unifiedDiff(path, old, new string) string {
 		shown++
 	}
 	return b.String()
-}
-
-// shouldAutoApprove determines if a file change is simple enough to auto-approve
-func shouldAutoApprove(path, old, new, diff string) bool {
-	// Check if confirm function exists - if nil, always auto-approve
-	// This function is called after we know we have a confirm function
-	
-	// Auto-approve small files (< 50 lines)
-	oldLines := strings.Split(old, "\n")
-	newLines := strings.Split(new, "\n")
-	if len(oldLines) < 50 && len(newLines) < 50 {
-		return true
-	}
-	
-	// Auto-approve single line changes
-	diffLines := strings.Split(diff, "\n")
-	changeCount := 0
-	for _, line := range diffLines {
-		if strings.HasPrefix(line, "- ") || strings.HasPrefix(line, "+ ") {
-			changeCount++
-		}
-	}
-	if changeCount <= 2 {
-		return true
-	}
-	
-	// Auto-approve if diff is short (< 10 lines of diff)
-	if len(diffLines) < 10 {
-		return true
-	}
-	
-	return false
 }
