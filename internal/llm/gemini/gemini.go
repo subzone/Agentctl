@@ -24,6 +24,6 @@ func init() {
 		if baseURL == "" {
 			baseURL = defaultBaseURL
 		}
-		return openai.New(openai.WithAPIKey(apiKey), openai.WithBaseURL(baseURL), openai.WithCompat(), openai.WithChatPath("/chat/completions"))
+		return openai.New(openai.WithAPIKey(apiKey), openai.WithBaseURL(baseURL), openai.WithNoStreamOptions(), openai.WithChatPath("/chat/completions"))
 	})
 }

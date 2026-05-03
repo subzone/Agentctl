@@ -438,6 +438,15 @@ func parseSSE(ctx context.Context, r io.Reader, out chan<- llm.Event) error {
 			return fmt.Errorf("openai %s: %s", chunk.Error.Type, chunk.Error.Message)
 		}
 		if len(chunk.Choices) == 0 {
+			// Usage-only chunk (no choices) — emit usage and return.
+			if chunk.Usage != nil && (chunk.Usage.PromptTokens > 0 || chunk.Usage.CompletionTokens > 0) {
+				if err := send(llm.Event{Kind: llm.EventUsage, Usage: llm.Usage{
+					InputTokens:  chunk.Usage.PromptTokens,
+					OutputTokens: chunk.Usage.CompletionTokens,
+				}}); err != nil {
+					return err
+				}
+			}
 			return nil
 		}
 		c := chunk.Choices[0]

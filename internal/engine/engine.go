@@ -175,7 +175,7 @@ func (s *Session) Step(ctx context.Context, task string) error {
 	s.messages = append(s.messages, llm.TextMessage(llm.RoleUser, task))
 	// Auto-compact if message history is too large to prevent context overflow.
 	if len(s.messages) > 30 {
-		s.messages = safeCompact(s.messages, 10)
+		s.messages = validateMessages(safeCompact(s.messages, 10))
 		fmt.Fprintln(s.status, "[auto-compacted: context was too large]")
 	}
 	wroteAny := false
@@ -275,7 +275,7 @@ func (s *Session) Step(ctx context.Context, task string) error {
 			}
 			s.messages = append(s.messages, results)
 			if len(s.messages) > 30 {
-				s.messages = safeCompact(s.messages, 10)
+				s.messages = validateMessages(safeCompact(s.messages, 10))
 			}
 
 		case "max_tokens":
@@ -303,6 +303,36 @@ func (s *Session) Step(ctx context.Context, task string) error {
 	}
 	fmt.Fprintf(s.out, "\n[reached %d tool turns, stopping]\n", s.maxTurns)
 	return nil
+}
+
+func validateMessages(msgs []llm.Message) []llm.Message {
+	var clean []llm.Message
+	for _, m := range msgs {
+		if m.Role == llm.RoleUser && !allTextBlocks(m) {
+			if len(clean) == 0 {
+				continue
+			}
+			prev := clean[len(clean)-1]
+			if prev.Role != llm.RoleAssistant {
+				continue
+			}
+			hasTC := false
+			for _, b := range prev.Content {
+				if b.Type == llm.BlockToolUse {
+					hasTC = true
+					break
+				}
+			}
+			if !hasTC {
+				continue
+			}
+		}
+		clean = append(clean, m)
+	}
+	if len(clean) == 0 {
+		return []llm.Message{llm.TextMessage(llm.RoleUser, "(conversation compacted)")}
+	}
+	return clean
 }
 
 // safeCompact keeps the last n messages but ensures the cut point is at
