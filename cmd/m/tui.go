@@ -201,21 +201,21 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			return m, nil
 		}
-		// Allow viewport navigation keys even when thinking
-		// This allows user to scroll while agent is responding
+		// Handle viewport navigation keys - ALWAYS allow scrolling with keyboard
+		// This fixes the issue where user can only scroll when agent is thinking
+		switch msg.Type {
+		case tea.KeyUp, tea.KeyDown, tea.KeyHome, tea.KeyEnd, tea.KeyPgUp, tea.KeyPgDown:
+			var cmd tea.Cmd
+			m.viewport, cmd = m.viewport.Update(msg)
+			return m, cmd
+		}
+		
+		// Block input while thinking (except navigation which we handled above)
 		if m.thinking {
-			// Navigation keys: allow viewport updates
-			switch msg.Type {
-			case tea.KeyUp, tea.KeyDown, tea.KeyHome, tea.KeyEnd:
-				var cmd tea.Cmd
-				m.viewport, cmd = m.viewport.Update(msg)
-				return m, cmd
-			default:
-				// Block all other input while a turn is in flight, including
-				// printable characters — otherwise the user can queue text
-				// that gets misinterpreted when the next prompt is ready.
-				return m, nil
-			}
+			// Block all other input while a turn is in flight, including
+			// printable characters — otherwise the user can queue text
+			// that gets misinterpreted when the next prompt is ready.
+			return m, nil
 		}
 		if msg.Type == tea.KeyEnter {
 			line := strings.TrimSpace(m.input.Value())
@@ -428,10 +428,10 @@ func (m *tuiModel) appendHistory(s string) {
 	// Buffer partial lines for better word wrapping
 	m.buffer += s
 	
-	// Throttle viewport updates during streaming - update max every 50ms
+	// Throttle viewport updates during streaming - update max every 16ms (~60fps)
 	// This prevents UI "pulling" when agent streams fast
-	// But always update if buffer has newline (complete line)
-	if !strings.Contains(m.buffer, "\n") && time.Since(m.lastUpdateTime) < 50*time.Millisecond {
+	// But always update if buffer has newline (complete line) or if user scrolled manually
+	if !strings.Contains(m.buffer, "\n") && time.Since(m.lastUpdateTime) < 16*time.Millisecond {
 		return // Skip viewport update, just buffer content
 	}
 	

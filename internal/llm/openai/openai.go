@@ -341,9 +341,10 @@ type chunkChoice struct {
 }
 
 type chunkDelta struct {
-	Role      string          `json:"role"`
-	Content   string          `json:"content"`
-	ToolCalls []chunkToolCall `json:"tool_calls"`
+	Role             string          `json:"role"`
+	Content          string          `json:"content"`
+	ReasoningContent string          `json:"reasoning_content"`
+	ToolCalls        []chunkToolCall `json:"tool_calls"`
 }
 
 type chunkToolCall struct {

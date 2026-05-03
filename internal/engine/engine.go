@@ -338,11 +338,15 @@ func validateMessages(msgs []llm.Message) []llm.Message {
 // safeCompact keeps the last n messages but ensures the cut point is at
 // a user text message, not in the middle of a tool_calls/tool_result pair.
 // This prevents "tool message must follow tool_calls" errors from providers.
+// It adds a summary message explaining what was compacted.
 func safeCompact(msgs []llm.Message, keep int) []llm.Message {
-	if len(msgs) <= keep {
+	originalLen := len(msgs)
+	if originalLen <= keep {
 		return msgs
 	}
-	target := len(msgs) - keep
+	compactedCount := originalLen - keep
+	
+	target := originalLen - keep
 	if target < 1 {
 		target = 1
 	}
@@ -364,13 +368,14 @@ func safeCompact(msgs []llm.Message, keep int) []llm.Message {
 		}
 	}
 	if cut < 0 || cut >= len(msgs)-1 {
-		// Fallback: prepend synthetic user message + keep last few.
-		n := 4
+		// Fallback: prepend synthetic message + keep last few.
+		n := keep
 		if len(msgs) < n {
 			n = len(msgs)
 		}
 		result := make([]llm.Message, 0, n+1)
-		result = append(result, llm.TextMessage(llm.RoleUser, "(conversation compacted)"))
+		summary := fmt.Sprintf("(Context compacted: %d messages removed. Earlier conversation history is lost. Focus on the current task.)", compactedCount)
+		result = append(result, llm.TextMessage(llm.RoleUser, summary))
 		tail := msgs[len(msgs)-n:]
 		// Skip any leading tool result messages in the tail.
 		for len(tail) > 0 && tail[0].Role == llm.RoleUser && !allTextBlocks(tail[0]) {
@@ -383,7 +388,14 @@ func safeCompact(msgs []llm.Message, keep int) []llm.Message {
 		result = append(result, tail...)
 		return result
 	}
-	return append([]llm.Message(nil), msgs[cut:]...)
+	
+	// Normal case: we found a good cut point
+	// Add summary explaining what was lost
+	result := make([]llm.Message, 0, len(msgs)-cut+1)
+	summary := fmt.Sprintf("(Context compacted: %d messages from earlier conversation removed. Key context from earlier may be lost - refer to system prompt for project context.)", cut)
+	result = append(result, llm.TextMessage(llm.RoleUser, summary))
+	result = append(result, msgs[cut:]...)
+	return result
 }
 
 // hasToolCalls reports whether an assistant message contains tool_use blocks.
