@@ -3,7 +3,6 @@ package tools
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -79,13 +78,11 @@ func TestFSWriteDeclined(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	// With auto-approve logic, small files are auto-approved
-	// So we need to check that the file was written
-	if out != fmt.Sprintf("wrote %d bytes to %s", len("nope"), path) {
-		t.Errorf("out = %q", out)
+	if out != "user declined the write" {
+		t.Errorf("out = %q, want %q", out, "user declined the write")
 	}
-	if _, err := os.Stat(path); err != nil {
-		t.Error("file should exist after auto-approve")
+	if _, err := os.Stat(path); err == nil {
+		t.Error("file should NOT exist after user declined")
 	}
 }
 
@@ -94,5 +91,40 @@ func TestFSWriteInvalidMode(t *testing.T) {
 	_, err := w.Run(context.Background(), json.RawMessage(`{"path":"/tmp/x","mode":"bad"}`))
 	if err == nil {
 		t.Fatal("expected error for bad mode")
+	}
+}
+
+func TestFSWriteCreateFileMode(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "mode.txt")
+	w := NewFSWrite(nil, nil)
+	if _, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+path+`","mode":"create","content":"hello"}`)); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o644 {
+		t.Errorf("file mode = %o, want 0644", got)
+	}
+}
+
+func TestFSWritePatchPreservesFileMode(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "exec.sh")
+	if err := os.WriteFile(path, []byte("echo hello"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	w := NewFSWrite(nil, nil)
+	if _, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+path+`","mode":"patch","old_str":"hello","new_str":"world"}`)); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o755 {
+		t.Errorf("file mode = %o, want 0755 (original should be preserved)", got)
 	}
 }

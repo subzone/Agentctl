@@ -231,7 +231,7 @@ func isSafeTool(name string, input json.RawMessage) bool {
 	if name == "fs_read" || name == "fs_list" || name == "test_run" {
 		return true
 	}
-	
+
 	// Git read-only operations
 	if name == "git" {
 		var args struct {
@@ -247,25 +247,12 @@ func isSafeTool(name string, input json.RawMessage) bool {
 			}
 		}
 	}
-	
-	// Shell commands that are likely safe
-	if name == "shell" {
-		var args struct {
-			Command string `json:"command"`
-		}
-		if err := json.Unmarshal(input, &args); err == nil {
-			// Check for safe commands
-			safePrefixes := []string{"ls", "cat", "head", "tail", "find", "grep", "pwd", "echo", "which", "man", "help"}
-			for _, prefix := range safePrefixes {
-				if strings.HasPrefix(args.Command, prefix) && !strings.Contains(args.Command, "rm") &&
-				   !strings.Contains(args.Command, "delete") && !strings.Contains(args.Command, "mv") &&
-				   !strings.Contains(args.Command, "cp") && !strings.Contains(args.Command, "chmod") {
-					return true
-				}
-			}
-		}
-	}
-	
+
+	// Shell commands are never auto-approved: even simple-looking commands
+	// can exfiltrate data or modify the filesystem via redirections (>, >>),
+	// subshells ($(), backticks), backgrounding (&), or whitespace-hidden
+	// operators. All shell invocations require explicit user confirmation.
+
 	return false
 }
 

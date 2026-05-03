@@ -454,9 +454,9 @@ func (m *tuiModel) appendHistory(s string) {
 	} else {
 		// Partial line, update viewport only if we have enough content
 		// or if user is at bottom (for streaming)
-		if atBottom := m.viewport.AtBottom(); atBottom || len(m.buffer) > 100 {
+		atBottom := m.viewport.AtBottom()
+		if atBottom || len(m.buffer) > 100 {
 			scrollY := m.viewport.YOffset
-			atBottom := m.viewport.AtBottom()
 			
 			tempHistory := m.history.String() + m.buffer
 			if len(tempHistory) > tuiHistoryCap {
