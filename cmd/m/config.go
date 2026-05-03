@@ -129,7 +129,7 @@ func setDefaultAgent(w *wiz, cfg *userconfig.Config) (*userconfig.Config, error)
 func scanModels(w *wiz, cfg *userconfig.Config) {
 	fmt.Fprintf(w.out, "\nScanning %s for available models...\n", cfg.Provider)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	models, err := discoverModels(ctx, cfg)

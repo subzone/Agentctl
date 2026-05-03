@@ -36,6 +36,8 @@
     <div class="section-header"><div class="section-label"><i class="fa-solid fa-code"></i> Coding</div><h2>Development agents</h2></div>
     <div class="agents-grid">
       <div class="agent-card"><div class="agent-name">coder.md</div><div class="agent-desc">Full coding assistant with planner sub-agent and GitHub MCP. Reads code, makes changes, runs tests.</div><div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">git</span><span class="tag">MCP</span><span class="tag">delegate</span></div></div>
+      <div class="agent-card"><div class="agent-name">go-dev.md</div><div class="agent-desc">Go developer — idiomatic Go, concurrency patterns, testing, performance optimization.</div><div class="agent-tags"><span class="tag tag-accent">Go</span><span class="tag">gofmt</span><span class="tag">staticcheck</span></div></div>
+      <div class="agent-card"><div class="agent-name">python-dev.md</div><div class="agent-desc">Python developer — Django, FastAPI, Flask, async programming, packaging with pyproject.toml.</div><div class="agent-tags"><span class="tag tag-accent">Python</span><span class="tag">ruff</span><span class="tag">pytest</span></div></div>
       <div class="agent-card"><div class="agent-name">qwen-coder.md</div><div class="agent-desc">Local coding assistant on Ollama. No API key, no cost. Good for offline work.</div><div class="agent-tags"><span class="tag tag-accent">Ollama</span><span class="tag">free</span><span class="tag">local</span></div></div>
       <div class="agent-card"><div class="agent-name">reviewer.md</div><div class="agent-desc">Code review — read-only, never edits. Finds bugs, security issues, style problems.</div><div class="agent-tags"><span class="tag tag-accent">read-only</span><span class="tag">fs_read</span><span class="tag">fs_list</span></div></div>
       <div class="agent-card"><div class="agent-name">writer.md</div><div class="agent-desc">Documentation and prose. READMEs, guides, comments. Reads existing docs for context.</div><div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">fs_read</span><span class="tag">fs_write</span></div></div>
@@ -51,9 +53,21 @@
     <div class="section-header"><div class="section-label"><i class="fa-solid fa-server"></i> DevOps</div><h2>Infrastructure agents</h2></div>
     <div class="agents-grid">
       <div class="agent-card"><div class="agent-name">devops.md</div><div class="agent-desc">General DevOps — Dockerfiles, CI/CD, shell scripts, infra config. Explores before editing.</div><div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">fs_write</span></div></div>
+      <div class="agent-card"><div class="agent-name">ansible.md</div><div class="agent-desc">Ansible automation — playbooks, roles, inventory, best practices. FQCNs, ansible-lint, vault.</div><div class="agent-tags"><span class="tag tag-accent">Ansible</span><span class="tag">ansible-lint</span><span class="tag">vault</span></div></div>
       <div class="agent-card"><div class="agent-name">k8s-debug.md</div><div class="agent-desc">Kubernetes troubleshooter. Systematic triage: events → describe → logs → root cause → fix.</div><div class="agent-tags"><span class="tag tag-accent">kubectl</span><span class="tag">shell</span><span class="tag">git</span></div></div>
       <div class="agent-card"><div class="agent-name">terraform-plan.md</div><div class="agent-desc">Terraform plan review. Catches security issues, unexpected destroys, missing tags.</div><div class="agent-tags"><span class="tag tag-accent">terraform</span><span class="tag">shell</span><span class="tag">fs_write</span></div></div>
       <div class="agent-card"><div class="agent-name">helm-deploy.md</div><div class="agent-desc">Helm chart management. Lints, renders templates, reviews values for production readiness.</div><div class="agent-tags"><span class="tag tag-accent">helm</span><span class="tag">shell</span><span class="tag">fs_write</span></div></div>
+      <div class="agent-card"><div class="agent-name">security.md</div><div class="agent-desc">Security engineer — code review, secrets detection, container hardening, CVE analysis.</div><div class="agent-tags"><span class="tag tag-accent">security</span><span class="tag">trivy</span><span class="tag">gitleaks</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Database -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label"><i class="fa-solid fa-database"></i> Database</div><h2>Database agents</h2></div>
+    <div class="agents-grid">
+      <div class="agent-card"><div class="agent-name">dba.md</div><div class="agent-desc">Database administrator — PostgreSQL, MySQL, migrations, performance tuning, backup strategies.</div><div class="agent-tags"><span class="tag tag-accent">PostgreSQL</span><span class="tag">MySQL</span><span class="tag">migrations</span></div></div>
     </div>
   </div>
 </section>
@@ -115,7 +129,7 @@
 ╚═╝     ╚═╝</div><p>MD-driven agent CLI for code, infrastructure, and automation.</p></div>
     <div class="footer-col"><h4>Product</h4><a href="https://github.com/subzone/Agentctl/releases/latest">Download</a><a href="install.html">Installation</a><a href="changelog.html">Changelog</a></div>
     <div class="footer-col"><h4>Resources</h4><a href="agents.html">Example Agents</a><a href="mcp.html">MCP Servers</a><a href="architecture.html">Architecture</a></div>
-    <div class="footer-col"><h4>Community</h4><a href="https://github.com/subzone/Agentctl">GitHub</a><a href="https://github.com/subzone/Agentctl/issues">Issues</a><a href="support.html">Support</a></div>
+    <div class="footer-col"><h4>Community</h4><a href="https://github.com/subzone/Agentctl">GitHub</a><a href="https://github.com/subzone/Agentctl/issues">Issues</a><a href="https://github.com/subzone/Agentctl/blob/main/CONTRIBUTING.md">Contributing</a></div>
   </div>
   <div class="footer-bottom"><span>© 2025 AgentCTL</span><span>Built with <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/Agentctl"><i class="fa-brands fa-github"></i> subzone/Agentctl</a></span></div>
 </div></footer>

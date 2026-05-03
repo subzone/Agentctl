@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://subzone.github.io/Agentctl/sitemap.xml

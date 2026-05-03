@@ -271,7 +271,26 @@ func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, statu
 		fmt.Fprintln(status, "or tell the current agent: 'follow the spec workflow for this task'")
 		return true, false
 	case "/help":
-		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /undo /model <provider/model> /models /theme [name] /config /help")
+		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /undo /model <provider/model> /models /theme [name] /themes /config /help")
+		return true, false
+	}
+	if line == "/themes" || strings.HasPrefix(line, "/themes ") {
+		themeDescriptions := []string{
+			"  default    - clean blue accents",
+			"  minimal    - no colors",
+			"  matrix     - green on black",
+			"  nord       - arctic bluish-gray",
+			"  dracula    - dark, high contrast",
+			"  gruvbox    - warm retro",
+			"  tokyonight - clean dark",
+			"  catppuccin - soothing pastel",
+			"  solarized  - precision terminal",
+		}
+		fmt.Fprintln(status, "available themes:")
+		for _, d := range themeDescriptions {
+			fmt.Fprintln(status, d)
+		}
+		fmt.Fprintln(status, "use /theme <name> to switch")
 		return true, false
 	}
 	if line == "/models" || strings.HasPrefix(line, "/models ") {
@@ -315,6 +334,13 @@ func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, statu
 	return false, false
 }
 
+// cachedModels stores the last /models listing so /models N doesn't
+// need to re-discover (expensive for token plan probing).
+var cachedModels struct {
+	provider string
+	models   []string
+}
+
 // handleModelsCommand implements /models (list) and /models N (pick).
 func handleModelsCommand(line string, sess *engine.Session, status io.Writer) {
 	cfg, err := userconfig.Load()
@@ -325,25 +351,22 @@ func handleModelsCommand(line string, sess *engine.Session, status io.Writer) {
 
 	arg := strings.TrimSpace(strings.TrimPrefix(line, "/models"))
 
-	// /models N — pick from last listing
+	// /models N — pick from cached listing
 	if arg != "" {
 		n, err := strconv.Atoi(arg)
 		if err != nil {
 			fmt.Fprintf(status, "usage: /models (list) or /models <number> (pick)\n")
 			return
 		}
-		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
-		defer cancel()
-		models, err := discoverModels(ctx, cfg)
-		if err != nil {
-			fmt.Fprintf(status, "error: %v\n", err)
+		if len(cachedModels.models) == 0 || cachedModels.provider != string(cfg.Provider) {
+			fmt.Fprintln(status, "run /models first to see available models")
 			return
 		}
-		if n < 1 || n > len(models) {
-			fmt.Fprintf(status, "pick a number between 1 and %d\n", len(models))
+		if n < 1 || n > len(cachedModels.models) {
+			fmt.Fprintf(status, "pick a number between 1 and %d\n", len(cachedModels.models))
 			return
 		}
-		picked := models[n-1]
+		picked := cachedModels.models[n-1]
 		full := string(cfg.Provider) + "/" + picked
 		p, model, err := llm.Resolve(full)
 		if err != nil {
@@ -368,6 +391,9 @@ func handleModelsCommand(line string, sess *engine.Session, status io.Writer) {
 		fmt.Fprintln(status, "no models found")
 		return
 	}
+	// Cache for /models N
+	cachedModels.provider = string(cfg.Provider)
+	cachedModels.models = models
 	for i, m := range models {
 		marker := "  "
 		if m == cfg.Model {

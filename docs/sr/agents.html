@@ -36,6 +36,8 @@
     <div class="section-header"><div class="section-label"><i class="fa-solid fa-code"></i> Kodiranje</div><h2>Razvojni agenti</h2></div>
     <div class="agents-grid">
       <div class="agent-card"><div class="agent-name">coder.md</div><div class="agent-desc">Pun coding asistent sa planer sub-agentom i GitHub MCP. Čita kod, menja, testira. Kao da imaš juniora koji ne pita gluposti.</div><div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">git</span><span class="tag">MCP</span><span class="tag">delegate</span></div></div>
+      <div class="agent-card"><div class="agent-name">go-dev.md</div><div class="agent-desc">Go developer — idiomatic Go, concurrency patterni, testiranje, optimizacija performansi. Bez „radi kod mene“.</div><div class="agent-tags"><span class="tag tag-accent">Go</span><span class="tag">gofmt</span><span class="tag">staticcheck</span></div></div>
+      <div class="agent-card"><div class="agent-name">python-dev.md</div><div class="agent-desc">Python developer — Django, FastAPI, Flask, async programiranje, packaging sa pyproject.toml.</div><div class="agent-tags"><span class="tag tag-accent">Python</span><span class="tag">ruff</span><span class="tag">pytest</span></div></div>
       <div class="agent-card"><div class="agent-name">qwen-coder.md</div><div class="agent-desc">Lokalni coding asistent na Ollami. Bez API ključa, bez para. Idealno za kad si u vozu bez interneta.</div><div class="agent-tags"><span class="tag tag-accent">Ollama</span><span class="tag">besplatno</span><span class="tag">lokalno</span></div></div>
       <div class="agent-card"><div class="agent-name">reviewer.md</div><div class="agent-desc">Code review — read-only, ništa ne dira. Hvata bagove, sigurnosne probleme, stilske gluposti. Ne pravi izgovore.</div><div class="agent-tags"><span class="tag tag-accent">read-only</span><span class="tag">fs_read</span><span class="tag">fs_list</span></div></div>
       <div class="agent-card"><div class="agent-name">writer.md</div><div class="agent-desc">Dokumentacija i tekst. README, vodiči, komentari. Čita postojeće dokumente da ne piše opet istu priču.</div><div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">fs_read</span><span class="tag">fs_write</span></div></div>
@@ -51,9 +53,21 @@
     <div class="section-header"><div class="section-label"><i class="fa-solid fa-server"></i> DevOps</div><h2>Infrastrukturni agenti</h2></div>
     <div class="agents-grid">
       <div class="agent-card"><div class="agent-name">devops.md</div><div class="agent-desc">Generalni DevOps — Dockerfajlovi, CI/CD, shell skripte, infra konfig. Prvo istražuje, pa menja. Za razliku od nekih.</div><div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">fs_write</span></div></div>
+      <div class="agent-card"><div class="agent-name">ansible.md</div><div class="agent-desc">Ansible automatizacija — playbooki, roles, inventory, best practices. FQCNs, ansible-lint, vault. Bez „radi kod mene“.</div><div class="agent-tags"><span class="tag tag-accent">Ansible</span><span class="tag">ansible-lint</span><span class="tag">vault</span></div></div>
       <div class="agent-card"><div class="agent-name">k8s-debug.md</div><div class="agent-desc">Kubernetes spasilac. Sistematski: events → describe → logs → korenski uzrok → fix. Bez restartovanja pod-a kao panika.</div><div class="agent-tags"><span class="tag tag-accent">kubectl</span><span class="tag">shell</span><span class="tag">git</span></div></div>
       <div class="agent-card"><div class="agent-name">terraform-plan.md</div><div class="agent-desc">Pregled Terraform plana. Hvata sigurnosne probleme, neočekivane destroyove, fale tagove. Pre nego što obrišeš VPC.</div><div class="agent-tags"><span class="tag tag-accent">terraform</span><span class="tag">shell</span><span class="tag">fs_write</span></div></div>
       <div class="agent-card"><div class="agent-name">helm-deploy.md</div><div class="agent-desc">Helm chart upravljanje. Lintuje, renderuje template-e, pregleda values pre prod-a. Bez „radi kod mene“ teorije.</div><div class="agent-tags"><span class="tag tag-accent">helm</span><span class="tag">shell</span><span class="tag">fs_write</span></div></div>
+      <div class="agent-card"><div class="agent-name">security.md</div><div class="agent-desc">Security inženjer — code review, detekcija secrets, hardening kontejnera, CVE analiza. Hvata šta drugi propuste.</div><div class="agent-tags"><span class="tag tag-accent">security</span><span class="tag">trivy</span><span class="tag">gitleaks</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Database -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label"><i class="fa-solid fa-database"></i> Baza</div><h2>Database agenti</h2></div>
+    <div class="agents-grid">
+      <div class="agent-card"><div class="agent-name">dba.md</div><div class="agent-desc">Database administrator — PostgreSQL, MySQL, migracije, tuning performansi, backup strategije. Ne dropuje bez pitanja.</div><div class="agent-tags"><span class="tag tag-accent">PostgreSQL</span><span class="tag">MySQL</span><span class="tag">migracije</span></div></div>
     </div>
   </div>
 </section>

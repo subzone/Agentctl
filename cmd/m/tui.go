@@ -17,7 +17,6 @@ import (
 	"github.com/subzone/Agentctl/internal/engine"
 	"github.com/subzone/Agentctl/internal/llm"
 	"github.com/subzone/Agentctl/internal/tools"
-	"github.com/subzone/Agentctl/internal/userconfig"
 )
 
 // streamMsg unifies model-text chunks and the final completion event.
@@ -232,7 +231,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendHistory("(history cleared)\n")
 				return m, nil
 			case "/help":
-				m.appendHistory("commands: /exit /quit /reset /compact /undo /model <provider/model> /models /theme [name] /config /help\n")
+				m.appendHistory("commands: /exit /quit /reset /compact /undo /model <provider/model> /models /theme [name] /themes /config /help\n")
 				return m, nil
 			case "/config":
 				m.appendHistory("run `m config` from the shell to manage providers and models\n")
@@ -244,10 +243,11 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				result := buf.String()
 				m.appendHistory(result)
 				// Update provider/model display if switched
-				if strings.Contains(result, "switched to ") {
-					if cfg, err := userconfig.Load(); err == nil {
-						m.provider = string(cfg.Provider)
-						m.model = cfg.Model
+				if idx := strings.Index(result, "switched to "); idx >= 0 {
+					full := strings.TrimSpace(result[idx+len("switched to "):])
+					if p, mod, ok := strings.Cut(full, "/"); ok {
+						m.provider = p
+						m.model = mod
 					}
 				}
 				return m, nil
@@ -278,6 +278,22 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					m.appendHistory(msg + "\n")
 				}
+				return m, nil
+			}
+			if line == "/themes" || strings.HasPrefix(line, "/themes ") {
+				themeDescriptions := []string{
+					"  default  - clean blue accents, no diff backgrounds (best for light terminals)",
+					"  minimal  - no colors at all, pure terminal defaults",
+					"  matrix   - green on black, hacker style",
+					"  nord     - arctic bluish-gray, very readable",
+					"  dracula  - dark with high contrast, popular",
+					"  gruvbox  - warm retro colors, cozy feeling",
+					"  tokyonight - clean dark, Japanese aesthetic",
+					"  catppuccin - soothing pastel colors",
+					"  solarized - precision terminal colors, classic",
+				}
+				current := "current: " + m.theme.Name
+				m.appendHistory("available themes:\n" + strings.Join(themeDescriptions, "\n") + "\n" + current + "\n")
 				return m, nil
 			}
 			if strings.HasPrefix(line, "/theme") {
@@ -732,9 +748,15 @@ var modelPricing = map[string]pricing{
 	"qwen3.6-plus":            {0.80, 2.0},
 	"qwen3.6-flash":           {0.15, 0.60},
 	"qwen3-coder-plus":        {0.80, 2.0},
+	"qwen3-coder-flash":       {0.15, 0.60},
+	"qwen3-max":               {2.0, 6.0},
+	"qwen3.5-plus":            {0.80, 2.0},
+	"qwen3.5-flash":           {0.15, 0.60},
 	"glm-5":                   {0.50, 0.50},
 	"glm-4-plus":              {0.35, 0.35},
 	"glm-4-flash":             {0.01, 0.01},
+	"MiniMax-M2.5":            {1.0, 4.0},
+	"MiniMax-Text-01":         {0.50, 2.0},
 }
 
 var modelContextWindow = map[string]int{
@@ -764,9 +786,15 @@ var modelContextWindow = map[string]int{
 	"qwen3.6-plus":            131_072,
 	"qwen3.6-flash":           131_072,
 	"qwen3-coder-plus":        131_072,
+	"qwen3-coder-flash":       131_072,
+	"qwen3-max":               32_768,
+	"qwen3.5-plus":            131_072,
+	"qwen3.5-flash":           131_072,
 	"glm-5":                   128_000,
 	"glm-4-plus":              128_000,
 	"glm-4-flash":             128_000,
+	"MiniMax-M2.5":            1_000_000,
+	"MiniMax-Text-01":         1_000_000,
 }
 
 func contextPercent(lastInputTokens int, model string) int {

@@ -276,8 +276,8 @@ worker subcommand with the engine already battle-tested.
 - **YAML**: `gopkg.in/yaml.v3`.
 - **Logging**: stdlib `log/slog` (JSON handler).
 - **MCP SDK**: `mark3labs/mcp-go` (revisit at M5; abstract behind `internal/mcp`).
-- **Module path**: `github.com/subzone/m` (rename later if needed).
-- **Binary name**: `agent`.
+- **Module path**: `github.com/subzone/Agentctl`.
+- **Binary name**: `m` (product name is AgentCTL).
 - **Config root**: `~/.agent/` (user) + `./.agent/` (project, overrides) +
   `/etc/agent/` (container/k8s).
 

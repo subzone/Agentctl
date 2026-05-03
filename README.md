@@ -7,6 +7,8 @@ against your choice of LLM. Aimed at developers and DevOps people who live in
 the terminal and want to script agentic work without IDE lock-in or SDK
 sprawl.
 
+**Current version:** v0.0.17 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
+
 **Status:** alpha. ~1 month of evenings of work. Works for the author's daily
 use, but expect breaking changes until v0.1.0. Tagged releases (`v0.0.1` →
 `v0.0.17`) ship as macOS `.pkg` and Linux `.deb`.
@@ -24,6 +26,41 @@ $ m
 ```
 
 Full docs site (EN + SR): **<https://subzone.github.io/Agentctl/>**
+
+---
+
+## Quick Start (5 minutes)
+
+```bash
+# 1. Install (macOS)
+curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.17_macos.pkg -o m.pkg
+sudo installer -pkg m.pkg -target /
+
+# 2. Run the setup wizard
+m
+# Pick Ollama (free, local) or paste an API key for Anthropic/OpenAI/Gemini/Alibaba
+
+# 3. Your first chat
+» help me fix the failing test in internal/engine/engine_test.go
+→ fs_read   internal/engine/engine_test.go
+→ shell     go test ./internal/engine/...
+→ fs_write  internal/engine/engine_test.go (patch: add nil check)
+  Overwrite? [y/N]: y
+→ shell     go test ./internal/engine/...
+  PASS
+→ git       commit -m "fix: nil check in engine test"
+
+# 4. Slash commands
+» /help          # show available commands
+» /reset         # clear history
+» /undo          # revert last fs_write
+» /model ollama/qwen3-coder  # switch model mid-session
+» /exit          # leave
+
+# 5. Run a specific agent
+m run examples/agents/devops.md "review the Dockerfile"
+m chat examples/agents/coder.md
+```
 
 ---
 
