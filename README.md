@@ -7,11 +7,11 @@ against your choice of LLM. Aimed at developers and DevOps people who live in
 the terminal and want to script agentic work without IDE lock-in or SDK
 sprawl.
 
-**Current version:** v0.0.17 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
+**Current version:** v0.0.18 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
 
 **Status:** alpha. ~1 month of evenings of work. Works for the author's daily
 use, but expect breaking changes until v0.1.0. Tagged releases (`v0.0.1` →
-`v0.0.17`) ship as macOS `.pkg` and Linux `.deb`.
+`v0.0.18`) ship as macOS `.pkg` and Linux `.deb`.
 
 ```text
 $ m
@@ -33,7 +33,7 @@ Full docs site (EN + SR): **<https://subzone.github.io/Agentctl/>**
 
 ```bash
 # 1. Install (macOS)
-curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.17_macos.pkg -o m.pkg
+curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.18_macos.pkg -o m.pkg
 sudo installer -pkg m.pkg -target /
 
 # 2. Run the setup wizard
@@ -149,7 +149,7 @@ m chat examples/agents/devops.md
 m run examples/agents/devops.md "audit the Dockerfile"
 ```
 
-The repo ships **27 example agents** in [`examples/agents/`](examples/agents/),
+The repo ships **32 example agents** in [`examples/agents/`](examples/agents/),
 including `coder`, `reviewer`, `planner`, `k8s-debug`, `terraform-plan`,
 `helm-deploy`, `ticket-worker`, plus persona variants (`steva-djubre.md`,
 `steve-trash.md`).
@@ -267,12 +267,15 @@ structured output mechanics), see the
 
 - Single-binary install on macOS / Linux (amd64 + arm64)
 - 6 LLM providers, switchable mid-session
-- 7 built-in tools with user confirmation on writes + undo
+- 8 built-in tools with user confirmation on writes + undo
 - MCP stdio transport with auto-discovery and namespacing
 - Hub-and-spoke sub-agent delegation
 - Provider-native structured output enforcement (`response_schema`)
 - Full-screen TUI with token/cost/context indicators, falls back to line REPL in pipes
-- Theming
+- 9 built-in themes (matrix, nord, dracula, gruvbox, tokyonight, catppuccin, solarized, default, minimal)
+- Session persistence with AES-256-GCM encryption and autosave
+- Token-based context compaction (per-model context window awareness)
+- Agent discovery (`m list`)
 - Tagged release pipeline producing `.pkg` and `.deb`
 
 ## Known gaps
@@ -280,13 +283,10 @@ structured output mechanics), see the
 These are real, not roadmap-ware. They affect what AgentCTL can be used for today:
 
 - **No codebase RAG / context retrieval.** Agents see what they explicitly
-  read with `fs_read` / `fs_list`. There's no embedding store, no
-  similarity search, no smart context window packing. See
-  [Codebase context (RAG)](#codebase-context-rag) below for options.
+  read with `fs_read` / `fs_list` / `web_fetch`. There's no embedding store, no
+  similarity search. See [Codebase context (RAG)](#codebase-context-rag) below.
 - **MCP HTTP/SSE transport not implemented.** Stdio only. Many real-world
   MCP servers use HTTP — they don't work yet.
-- **No agent discovery command** (`m list`). You have to point at a path
-  every time.
 - **No `/trust` for autonomous sessions.** Every `fs_write` and `shell`
   prompts. Fine for interactive use, blocks long-running headless runs.
 - **No team features.** No shared agent registry, no audit log, no RBAC,

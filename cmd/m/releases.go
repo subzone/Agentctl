@@ -25,6 +25,23 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.18",
+		Date:    "2026-07-04",
+		Highlights: []string{
+			"Session persistence: autosave after every step, /save /sessions /resume. AES-256-GCM encrypted.",
+			"web_fetch tool: fetch URLs and extract readable text. Stdlib-only, no API key needed.",
+			"/models command: numbered model picker. Probes token plan endpoints when /v1/models unavailable.",
+			"9 built-in themes: matrix, default, minimal, nord, dracula, gruvbox, tokyonight, catppuccin, solarized.",
+			"m list: agent discovery command. Scans directories for .md files with agent frontmatter.",
+			"Token-based context compaction: per-model context windows, 80% budget, meaningful summaries.",
+			"Reasoning model support: MiniMax-M2.5, DeepSeek-R1 thinking indicator.",
+			"Alibaba token plan support: custom base URL, GLM-5, MiniMax-M2.5 via DashScope.",
+			"TUI guardrails: auto-approve read-only tools, y/n prompt for shell/fs_write/git.",
+			"TUI scrolling fix: eliminated jitter during streaming.",
+			"DashScope model filtering: 154 → 45 models (skip non-chat, deduplicate dated snapshots).",
+		},
+	},
+	{
 		Version: "0.0.17",
 		Date:    "2026-05-03",
 		Highlights: []string{

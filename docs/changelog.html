@@ -36,6 +36,24 @@
     <div class="timeline">
 
       <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-star"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.18</div><div class="timeline-date">July 2026</div>
+        <ul>
+          <li><strong>Session persistence</strong> — autosave after every step, <code>/save</code> <code>/sessions</code> <code>/resume</code>. AES-256-GCM encrypted, key in OS keychain</li>
+          <li><strong>web_fetch tool</strong> — fetch URLs and extract readable text. Stdlib-only, no API key</li>
+          <li><strong>/models command</strong> — numbered model picker with live API scanning. Token plan probing for DashScope</li>
+          <li><strong>9 built-in themes</strong> — nord, dracula, gruvbox, tokyonight, catppuccin, solarized + original 3</li>
+          <li><strong>m list</strong> — agent discovery command, scans directories for .md agents</li>
+          <li><strong>Token-based context compaction</strong> — per-model context windows (80% budget), meaningful summaries of dropped messages</li>
+          <li><strong>Reasoning model support</strong> — MiniMax-M2.5, DeepSeek-R1 thinking indicator</li>
+          <li><strong>Alibaba token plan</strong> — custom base URL, GLM-5, MiniMax-M2.5 via DashScope</li>
+          <li><strong>TUI guardrails</strong> — auto-approve read-only tools, y/n for destructive (shell, fs_write, git)</li>
+          <li><strong>TUI scrolling fix</strong> — eliminated jitter during streaming</li>
+          <li><strong>DashScope filtering</strong> — 154 → 45 models (skip non-chat, deduplicate dated snapshots)</li>
+          <li><strong>Screenshot gallery</strong> on landing page</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
         <div class="timeline-version">v0.0.17</div><div class="timeline-date">May 2026</div>
         <ul>
           <li><strong>Product landing page</strong> — professional site at subzone.github.io/Agentctl, pure HTML/CSS, Font Awesome icons, no Jekyll</li>
