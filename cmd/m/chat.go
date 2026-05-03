@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -116,6 +117,11 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 			return err
 		}
 		defer rt.close()
+		confirmCh := make(chan bool, 1)
+		tuiToolConfirm := func(_ context.Context, name string, input json.RawMessage) (bool, error) {
+			streamCh <- streamMsg{chunk: fmt.Sprintf("→ Allow %s %s? [y/n] ", name, summarizeToolInput(input))}
+			return <-confirmCh, nil
+		}
 		sess := engine.NewSession(engine.Config{
 			Provider:    provider,
 			Model:       model,
@@ -123,10 +129,15 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 			Tools:       rt.registry,
 			Temperature: agent.Temperature,
 			MaxTokens:   maxTokens,
+			ToolConfirm: tuiToolConfirm,
+			ContinueConfirm: func(_ context.Context, turns int) (bool, error) {
+				streamCh <- streamMsg{chunk: fmt.Sprintf("→ Agent worked for %d turns. Continue? [y/n] ", turns)}
+				return <-confirmCh, nil
+			},
 			Out:         &streamWriter{ch: streamCh},
-			Status:      &streamWriter{ch: streamCh}, // surface tool activity in TUI
+			Status:      &streamWriter{ch: streamCh},
 		})
-		return runTUI(ctx, sess, streamCh, agent.Name, providerName, model, undoStack)
+		return runTUI(ctx, sess, streamCh, agent.Name, providerName, model, undoStack, confirmCh)
 	}
 
 	// REPL mode: stdin-based confirmation for fs_write.
@@ -136,6 +147,7 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 	}
 	defer rt.close()
 
+	replToolConfirm := stdinToolConfirm(stderr, cmd.InOrStdin())
 	sess := engine.NewSession(engine.Config{
 		Provider:    provider,
 		Model:       model,
@@ -143,6 +155,16 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 		Tools:       rt.registry,
 		Temperature: agent.Temperature,
 		MaxTokens:   maxTokens,
+		ToolConfirm: replToolConfirm,
+		ContinueConfirm: func(_ context.Context, turns int) (bool, error) {
+			fmt.Fprintf(stderr, "Agent worked for %d turns. Continue? [Y/n]: ", turns)
+			sc := bufio.NewScanner(cmd.InOrStdin())
+			if !sc.Scan() {
+				return false, nil
+			}
+			ans := strings.TrimSpace(strings.ToLower(sc.Text()))
+			return ans == "" || ans == "y" || ans == "yes", nil
+		},
 		Out:         out,
 		Status:      stderr,
 	})

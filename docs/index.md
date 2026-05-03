@@ -35,6 +35,7 @@ runs them against your choice of model backend.
 - [Architecture](architecture.html) — how it's all wired up
 - [Configuration](configuration.html) — config file, themes, env vars
 - [Providers](providers.html) — Ollama, Anthropic, OpenAI, Gemini, Alibaba, LiteLLM
+- [Model comparison & cost guide](models.html) — pricing, recommendations, Steva Đubre example
 - [Custom agents](agents.html) — writing agents, tools, hub-and-spoke
 - [Troubleshooting](troubleshooting.html) — common issues
 - [Changelog](changelog.html) — release history

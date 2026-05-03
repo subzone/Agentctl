@@ -36,10 +36,15 @@ func runConfigManager(in io.Reader, out, status io.Writer) error {
 	}
 
 	for {
-		fmt.Fprintf(out, "\nCurrent default: %s/%s\n\n", cfg.Provider, cfg.Model)
+		fmt.Fprintf(out, "\nCurrent default: %s/%s\n", cfg.Provider, cfg.Model)
+		if cfg.DefaultAgent != "" {
+			fmt.Fprintf(out, "Default agent:   %s\n", cfg.DefaultAgent)
+		}
+		fmt.Fprintln(out)
 		fmt.Fprintln(out, "Actions:")
 		fmt.Fprintln(out, "  s) Scan available models    — query your provider for models")
 		fmt.Fprintln(out, "  d) Set default model        — change provider/model for bare `m`")
+		fmt.Fprintln(out, "  g) Set default agent        — use a custom agent .md file for bare `m`")
 		fmt.Fprintln(out, "  a) Add provider             — set up a new provider + API key")
 		fmt.Fprintln(out, "  q) Done")
 		fmt.Fprintln(out)
@@ -53,6 +58,12 @@ func runConfigManager(in io.Reader, out, status io.Writer) error {
 			scanModels(w, cfg)
 		case "d":
 			if newCfg, err := setDefaultModel(w, cfg); err == nil {
+				cfg = newCfg
+			} else {
+				fmt.Fprintf(out, "error: %v\n", err)
+			}
+		case "g":
+			if newCfg, err := setDefaultAgent(w, cfg); err == nil {
 				cfg = newCfg
 			} else {
 				fmt.Fprintf(out, "error: %v\n", err)
@@ -86,6 +97,32 @@ func setDefaultModel(w *wiz, cfg *userconfig.Config) (*userconfig.Config, error)
 		return nil, err
 	}
 	fmt.Fprintf(w.out, "Default set to %s/%s\n", cfg.Provider, cfg.Model)
+	return cfg, nil
+}
+
+
+func setDefaultAgent(w *wiz, cfg *userconfig.Config) (*userconfig.Config, error) {
+	path, err := w.prompt("Path to agent .md file (or empty to clear): ")
+	if err != nil {
+		return nil, err
+	}
+	path = strings.TrimSpace(path)
+	if path == "" {
+		cfg.DefaultAgent = ""
+		if err := userconfig.Save(cfg); err != nil {
+			return nil, err
+		}
+		fmt.Fprintln(w.out, "Default agent cleared (will use built-in)")
+		return cfg, nil
+	}
+	if _, err := os.Stat(path); err != nil {
+		return nil, fmt.Errorf("file not found: %s", path)
+	}
+	cfg.DefaultAgent = path
+	if err := userconfig.Save(cfg); err != nil {
+		return nil, err
+	}
+	fmt.Fprintf(w.out, "Default agent set to %s\n", path)
 	return cfg, nil
 }
 
@@ -265,7 +302,7 @@ func discoverGemini(ctx context.Context) ([]string, error) {
 // Returns all model IDs without filtering.
 func discoverDashScope(ctx context.Context, key string) ([]string, error) {
 	req, _ := http.NewRequestWithContext(ctx, http.MethodGet,
-		"https://dashscope.aliyuncs.com/compatible-mode/v1/models", nil)
+		"https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models", nil)
 	req.Header.Set("Authorization", "Bearer "+key)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {

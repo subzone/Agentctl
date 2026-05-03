@@ -22,7 +22,7 @@ import (
 
 // defaultMaxTurns caps tool-use loops. A productive agent rarely needs more
 // than a handful; this exists to stop runaway loops eating tokens forever.
-const defaultMaxTurns = 12
+const defaultMaxTurns = 15
 
 // Config configures a Run or Session. The zero value is not usable:
 // Provider and Model must be set.
@@ -47,6 +47,15 @@ type Config struct {
 	// MaxTurns bounds the tool-use loop within a single Step. Zero uses
 	// defaultMaxTurns.
 	MaxTurns int
+
+	// ToolConfirm is called before executing any destructive tool.
+	// Return true to proceed, false to skip. Nil means auto-approve.
+	ToolConfirm func(ctx context.Context, toolName string, input json.RawMessage) (bool, error)
+
+	// ContinueConfirm is called when MaxTurns is reached. Return true
+	// to continue for another MaxTurns rounds, false to stop.
+	// Nil means stop immediately.
+	ContinueConfirm func(ctx context.Context, turns int) (bool, error)
 }
 
 // Run executes one task to completion in a fresh conversation. It is a
@@ -164,6 +173,11 @@ func (s *Session) Step(ctx context.Context, task string) error {
 	}
 
 	s.messages = append(s.messages, llm.TextMessage(llm.RoleUser, task))
+	// Auto-compact if message history is too large to prevent context overflow.
+	if len(s.messages) > 30 {
+		s.messages = safeCompact(s.messages, 10)
+		fmt.Fprintln(s.status, "[auto-compacted: context was too large]")
+	}
 	wroteAny := false
 
 	for turn := 0; turn < s.maxTurns; turn++ {
@@ -255,11 +269,14 @@ func (s *Session) Step(ctx context.Context, task string) error {
 				}
 				return nil
 			}
-			results, err := executeTools(ctx, s.cfg.Tools, s.status, assistant.Content)
+			results, err := executeTools(ctx, s.cfg.Tools, s.cfg.ToolConfirm, s.status, assistant.Content)
 			if err != nil {
 				return err
 			}
 			s.messages = append(s.messages, results)
+			if len(s.messages) > 30 {
+				s.messages = safeCompact(s.messages, 10)
+			}
 
 		case "max_tokens":
 			// Output was truncated — ask the model to continue seamlessly.
@@ -274,13 +291,86 @@ func (s *Session) Step(ctx context.Context, task string) error {
 		}
 	}
 
-	return fmt.Errorf("engine: hit MaxTurns=%d without natural stop", s.maxTurns)
+	if s.cfg.ContinueConfirm != nil {
+		ok, err := s.cfg.ContinueConfirm(ctx, s.maxTurns)
+		if err != nil {
+			return nil
+		}
+		if ok {
+			// Reset turn counter and continue.
+			return s.Step(ctx, "continue from where you left off")
+		}
+	}
+	fmt.Fprintf(s.out, "\n[reached %d tool turns, stopping]\n", s.maxTurns)
+	return nil
 }
+
+// safeCompact keeps the last n messages but ensures the cut point is at
+// a user text message, not in the middle of a tool_calls/tool_result pair.
+// This prevents "tool message must follow tool_calls" errors from providers.
+func safeCompact(msgs []llm.Message, keep int) []llm.Message {
+	if len(msgs) <= keep {
+		return msgs
+	}
+	target := len(msgs) - keep
+	if target < 1 {
+		target = 1
+	}
+	// Search forward from target for a user text message (safe cut point).
+	cut := -1
+	for i := target; i < len(msgs); i++ {
+		if msgs[i].Role == llm.RoleUser && allTextBlocks(msgs[i]) {
+			cut = i
+			break
+		}
+	}
+	if cut < 0 {
+		// Search backward.
+		for i := target - 1; i >= 0; i-- {
+			if msgs[i].Role == llm.RoleUser && allTextBlocks(msgs[i]) {
+				cut = i
+				break
+			}
+		}
+	}
+	if cut < 0 || cut >= len(msgs)-1 {
+		// Fallback: prepend synthetic user message + keep last few.
+		n := 4
+		if len(msgs) < n {
+			n = len(msgs)
+		}
+		result := make([]llm.Message, 0, n+1)
+		result = append(result, llm.TextMessage(llm.RoleUser, "(conversation compacted)"))
+		tail := msgs[len(msgs)-n:]
+		// Skip any leading tool result messages in the tail.
+		for len(tail) > 0 && tail[0].Role == llm.RoleUser && !allTextBlocks(tail[0]) {
+			tail = tail[1:]
+		}
+		// Also skip orphaned assistant tool_calls at the start.
+		for len(tail) > 0 && tail[0].Role == llm.RoleAssistant && hasToolCalls(tail[0]) {
+			tail = tail[1:]
+		}
+		result = append(result, tail...)
+		return result
+	}
+	return append([]llm.Message(nil), msgs[cut:]...)
+}
+
+// hasToolCalls reports whether an assistant message contains tool_use blocks.
+func hasToolCalls(m llm.Message) bool {
+	for _, b := range m.Content {
+		if b.Type == llm.BlockToolUse {
+			return true
+		}
+	}
+	return false
+}
+
 
 // executeTools runs each tool_use block in assistant. When multiple tools
 // are requested in the same turn, they run concurrently (each tool call
 // is independent). Results are collected in order.
-func executeTools(ctx context.Context, reg *tools.Registry, status io.Writer, assistant []llm.ContentBlock) (llm.Message, error) {
+func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), status io.Writer, assistant []llm.ContentBlock) (llm.Message, error) {
 	var calls []llm.ContentBlock
 	for _, b := range assistant {
 		if b.Type == llm.BlockToolUse {
@@ -295,7 +385,7 @@ func executeTools(ctx context.Context, reg *tools.Registry, status io.Writer, as
 	if len(calls) == 1 {
 		b := calls[0]
 		fmt.Fprintf(status, "→ %s %s\n", b.ToolName, summarizeInput(b.ToolInput))
-		result := runToolBlock(ctx, reg, status, b)
+		result := runToolBlock(ctx, reg, confirm, status, b)
 		return llm.Message{Role: llm.RoleUser, Content: []llm.ContentBlock{result}}, nil
 	}
 
@@ -308,7 +398,7 @@ func executeTools(ctx context.Context, reg *tools.Registry, status io.Writer, as
 	for i, b := range calls {
 		fmt.Fprintf(status, "→ %s %s\n", b.ToolName, summarizeInput(b.ToolInput))
 		go func(i int, b llm.ContentBlock) {
-			ch <- indexed{idx: i, result: runToolBlock(ctx, reg, status, b)}
+			ch <- indexed{idx: i, result: runToolBlock(ctx, reg, confirm, status, b)}
 		}(i, b)
 	}
 
@@ -320,7 +410,24 @@ func executeTools(ctx context.Context, reg *tools.Registry, status io.Writer, as
 	return llm.Message{Role: llm.RoleUser, Content: results}, nil
 }
 
-func runToolBlock(ctx context.Context, reg *tools.Registry, status io.Writer, b llm.ContentBlock) llm.ContentBlock {
+func runToolBlock(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), status io.Writer, b llm.ContentBlock) llm.ContentBlock {
+	// Read-only tools skip confirmation.
+	readOnly := map[string]bool{"fs_read": true, "fs_list": true}
+	if confirm != nil && !readOnly[b.ToolName] {
+		ok, err := confirm(ctx, b.ToolName, b.ToolInput)
+		if err != nil {
+			return llm.ContentBlock{
+				Type: llm.BlockToolResult, ToolUseID: b.ToolID,
+				Output: "user cancelled", IsError: true,
+			}
+		}
+		if !ok {
+			return llm.ContentBlock{
+				Type: llm.BlockToolResult, ToolUseID: b.ToolID,
+				Output: "user declined this action", IsError: false,
+			}
+		}
+	}
 	output, err := runOne(ctx, reg, b)
 	isErr := false
 	content := output

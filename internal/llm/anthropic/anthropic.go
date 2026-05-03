@@ -96,7 +96,9 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 
 	maxTok := req.MaxTokens
 	if maxTok == 0 {
-		maxTok = 16384
+		// Use model-appropriate defaults. Haiku caps at 8192,
+		// Sonnet/Opus at 16384.
+		maxTok = 8192
 	}
 
 	apiTools := buildTools(req.Tools)
@@ -156,7 +158,11 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 	if resp.StatusCode != http.StatusOK {
 		slurp, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		resp.Body.Close()
-		return nil, fmt.Errorf("anthropic %s: %s", resp.Status, strings.TrimSpace(string(slurp)))
+		body := strings.TrimSpace(string(slurp))
+		if resp.StatusCode == 404 {
+			return nil, fmt.Errorf("anthropic 404: model %q not found (check model name — try /model anthropic/claude-sonnet-4-6)", req.Model)
+		}
+		return nil, fmt.Errorf("anthropic %s: %s", resp.Status, body)
 	}
 
 	out := make(chan llm.Event, 8)

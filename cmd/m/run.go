@@ -3,6 +3,7 @@ package main
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -203,3 +204,76 @@ func stdinIsPipe(r io.Reader) bool {
 	return (info.Mode() & os.ModeCharDevice) == 0
 }
 
+
+// stdinToolConfirm returns a ToolConfirm func that prompts the user
+// before executing destructive tools in the REPL.
+func stdinToolConfirm(w io.Writer, r io.Reader) func(context.Context, string, json.RawMessage) (bool, error) {
+	sc := bufio.NewScanner(r)
+	return func(_ context.Context, name string, input json.RawMessage) (bool, error) {
+		// Auto-approve safe tools
+		if isSafeTool(name, input) {
+			fmt.Fprintf(w, "→ %s %s [auto-approved]\n", name, summarizeToolInput(input))
+			return true, nil
+		}
+		
+		fmt.Fprintf(w, "Allow %s %s? [y/N]: ", name, summarizeToolInput(input))
+		if !sc.Scan() {
+			return false, nil
+		}
+		ans := strings.TrimSpace(strings.ToLower(sc.Text()))
+		return ans == "y" || ans == "yes", nil
+	}
+}
+
+// isSafeTool returns true if a tool call is safe to auto-approve
+func isSafeTool(name string, input json.RawMessage) bool {
+	// Read-only tools are always safe
+	if name == "fs_read" || name == "fs_list" || name == "test_run" {
+		return true
+	}
+	
+	// Git read-only operations
+	if name == "git" {
+		var args struct {
+			Operation string `json:"operation"`
+			Args      string `json:"args"`
+		}
+		if err := json.Unmarshal(input, &args); err == nil {
+			safeOps := []string{"status", "diff", "log", "branch"}
+			for _, op := range safeOps {
+				if args.Operation == op {
+					return true
+				}
+			}
+		}
+	}
+	
+	// Shell commands that are likely safe
+	if name == "shell" {
+		var args struct {
+			Command string `json:"command"`
+		}
+		if err := json.Unmarshal(input, &args); err == nil {
+			// Check for safe commands
+			safePrefixes := []string{"ls", "cat", "head", "tail", "find", "grep", "pwd", "echo", "which", "man", "help"}
+			for _, prefix := range safePrefixes {
+				if strings.HasPrefix(args.Command, prefix) && !strings.Contains(args.Command, "rm") &&
+				   !strings.Contains(args.Command, "delete") && !strings.Contains(args.Command, "mv") &&
+				   !strings.Contains(args.Command, "cp") && !strings.Contains(args.Command, "chmod") {
+					return true
+				}
+			}
+		}
+	}
+	
+	return false
+}
+
+// summarizeToolInput returns a short preview of tool input for confirmation prompts.
+func summarizeToolInput(input json.RawMessage) string {
+	s := string(input)
+	if len(s) > 80 {
+		return s[:80] + "..."
+	}
+	return s
+}

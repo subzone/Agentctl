@@ -2,9 +2,11 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	"github.com/charmbracelet/bubbles/textinput"
@@ -60,7 +62,7 @@ func runStepCmd(ctx context.Context, sess *engine.Session, ch chan<- streamMsg, 
 // a single session is realistically going to produce; the truncation
 // halves the buffer when crossed so we don't pay a sliding-window cost
 // on every keystroke.
-const tuiHistoryCap = 64 * 1024
+const tuiHistoryCap = 256 * 1024
 
 type tuiModel struct {
 	sess     *engine.Session
@@ -77,17 +79,25 @@ type tuiModel struct {
 	lastIn   int
 	provider string
 	model    string
-	thinking bool
+	thinking    bool
+	thinkTick   int
 	theme    *Theme
 	styles   Styles
 	undo     *tools.UndoStack
+	stepCancel  context.CancelFunc
+	confirmCh   chan bool // channel for tool confirmation in TUI
+	confirming  bool     // true when waiting for y/n
 
 	width  int
 	height int
 	name   string
+	
+	// UI stability improvements
+	lastUpdateTime time.Time // timestamp of last viewport update to throttle
+	buffer         string    // buffer for partial lines before word wrap
 }
 
-func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, name, provider, model string, undo *tools.UndoStack) tuiModel {
+func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, name, provider, model string, undo *tools.UndoStack, confirmCh chan bool) tuiModel {
 	in := textinput.New()
 	in.Prompt = "» "
 	in.Placeholder = "type a message, /exit to quit"
@@ -118,7 +128,10 @@ func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, n
 		name:     name,
 		theme:    t,
 		styles:   s,
-		undo:     undo,
+		undo:      undo,
+		confirmCh: confirmCh,
+		lastUpdateTime: time.Now(),
+		buffer:   "",
 	}
 }
 
@@ -138,17 +151,71 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.layout()
+		// After resize, restore scroll position
+		scrollY := m.viewport.YOffset
+		atBottom := m.viewport.AtBottom()
+		
+		wrapped := wordWrap(m.history.String(), m.viewport.Width)
+		m.viewport.SetContent(wrapped)
+		
+		if atBottom {
+			m.viewport.GotoBottom()
+		} else {
+			m.viewport.SetYOffset(scrollY)
+		}
 		return m, nil
 
 	case tea.KeyMsg:
+		// Always allow viewport updates for navigation during streaming
+		// but block input updates
 		if msg.Type == tea.KeyCtrlC {
+			if m.thinking && m.stepCancel != nil {
+				m.stepCancel()
+				m.thinking = false
+				m.appendHistory("\n(cancelled)\n")
+				// Keep listening to drain the done message from the goroutine.
+				return m, listenStreamCmd(m.streamCh)
+			}
 			return m, tea.Quit
 		}
-		if m.thinking {
-			// Block all input while a turn is in flight, including
-			// printable characters — otherwise the user can queue text
-			// that gets misinterpreted when the next prompt is ready.
+		if msg.Type == tea.KeyEsc && m.thinking && m.stepCancel != nil {
+			m.stepCancel()
+			m.thinking = false
+			m.appendHistory("\n(cancelled)\n")
+			return m, listenStreamCmd(m.streamCh)
+		}
+		
+		// Handle tool confirmation y/n
+		if m.confirming {
+			switch msg.String() {
+			case "y", "Y":
+				m.confirming = false
+				m.confirmCh <- true
+				m.appendHistory("y\n")
+				return m, listenStreamCmd(m.streamCh)
+			case "n", "N":
+				m.confirming = false
+				m.confirmCh <- false
+				m.appendHistory("n (declined)\n")
+				return m, listenStreamCmd(m.streamCh)
+			}
 			return m, nil
+		}
+		// Allow viewport navigation keys even when thinking
+		// This allows user to scroll while agent is responding
+		if m.thinking {
+			// Navigation keys: allow viewport updates
+			switch msg.Type {
+			case tea.KeyUp, tea.KeyDown, tea.KeyHome, tea.KeyEnd:
+				var cmd tea.Cmd
+				m.viewport, cmd = m.viewport.Update(msg)
+				return m, cmd
+			default:
+				// Block all other input while a turn is in flight, including
+				// printable characters — otherwise the user can queue text
+				// that gets misinterpreted when the next prompt is ready.
+				return m, nil
+			}
 		}
 		if msg.Type == tea.KeyEnter {
 			line := strings.TrimSpace(m.input.Value())
@@ -229,29 +296,63 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.appendHistory(m.styles.User.Render("» "+line) + "\n")
 			m.thinking = true
+			m.thinkTick = 0
+			stepCtx, stepCancel := context.WithCancel(m.ctx)
+			m.stepCancel = stepCancel
 			return m, tea.Batch(
-				runStepCmd(m.ctx, m.sess, m.streamCh, line),
+				runStepCmd(stepCtx, m.sess, m.streamCh, line),
 				listenStreamCmd(m.streamCh),
 			)
 		}
 
 	case streamMsg:
 		if msg.done {
-			m.thinking = false
+			// Always update usage counters, even after cancel.
 			m.usage = msg.usage
 			m.lastIn = msg.lastIn
-			if msg.err != nil {
-				m.appendHistory(m.styles.Error.Render(fmt.Sprintf("error: %v", msg.err)) + "\n")
-			} else {
-				m.appendHistory("\n")
+			if m.thinking {
+				m.thinking = false
+				if msg.err != nil && !errors.Is(msg.err, context.Canceled) {
+					m.appendHistory(m.styles.Error.Render(fmt.Sprintf("error: %v", msg.err)) + "\n")
+				} else {
+					m.appendHistory("\n")
+				}
+				// Force flush any remaining buffer
+				if m.buffer != "" {
+					scrollY := m.viewport.YOffset
+					atBottom := m.viewport.AtBottom()
+					
+					m.history.WriteString(m.buffer)
+					wrapped := wordWrap(m.history.String(), m.viewport.Width)
+					m.viewport.SetContent(wrapped)
+					
+					if atBottom {
+						m.viewport.GotoBottom()
+					} else {
+						m.viewport.SetYOffset(scrollY)
+					}
+					m.buffer = ""
+				}
 			}
+			// If not thinking (already cancelled), just drain silently.
 			return m, nil
 		}
-		// Style tool activity indicators from the engine's Status writer.
+		// After cancel, ignore stale chunks.
+		if !m.thinking {
+			return m, listenStreamCmd(m.streamCh)
+		}
+		// Detect tool confirmation prompts.
 		chunk := msg.chunk
+		if (strings.HasPrefix(chunk, "→ Allow ") || strings.HasPrefix(chunk, "→ Agent worked for")) && strings.HasSuffix(strings.TrimSpace(chunk), "[y/n]") {
+			m.confirming = true
+			m.appendHistory(m.styles.Confirm.Render(strings.TrimRight(chunk, "\n")) + "\n")
+			return m, nil // Don't listen for more — wait for y/n keypress
+		}
 		if strings.HasPrefix(chunk, "→ ") || strings.HasPrefix(chunk, "← ") {
 			chunk = m.styles.Tool.Render(strings.TrimRight(chunk, "\n")) + "\n"
 		}
+		// Style diff lines from fs_write previews.
+		chunk = styleDiffLines(chunk, m.styles)
 		m.appendHistory(chunk)
 		return m, listenStreamCmd(m.streamCh)
 
@@ -265,12 +366,26 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case spinner.TickMsg:
 		var cmd tea.Cmd
 		m.spinner, cmd = m.spinner.Update(msg)
+		if m.thinking {
+			m.thinkTick++
+		}
 		return m, cmd
 	}
 
-	var cmd tea.Cmd
-	m.input, cmd = m.input.Update(msg)
-	return m, cmd
+		var cmd tea.Cmd
+	var cmds []tea.Cmd
+	
+	// Always allow viewport updates (for navigation)
+	m.viewport, cmd = m.viewport.Update(msg)
+	cmds = append(cmds, cmd)
+	
+	// Only update input if we're not thinking (agent is streaming)
+	// This prevents input from "pulling" during streaming
+	if !m.thinking {
+		m.input, cmd = m.input.Update(msg)
+		cmds = append(cmds, cmd)
+	}
+	return m, tea.Batch(cmds...)
 }
 
 // appendHistory mutates the receiver via pointer; the caller's value
@@ -279,14 +394,164 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // crossed; an approximate cut is fine because the user only sees the
 // tail.
 func (m *tuiModel) appendHistory(s string) {
-	m.history.WriteString(s)
-	if m.history.Len() > tuiHistoryCap {
-		full := m.history.String()
-		m.history.Reset()
-		m.history.WriteString(full[len(full)/2:])
+	// Buffer partial lines for better word wrapping
+	m.buffer += s
+	
+	// Throttle viewport updates during streaming - update max every 50ms
+	// This prevents UI "pulling" when agent streams fast
+	// But always update if buffer has newline (complete line)
+	if !strings.Contains(m.buffer, "\n") && time.Since(m.lastUpdateTime) < 50*time.Millisecond {
+		return // Skip viewport update, just buffer content
 	}
-	m.viewport.SetContent(m.history.String())
-	m.viewport.GotoBottom()
+	
+	// If buffer contains complete lines (ends with newline), process them
+	if strings.Contains(m.buffer, "\n") {
+		// Save scroll position before modifying content
+		scrollY := m.viewport.YOffset
+		atBottom := m.viewport.AtBottom()
+		
+		m.history.WriteString(m.buffer)
+		
+		// Instead of halving the buffer, remove oldest lines incrementally
+		// to preserve scroll position better
+		if m.history.Len() > tuiHistoryCap {
+			// Find first newline after half point
+			content := m.history.String()
+			half := len(content) / 2
+			// Find first newline after half point
+			newlineIdx := strings.Index(content[half:], "\n")
+			if newlineIdx >= 0 {
+				cutIdx := half + newlineIdx + 1
+				m.history.Reset()
+				m.history.WriteString(content[cutIdx:])
+			} else {
+				// No newline found, cut at half
+				m.history.Reset()
+				m.history.WriteString(content[half:])
+			}
+		}
+		
+		// Wrap long lines to the viewport width so nothing is clipped.
+		wrapped := wordWrap(m.history.String(), m.viewport.Width)
+		m.viewport.SetContent(wrapped)
+		
+		// Restore scroll position if user wasn't at bottom
+		if atBottom {
+			m.viewport.GotoBottom()
+		} else {
+			// Calculate new scroll position relative to content size
+			// Try to maintain relative position
+			newContentHeight := m.viewport.Height
+			if scrollY > newContentHeight {
+				scrollY = newContentHeight
+			}
+			m.viewport.SetYOffset(scrollY)
+		}
+		
+		// Clear buffer
+		m.buffer = ""
+		m.lastUpdateTime = time.Now()
+	} else {
+		// Partial line, update viewport only if we have enough content
+		// or if user is at bottom (for streaming)
+		if atBottom := m.viewport.AtBottom(); atBottom || len(m.buffer) > 100 {
+			scrollY := m.viewport.YOffset
+			atBottom := m.viewport.AtBottom()
+			
+			tempHistory := m.history.String() + m.buffer
+			if len(tempHistory) > tuiHistoryCap {
+				// Find first newline after half point
+				half := len(tempHistory) / 2
+				newlineIdx := strings.Index(tempHistory[half:], "\n")
+				if newlineIdx >= 0 {
+					tempHistory = tempHistory[half + newlineIdx + 1:]
+				} else {
+					tempHistory = tempHistory[half:]
+				}
+			}
+			wrapped := wordWrap(tempHistory, m.viewport.Width)
+			m.viewport.SetContent(wrapped)
+			
+			if atBottom {
+				m.viewport.GotoBottom()
+			} else {
+				// Calculate new scroll position relative to content size
+				newContentHeight := m.viewport.Height
+				if scrollY > newContentHeight {
+					scrollY = newContentHeight
+				}
+				m.viewport.SetYOffset(scrollY)
+			}
+			m.lastUpdateTime = time.Now()
+		}
+	}
+}
+
+// wordWrap breaks lines longer than width at word boundaries. Lines
+// already shorter than width pass through unchanged. Preserves existing
+// newlines.
+// styleDiffLines applies background colors to diff lines (+ and - prefixed).
+// Also styles --- and +++ headers.
+func styleDiffLines(chunk string, s Styles) string {
+	if !strings.Contains(chunk, "\n") {
+		return styleSingleDiffLine(chunk, s)
+	}
+	var out strings.Builder
+	for _, line := range strings.Split(chunk, "\n") {
+		if out.Len() > 0 {
+			out.WriteByte('\n')
+		}
+		out.WriteString(styleSingleDiffLine(line, s))
+	}
+	return out.String()
+}
+
+func styleSingleDiffLine(line string, s Styles) string {
+	if strings.HasPrefix(line, "+++ ") || strings.HasPrefix(line, "--- ") {
+		return s.DiffHeader.Render(line)
+	}
+	if strings.HasPrefix(line, "+ ") {
+		return s.DiffAdd.Render(line)
+	}
+	if strings.HasPrefix(line, "- ") {
+		return s.DiffRemove.Render(line)
+	}
+	return line
+}
+
+func wordWrap(s string, width int) string {
+	if width <= 0 || len(s) == 0 {
+		return s
+	}
+	var b strings.Builder
+	for _, line := range strings.Split(s, "\n") {
+		if len(line) <= width {
+			b.WriteString(line)
+			b.WriteByte('\n')
+			continue
+		}
+		// Break at word boundaries.
+		rem := line
+		for len(rem) > width {
+			// Find last space within width.
+			cut := strings.LastIndex(rem[:width], " ")
+			if cut <= 0 {
+				// No space found — hard break.
+				cut = width
+			}
+			b.WriteString(rem[:cut])
+			b.WriteByte('\n')
+			rem = strings.TrimLeft(rem[cut:], " ")
+		}
+		b.WriteString(rem)
+		b.WriteByte('\n')
+	}
+	// Remove the trailing extra newline we added.
+	out := b.String()
+	if len(out) > 0 && len(s) > 0 && s[len(s)-1] != '\n' {
+		out = out[:len(out)-1]
+	}
+	return out
 }
 
 // layout recomputes child component sizes whenever the terminal
@@ -318,7 +583,7 @@ func (m tuiModel) View() string {
 	bannerBox := lipgloss.NewStyle().Padding(0, 2).Render(
 		m.styles.Banner.Render(strings.TrimLeft(banner, "\n")),
 	)
-	tokenBox := renderTokenBox(m.usage, m.provider, m.model, m.styles.Dim)
+	tokenBox := renderTokenBox(m.usage, m.lastIn, m.provider, m.model, m.styles.Dim)
 	statsBox := renderStatsTable(m.stats)
 
 	boxes := lipgloss.Width(bannerBox) + lipgloss.Width(tokenBox) + lipgloss.Width(statsBox)
@@ -342,7 +607,7 @@ func (m tuiModel) View() string {
 
 	body := m.viewport.View()
 	if m.thinking {
-		body += "\n" + m.styles.Dim.Render(m.spinner.View()+" thinking…")
+		body += "\n" + m.styles.Dim.Render(m.spinner.View()+" "+thinkingPhrase(m.thinkTick, m.theme))
 	}
 
 	inputLine := m.input.View()
@@ -386,7 +651,7 @@ func renderStatsTable(s sysStats) string {
 // renderTokenBox shows cumulative token counts and estimated cost for the
 // session. Cost is a rough estimate based on published per-1M-token rates;
 // models not in the table show tokens only.
-func renderTokenBox(u llm.Usage, provider, model string, dim lipgloss.Style) string {
+func renderTokenBox(u llm.Usage, lastIn int, provider, model string, dim lipgloss.Style) string {
 	total := u.InputTokens + u.OutputTokens
 	rows := []string{
 		statsKey.Render("In") + statsVal.Render(formatTokens(u.InputTokens)),
@@ -395,9 +660,12 @@ func renderTokenBox(u llm.Usage, provider, model string, dim lipgloss.Style) str
 	}
 	cost := estimateCost(u, model)
 	rows = append(rows, statsKey.Render("Cost") + statsVal.Render(formatCost(cost)))
+	if pct := contextPercent(lastIn, model); pct >= 0 {
+		rows = append(rows, statsKey.Render("Ctx") + statsVal.Render(fmt.Sprintf("%d%%", pct)))
+	}
 	box := tokenBoxStyle.Render(strings.Join(rows, "\n"))
 	label := provider + "/" + model
-	labelStyled := dim.Align(lipgloss.Center).Width(lipgloss.Width(box)).Render(label)
+	labelStyled := dim.Render(label)
 	return lipgloss.JoinVertical(lipgloss.Center, box, labelStyled)
 }
 
@@ -425,7 +693,8 @@ type pricing struct{ input, output float64 }
 var modelPricing = map[string]pricing{
 	"claude-sonnet-4-6":        {3.0, 15.0},
 	"claude-sonnet-4-20250514": {3.0, 15.0},
-	"claude-haiku-3-5":         {0.80, 4.0},
+	"claude-haiku-3-5":           {0.80, 4.0},
+	"claude-haiku-4-5-20251001":  {1.0, 5.0},
 	"claude-opus-4":            {15.0, 75.0},
 	"gpt-4o":                   {2.50, 10.0},
 	"gpt-4o-mini":              {0.15, 0.60},
@@ -441,12 +710,20 @@ var modelPricing = map[string]pricing{
 	"qwen-plus":               {0.80, 2.0},
 	"qwen-max":                {2.0, 6.0},
 	"qwen-turbo":              {0.30, 0.60},
+	"deepseek-v3":             {0.27, 1.10},
+	"deepseek-v3.2":           {0.27, 1.10},
+	"deepseek-chat":           {0.14, 0.28},
+	"deepseek-r1":             {0.55, 2.19},
+	"qwen3.6-plus":            {0.80, 2.0},
+	"qwen3.6-flash":           {0.15, 0.60},
+	"qwen3-coder-plus":        {0.80, 2.0},
 }
 
 var modelContextWindow = map[string]int{
 	"claude-sonnet-4-6":        200_000,
 	"claude-sonnet-4-20250514": 200_000,
-	"claude-haiku-3-5":         200_000,
+	"claude-haiku-3-5":           200_000,
+	"claude-haiku-4-5-20251001":  200_000,
 	"claude-opus-4":            200_000,
 	"gpt-4o":                   128_000,
 	"gpt-4o-mini":              128_000,
@@ -462,6 +739,13 @@ var modelContextWindow = map[string]int{
 	"qwen-plus":               131_072,
 	"qwen-max":                32_768,
 	"qwen-turbo":              131_072,
+	"deepseek-v3":             64_000,
+	"deepseek-v3.2":           64_000,
+	"deepseek-chat":           64_000,
+	"deepseek-r1":             64_000,
+	"qwen3.6-plus":            131_072,
+	"qwen3.6-flash":           131_072,
+	"qwen3-coder-plus":        131_072,
 }
 
 func contextPercent(lastInputTokens int, model string) int {
@@ -482,12 +766,46 @@ func estimateCost(u llm.Usage, model string) float64 {
 
 var tokenBoxStyle = lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(0, 1)
 
+var defaultThinkingPhrases = []string{
+	"brewing ideas",
+	"reading the codebase",
+	"connecting the dots",
+	"weighing options",
+	"almost there",
+	"crafting a response",
+	"digging deeper",
+	"putting it together",
+	"one moment",
+	"working on it",
+}
+
+func thinkingPhrase(tick int, theme *Theme) string {
+	phrases := defaultThinkingPhrases
+	if theme != nil && len(theme.ThinkingPhrases) > 0 {
+		phrases = theme.ThinkingPhrases
+	}
+	// Each phrase gets ~6 seconds (spinner ticks ~4x/sec, so 24 ticks).
+	// Within each phrase cycle, show typing dots for the first 8 ticks.
+	cycle := tick % 24
+	idx := (tick / 24) % len(phrases)
+	phrase := phrases[idx]
+	if cycle < 8 {
+		// Typing dots: . .. ...
+		dots := (cycle / 2) % 4
+		if dots == 0 {
+			return phrase
+		}
+		return phrase + strings.Repeat(".", dots)
+	}
+	return phrase + "..."
+}
+
 // runTUI runs the bubbletea program. The caller is responsible for
 // having wired sess.Out to a streamWriter pointing at streamCh — that
 // happens in runChatWithDoc so the engine starts streaming the moment
 // Step is called.
-func runTUI(ctx context.Context, sess *engine.Session, streamCh chan streamMsg, name, provider, model string, undo *tools.UndoStack) error {
-	m := newTUIModel(ctx, sess, streamCh, name, provider, model, undo)
+func runTUI(ctx context.Context, sess *engine.Session, streamCh chan streamMsg, name, provider, model string, undo *tools.UndoStack, confirmCh chan bool) error {
+	m := newTUIModel(ctx, sess, streamCh, name, provider, model, undo, confirmCh)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	_, err := p.Run()
 	return err

@@ -11,7 +11,7 @@ import (
 	"github.com/subzone/m/internal/llm/openai"
 )
 
-const defaultBaseURL = "https://dashscope.aliyuncs.com/compatible-mode"
+const defaultBaseURL = "https://dashscope-intl.aliyuncs.com/compatible-mode"
 
 func init() {
 	llm.Register("alibaba", func() (llm.Provider, error) {

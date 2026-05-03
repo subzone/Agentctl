@@ -62,9 +62,22 @@ func (f *FSReadTool) Run(ctx context.Context, input json.RawMessage) (string, er
 	}
 	defer file.Close()
 
+	// Check for binary file by reading first 512 bytes.
+	probe := make([]byte, 512)
+	pn, _ := file.Read(probe)
+	for _, b := range probe[:pn] {
+		if b == 0 {
+			return "", fmt.Errorf("%s is a binary file (not UTF-8 text)", args.Path)
+		}
+	}
+	// Seek back to start after probe.
+	if _, err := file.Seek(0, 0); err != nil {
+		return "", err
+	}
+
 	max := f.MaxBytes
 	if max <= 0 {
-		max = 256 * 1024
+		max = 64 * 1024 // 64KB default — keeps context manageable
 	}
 
 	var buf bytes.Buffer

@@ -110,7 +110,7 @@ func TestParseStreamErrorField(t *testing.T) {
 	out := make(chan llm.Event, 4)
 	err := parseStream(context.Background(), strings.NewReader(stream), out)
 	close(out)
-	if err == nil || !strings.Contains(err.Error(), "model not found") {
+	if err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Errorf("got %v", err)
 	}
 }
@@ -245,7 +245,7 @@ func TestStreamHTTPError(t *testing.T) {
 		Model:    "x",
 		Messages: []llm.Message{llm.TextMessage(llm.RoleUser, "hi")},
 	})
-	if err == nil || !strings.Contains(err.Error(), "model not found") {
+	if err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Errorf("got %v", err)
 	}
 }

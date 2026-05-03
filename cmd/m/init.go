@@ -454,7 +454,7 @@ func setupAnthropic(w *wiz) (*userconfig.Config, error) {
 		}
 		fmt.Fprintln(w.out, "\nSelect a model manually:")
 		fmt.Fprintln(w.out, "  1) claude-sonnet-4-6    \u2014 best balance (recommended)")
-		fmt.Fprintln(w.out, "  2) claude-haiku-3-5     \u2014 fastest, cheapest")
+		fmt.Fprintln(w.out, "  2) claude-haiku-4-5-20251001 \u2014 fast, cheap (Haiku 4.5)")
 		fmt.Fprintln(w.out, "  3) claude-opus-4        \u2014 highest quality")
 		fmt.Fprintln(w.out, "  4) custom               \u2014 enter a model id")
 		choice, err := w.prompt("Choice [1-4, default 1]: ")
@@ -465,7 +465,7 @@ func setupAnthropic(w *wiz) (*userconfig.Config, error) {
 		case "1", "":
 			model = "claude-sonnet-4-6"
 		case "2":
-			model = "claude-haiku-3-5"
+			model = "claude-haiku-4-5-20251001"
 		case "3":
 			model = "claude-opus-4"
 		case "4":

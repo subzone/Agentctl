@@ -33,6 +33,6 @@ troubleshooting.
 
 ## License
 
-TBD.
+MIT License. See LICENSE file for details.
 
 [releases]: https://github.com/subzone/m/releases/latest

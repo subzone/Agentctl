@@ -202,8 +202,8 @@ func TestRunMaxTurns(t *testing.T) {
 	err := Run(context.Background(), Config{
 		Provider: p, Model: "x", Tools: reg, MaxTurns: 3,
 	}, "go")
-	if err == nil || !strings.Contains(err.Error(), "MaxTurns") {
-		t.Errorf("got %v, want MaxTurns error", err)
+	if err != nil {
+		t.Errorf("got %v, want nil (soft stop)", err)
 	}
 }
 

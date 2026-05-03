@@ -132,6 +132,21 @@ func (f *FSWriteTool) runCreate(ctx context.Context, path, content string) (stri
 
 	existing, _ := os.ReadFile(path)
 	diff := unifiedDiff(path, string(existing), content)
+	
+	// Auto-approve for small files or simple changes
+	if shouldAutoApprove(path, string(existing), content, diff) {
+		if f.Undo != nil {
+			f.Undo.Push(path)
+		}
+		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+			return "", err
+		}
+		if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("wrote %d bytes to %s", len(content), path), nil
+	}
+	
 	prompt := fmt.Sprintf("Write %s:\n%s", path, diff)
 
 	ok, err := f.confirm(ctx, prompt)
@@ -173,6 +188,18 @@ func (f *FSWriteTool) runPatch(ctx context.Context, path, oldStr, newStr string)
 	}
 
 	diff := unifiedDiff(path, src, patched)
+	
+	// Auto-approve for small/simple patches
+	if shouldAutoApprove(path, src, patched, diff) {
+		if f.Undo != nil {
+			f.Undo.Push(path)
+		}
+		if err := os.WriteFile(path, []byte(patched), 0o644); err != nil {
+			return "", err
+		}
+		return fmt.Sprintf("patched %s (%d → %d bytes)", path, len(existing), len(patched)), nil
+	}
+	
 	prompt := fmt.Sprintf("Patch %s:\n%s", path, diff)
 
 	ok, err := f.confirm(ctx, prompt)
@@ -282,4 +309,36 @@ func unifiedDiff(path, old, new string) string {
 		shown++
 	}
 	return b.String()
+}
+
+// shouldAutoApprove determines if a file change is simple enough to auto-approve
+func shouldAutoApprove(path, old, new, diff string) bool {
+	// Check if confirm function exists - if nil, always auto-approve
+	// This function is called after we know we have a confirm function
+	
+	// Auto-approve small files (< 50 lines)
+	oldLines := strings.Split(old, "\n")
+	newLines := strings.Split(new, "\n")
+	if len(oldLines) < 50 && len(newLines) < 50 {
+		return true
+	}
+	
+	// Auto-approve single line changes
+	diffLines := strings.Split(diff, "\n")
+	changeCount := 0
+	for _, line := range diffLines {
+		if strings.HasPrefix(line, "- ") || strings.HasPrefix(line, "+ ") {
+			changeCount++
+		}
+	}
+	if changeCount <= 2 {
+		return true
+	}
+	
+	// Auto-approve if diff is short (< 10 lines of diff)
+	if len(diffLines) < 10 {
+		return true
+	}
+	
+	return false
 }

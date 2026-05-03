@@ -39,7 +39,8 @@ type Provider struct {
 	apiKey   string
 	baseURL  string
 	client   *http.Client
-	compat   bool
+	noStreamOpts bool
+	noJsonSchema bool
 	chatPath string // defaults to "/v1/chat/completions"
 }
 
@@ -56,8 +57,12 @@ func WithBaseURL(u string) Option { return func(p *Provider) { p.baseURL = u } }
 func WithChatPath(p string) Option { return func(pr *Provider) { pr.chatPath = p } }
 
 // WithCompat marks this provider as targeting a non-OpenAI endpoint.
-// Disables stream_options and other OpenAI-specific features.
-func WithCompat() Option { return func(p *Provider) { p.compat = true } }
+// Disables json_schema response_format (not supported by most compat endpoints).
+// stream_options is kept enabled since most compat endpoints support it.
+func WithCompat() Option { return func(p *Provider) { p.noJsonSchema = true } }
+
+// WithNoStreamOptions disables stream_options (for endpoints like Gemini that reject it).
+func WithNoStreamOptions() Option { return func(p *Provider) { p.noStreamOpts = true; p.noJsonSchema = true } }
 
 // WithHTTPClient swaps the underlying http.Client.
 func WithHTTPClient(c *http.Client) Option { return func(p *Provider) { p.client = c } }
@@ -114,7 +119,7 @@ type jsonSchemaSpec struct {
 
 type chatMsg struct {
 	Role       string         `json:"role"`
-	Content    string         `json:"content,omitempty"`
+	Content    string         `json:"content"`
 	ToolCalls  []chatToolCall `json:"tool_calls,omitempty"`
 	ToolCallID string         `json:"tool_call_id,omitempty"`
 }
@@ -152,19 +157,17 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 		MaxTokens:   req.MaxTokens,
 		Stream:      true,
 	}
-	// stream_options and json_schema response_format are OpenAI-specific;
-	// compat endpoints (Gemini, Alibaba, LiteLLM) may not support them.
-	if !p.compat {
+	if !p.noStreamOpts {
 		payload.StreamOptions = &streamOptions{IncludeUsage: true}
-		if len(req.ResponseSchema) > 0 {
-			payload.ResponseFormat = &responseFormat{
-				Type: "json_schema",
-				JSONSchema: &jsonSchemaSpec{
-					Name:   "response",
-					Strict: true,
-					Schema: req.ResponseSchema,
-				},
-			}
+	}
+	if !p.noJsonSchema && len(req.ResponseSchema) > 0 {
+		payload.ResponseFormat = &responseFormat{
+			Type: "json_schema",
+			JSONSchema: &jsonSchemaSpec{
+				Name:   "response",
+				Strict: true,
+				Schema: req.ResponseSchema,
+			},
 		}
 	}
 	body, err := json.Marshal(payload)
@@ -191,7 +194,11 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 	if resp.StatusCode != http.StatusOK {
 		slurp, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		resp.Body.Close()
-		return nil, fmt.Errorf("openai %s: %s", resp.Status, strings.TrimSpace(string(slurp)))
+		body := strings.TrimSpace(string(slurp))
+		if resp.StatusCode == 404 {
+			return nil, fmt.Errorf("%s 404: model %q not found at %s (check model name and endpoint)", resp.Status, req.Model, p.baseURL)
+		}
+		return nil, fmt.Errorf("%s %s: %s", p.baseURL, resp.Status, body)
 	}
 
 	out := make(chan llm.Event, 8)

@@ -7,6 +7,7 @@ package litellm
 import (
 	"errors"
 	"os"
+	"strings"
 
 	"github.com/subzone/m/internal/llm"
 	"github.com/subzone/m/internal/llm/openai"
@@ -22,6 +23,6 @@ func init() {
 		if apiKey == "" {
 			return nil, errors.New("LITELLM_API_KEY is not set")
 		}
-		return openai.New(openai.WithAPIKey(apiKey), openai.WithBaseURL(baseURL), openai.WithCompat())
+		return openai.New(openai.WithAPIKey(apiKey), openai.WithBaseURL(strings.TrimSuffix(baseURL, "/v1")), openai.WithCompat())
 	})
 }

@@ -130,10 +130,15 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 		}
 		payload.Options = opts
 	} else {
-		// When MaxTokens is 0, set a generous default so Ollama doesn't
-		// use its built-in limit (often 128-2048 tokens).
-		defaultPredict := 8192
-		payload.Options = &chatOpts{NumPredict: &defaultPredict}
+		// When MaxTokens is 0, set a reasonable default. Don't go too
+		// high — large num_predict keeps the model loaded longer and
+		// can thrash on memory-constrained machines.
+		defaultPredict := 4096
+		opts := &chatOpts{NumPredict: &defaultPredict}
+		if req.Temperature != nil {
+			opts.Temperature = req.Temperature
+		}
+		payload.Options = opts
 	}
 	body, err := json.Marshal(payload)
 	if err != nil {
@@ -153,7 +158,11 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 	if resp.StatusCode != http.StatusOK {
 		slurp, _ := io.ReadAll(io.LimitReader(resp.Body, 4096))
 		resp.Body.Close()
-		return nil, fmt.Errorf("ollama %s: %s", resp.Status, strings.TrimSpace(string(slurp)))
+		body := strings.TrimSpace(string(slurp))
+		if resp.StatusCode == 404 {
+			return nil, fmt.Errorf("ollama 404: model %q not found (run `ollama pull %s` first)", req.Model, req.Model)
+		}
+		return nil, fmt.Errorf("ollama %s: %s", resp.Status, body)
 	}
 
 	out := make(chan llm.Event, 8)
