@@ -9,6 +9,7 @@ tools:
   - fs_read
   - fs_write
   - fs_list
+  - web_fetch
 skills:
   - structured-output
 temperature: 0.3

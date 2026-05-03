@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sesije i Autosave — AgentCTL</title>
+<meta name="description" content="Perzistencija sesija, autosave i upravljanje stanjem u AgentCTL-u.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+</head>
+<body>
+
+<nav class="nav"><div class="nav-inner">
+  <a href="index.html" class="nav-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</a>
+  <div class="nav-links"><a href="index.html#features">Features</a><a href="agents.html">Agents</a><a href="architecture.html">Architecture</a><a href="mcp.html">MCP</a><a href="changelog.html">Changelog</a><a href="install.html" class="nav-cta">Install</a></div>
+  <div class="lang-toggle">
+    <a href="../sessions.html" class="lang-btn">EN</a>
+    <a href="sessions.html" class="lang-btn active">SR</a>
+  </div>
+  <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+</div></nav>
+
+<section class="page-hero">
+  <h1><i class="fa-solid fa-floppy-disk" style="color:var(--accent)"></i> Sesije i Autosave</h1>
+  <p>Automatsko čuvanje sesija, enkriptovano skladište i oporavak stanja.</p>
+</section>
+
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Kako radi</div>
+      <h2>Autosave</h2>
+      <p>Tvoja sesija se automatski čuva posle svakog koraka. Nije potrebna nikakva ručna akcija.</p>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><i class="fa-solid fa-clock-rotate-left"></i> Kada čuva?</h3>
+      <ul>
+        <li><strong>TUI režim:</strong> Posle svakog završenog koraka (izvršavanje alata, odgovor modela)</li>
+        <li><strong>Chat režim:</strong> Posle svake razmene poruka</li>
+      </ul>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><i class="fa-solid fa-folder"></i> Gde se čuva?</h3>
+      <pre><code>macOS: ~/Library/Application Support/m/sessions/
+Linux: ~/.config/m/sessions/</code></pre>
+      <p>Sesije se čuvaju kao enkriptovani JSON fajlovi.</p>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><i class="fa-solid fa-lock"></i> Enkripcija</h3>
+      <p>Sesije su enkriptovane pomoću AES-256-GCM. Ključ za enkripciju je uskladišten u tvom OS keychain-u:</p>
+      <ul>
+        <li><strong>macOS:</strong> macOS Keychain</li>
+        <li><strong>Linux:</strong> libsecret</li>
+      </ul>
+      <p>Ključ se generiše pri prvom korišćenju i nikada ne napušta tvoj računar.</p>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><i class="fa-solid fa-database"></i> Šta se čuva?</h3>
+      <ul>
+        <li>Sve poruke (korisnik, asistent, pozivi alata, rezultati alata)</li>
+        <li>Provider i model koji se koristi</li>
+        <li>Potrošnja tokena (ulaz/izlaz)</li>
+        <li>Sve što je potrebno za rekonstrukciju stanja sesije</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Komande</div>
+      <h2>Upravljanje sesijama</h2>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><code>/save</code></h3>
+      <p>Napravi imenovani snimak tekuće sesije. Snimak dobija vremenski pečat i čuva se pored autosave-a.</p>
+      <pre><code>» /save
+session saved: 2025-07-04_12-30 (8 messages)</code></pre>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><code>/sessions</code></h3>
+      <p>Prikaži sve sačuvane sesije (uključujući autosave i imenovane snimke).</p>
+      <pre><code>» /sessions
+saved sessions (2):
+  1) _autosave
+  2) 2025-07-04_12-30
+use /resume &lt;id or number&gt; to restore</code></pre>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><code>/resume &lt;id ili broj&gt;</code></h3>
+      <p>Vrati prethodno sačuvanu sesiju. Možeš koristiti id sesije ili broj iz <code>/sessions</code> liste.</p>
+      <pre><code>» /resume 1
+resumed session _autosave (12 messages, alibaba/deepseek-v3.2)
+» nastavi gde smo stali</code></pre>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><code>/reset</code></h3>
+      <p>Obriši istoriju trenutnog razgovora i počni ispočetka. Autosave se čuva posebno — možeš ga vratiti sa <code>/resume _autosave</code>.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Oporavak</div>
+      <h2>Šta se dešava pri padu?</h2>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><i class="fa-solid fa-triangle-exclamation"></i> Oporavak od pada</h3>
+      <p>Ako aplikacija padne ili izađeš sa <code>/exit</code>, tvoja sesija je već sačuvana. Pri sledećem pokretanju:</p>
+      <pre><code>» /sessions
+saved sessions (1):
+  1) _autosave
+
+» /resume 1
+resumed session _autosave (12 messages, alibaba/deepseek-v3.2)</code></pre>
+      <p><code>_autosave</code> sesija se prepisuje posle svakog koraka, tako da uvek ima tvoje najnovije stanje.</p>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><i class="fa-solid fa-hand"></i> Best effort</h3>
+      <p>Autosave je <em>best effort</em> — ako čuvanje ne uspe (pun disk, dozvole, itd.), greška se tiho ignoriše. Za kritičan rad, uvek koristi <code>/save</code> eksplicitno ili pravi rezervne kopije važnih sesija.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Sigurnost</div>
+      <h2>Privatnost</h2>
+    </div>
+
+    <div class="docs-card">
+      <ul>
+        <li>Sesije se <strong>nikada</strong> ne šalju ka eksternim servisima</li>
+        <li>Svi podaci ostaju na tvom računaru</li>
+        <li>Ključ za enkripciju živi u tvom OS keychain-u, ne u konfiguracionim fajlovima</li>
+        <li><code>_autosave</code> fajl se prepisuje pri svakom autosave-u, ne dodaje se</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="footer-inner">
+  <div class="footer-grid">
+    <div class="footer-brand"><div class="footer-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</div><p>MD-driven agent CLI for code, infrastructure, and automation.</p></div>
+    <div class="footer-col"><h4>Product</h4><a href="https://github.com/subzone/Agentctl/releases/latest">Download</a><a href="install.html">Installation</a><a href="changelog.html">Changelog</a></div>
+    <div class="footer-col"><h4>Resources</h4><a href="agents.html">Example Agents</a><a href="mcp.html">MCP Servers</a><a href="architecture.html">Architecture</a></div>
+    <div class="footer-col"><h4>Community</h4><a href="https://github.com/subzone/Agentctl">GitHub</a><a href="https://github.com/subzone/Agentctl/issues">Issues</a><a href="support.html">Support</a></div>
+  </div>
+  <div class="footer-bottom"><span>© 2025 AgentCTL</span><span>Built with <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/Agentctl"><i class="fa-brands fa-github"></i> subzone/Agentctl</a></span></div>
+</div></footer>
+</body>
+</html>

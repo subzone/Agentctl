@@ -383,6 +383,8 @@ func parseSSE(ctx context.Context, r io.Reader, out chan<- llm.Event) error {
 	}
 
 	pending := map[int]*toolCallState{}
+	reasoningSeen := false
+	reasoningDone := false
 
 	flushToolCalls := func() error {
 		idxs := make([]int, 0, len(pending))
@@ -452,7 +454,22 @@ func parseSSE(ctx context.Context, r io.Reader, out chan<- llm.Event) error {
 		}
 		c := chunk.Choices[0]
 
+		// Reasoning models (MiniMax, DeepSeek-R1) send thinking tokens in
+		// reasoning_content before the actual response in content. Emit a
+		// one-time marker so the user knows the model is thinking.
+		if c.Delta.ReasoningContent != "" && !reasoningSeen {
+			reasoningSeen = true
+			if err := send(llm.Event{Kind: llm.EventText, Text: "(thinking) "}); err != nil {
+				return err
+			}
+		}
 		if c.Delta.Content != "" {
+			if reasoningSeen && !reasoningDone {
+				reasoningDone = true
+				if err := send(llm.Event{Kind: llm.EventText, Text: "\n"}); err != nil {
+					return err
+				}
+			}
 			if err := send(llm.Event{Kind: llm.EventText, Text: c.Delta.Content}); err != nil {
 				return err
 			}

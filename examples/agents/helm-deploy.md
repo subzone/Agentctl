@@ -9,6 +9,7 @@ tools:
   - fs_read
   - fs_write
   - fs_list
+  - web_fetch
   - git
 temperature: 0.2
 max_tokens: 8192

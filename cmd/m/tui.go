@@ -94,7 +94,6 @@ type tuiModel struct {
 	
 	// UI stability improvements
 	lastUpdateTime time.Time // timestamp of last viewport update to throttle
-	buffer         string    // buffer for partial lines before word wrap
 }
 
 func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, name, provider, model string, undo *tools.UndoStack, confirmCh chan bool) tuiModel {
@@ -131,7 +130,6 @@ func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, n
 		undo:      undo,
 		confirmCh: confirmCh,
 		lastUpdateTime: time.Now(),
-		buffer:   "",
 	}
 }
 
@@ -151,18 +149,9 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.width = msg.Width
 		m.height = msg.Height
 		m.layout()
-		// After resize, restore scroll position
-		scrollY := m.viewport.YOffset
-		atBottom := m.viewport.AtBottom()
-		
 		wrapped := wordWrap(m.history.String(), m.viewport.Width)
 		m.viewport.SetContent(wrapped)
-		
-		if atBottom {
-			m.viewport.GotoBottom()
-		} else {
-			m.viewport.SetYOffset(scrollY)
-		}
+		m.viewport.GotoBottom()
 		return m, nil
 
 	case tea.KeyMsg:
@@ -231,7 +220,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendHistory("(history cleared)\n")
 				return m, nil
 			case "/help":
-				m.appendHistory("commands: /exit /quit /reset /compact /undo /model <provider/model> /models /theme [name] /themes /config /help\n")
+				m.appendHistory("commands: /exit /quit /reset /compact /undo /model <provider/model> /models /theme [name] /themes /save /sessions /resume <id> /config /help\n")
 				return m, nil
 			case "/config":
 				m.appendHistory("run `m config` from the shell to manage providers and models\n")
@@ -321,6 +310,24 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendHistory(fmt.Sprintf("switched to %s theme\n", arg))
 				return m, nil
 			}
+			if line == "/save" {
+				buf := &strings.Builder{}
+				handleSessionSave(m.sess, buf)
+				m.appendHistory(buf.String())
+				return m, nil
+			}
+			if line == "/sessions" {
+				buf := &strings.Builder{}
+				handleSessionList(buf)
+				m.appendHistory(buf.String())
+				return m, nil
+			}
+			if strings.HasPrefix(line, "/resume ") {
+				buf := &strings.Builder{}
+				handleSessionResume(line, m.sess, buf)
+				m.appendHistory(buf.String())
+				return m, nil
+			}
 			if strings.HasPrefix(line, "/") {
 				m.appendHistory(fmt.Sprintf("unknown command %q (try /help)\n", line))
 				return m, nil
@@ -348,24 +355,11 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				} else {
 					m.appendHistory("\n")
 				}
-				// Force flush any remaining buffer
-				if m.buffer != "" {
-					scrollY := m.viewport.YOffset
-					atBottom := m.viewport.AtBottom()
-					
-					m.history.WriteString(m.buffer)
-					wrapped := wordWrap(m.history.String(), m.viewport.Width)
-					m.viewport.SetContent(wrapped)
-					
-					if atBottom {
-						m.viewport.GotoBottom()
-					} else {
-						m.viewport.SetYOffset(scrollY)
-					}
-					m.buffer = ""
-				}
 			}
 			// If not thinking (already cancelled), just drain silently.
+			// Autosave after each completed step.
+			snap := exportSession(m.sess, m.provider, m.model)
+			go func() { autoSaveSnapshot(snap) }()
 			return m, nil
 		}
 		// After cancel, ignore stale chunks.
@@ -419,103 +413,34 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(cmds...)
 }
 
-// appendHistory mutates the receiver via pointer; the caller's value
-// shares the same strings.Builder, viewport, etc. since those are
-// internally pointer-y. Truncation halves the buffer when the cap is
-// crossed; an approximate cut is fine because the user only sees the
-// tail.
+// appendHistory adds text to the chat transcript and updates the viewport.
+// During streaming (m.thinking == true), always auto-scrolls to bottom.
+// When idle, preserves the user's scroll position.
 func (m *tuiModel) appendHistory(s string) {
-	// Buffer partial lines for better word wrapping
-	m.buffer += s
-	
-	// Throttle viewport updates during streaming - update max every 16ms (~60fps)
-	// This prevents UI "pulling" when agent streams fast
-	// But always update if buffer has newline (complete line) or if user scrolled manually
-	if !strings.Contains(m.buffer, "\n") && time.Since(m.lastUpdateTime) < 16*time.Millisecond {
-		return // Skip viewport update, just buffer content
-	}
-	
-	// If buffer contains complete lines (ends with newline), process them
-	if strings.Contains(m.buffer, "\n") {
-		// Save scroll position before modifying content
-		scrollY := m.viewport.YOffset
-		atBottom := m.viewport.AtBottom()
-		
-		m.history.WriteString(m.buffer)
-		
-		// Instead of halving the buffer, remove oldest lines incrementally
-		// to preserve scroll position better
-		if m.history.Len() > tuiHistoryCap {
-			// Find first newline after half point
-			content := m.history.String()
-			half := len(content) / 2
-			// Find first newline after half point
-			newlineIdx := strings.Index(content[half:], "\n")
-			if newlineIdx >= 0 {
-				cutIdx := half + newlineIdx + 1
-				m.history.Reset()
-				m.history.WriteString(content[cutIdx:])
-			} else {
-				// No newline found, cut at half
-				m.history.Reset()
-				m.history.WriteString(content[half:])
-			}
-		}
-		
-		// Wrap long lines to the viewport width so nothing is clipped.
-		wrapped := wordWrap(m.history.String(), m.viewport.Width)
-		m.viewport.SetContent(wrapped)
-		
-		// Restore scroll position if user wasn't at bottom
-		if atBottom {
-			m.viewport.GotoBottom()
+	m.history.WriteString(s)
+
+	// Truncate if history is too large.
+	if m.history.Len() > tuiHistoryCap {
+		content := m.history.String()
+		half := len(content) / 2
+		if idx := strings.Index(content[half:], "\n"); idx >= 0 {
+			content = content[half+idx+1:]
 		} else {
-			// Calculate new scroll position relative to content size
-			// Try to maintain relative position
-			newContentHeight := m.viewport.Height
-			if scrollY > newContentHeight {
-				scrollY = newContentHeight
-			}
-			m.viewport.SetYOffset(scrollY)
+			content = content[half:]
 		}
-		
-		// Clear buffer
-		m.buffer = ""
-		m.lastUpdateTime = time.Now()
-	} else {
-		// Partial line, update viewport only if we have enough content
-		// or if user is at bottom (for streaming)
-		atBottom := m.viewport.AtBottom()
-		if atBottom || len(m.buffer) > 100 {
-			scrollY := m.viewport.YOffset
-			
-			tempHistory := m.history.String() + m.buffer
-			if len(tempHistory) > tuiHistoryCap {
-				// Find first newline after half point
-				half := len(tempHistory) / 2
-				newlineIdx := strings.Index(tempHistory[half:], "\n")
-				if newlineIdx >= 0 {
-					tempHistory = tempHistory[half + newlineIdx + 1:]
-				} else {
-					tempHistory = tempHistory[half:]
-				}
-			}
-			wrapped := wordWrap(tempHistory, m.viewport.Width)
-			m.viewport.SetContent(wrapped)
-			
-			if atBottom {
-				m.viewport.GotoBottom()
-			} else {
-				// Calculate new scroll position relative to content size
-				newContentHeight := m.viewport.Height
-				if scrollY > newContentHeight {
-					scrollY = newContentHeight
-				}
-				m.viewport.SetYOffset(scrollY)
-			}
-			m.lastUpdateTime = time.Now()
-		}
+		m.history.Reset()
+		m.history.WriteString(content)
 	}
+
+	// Throttle viewport updates to ~60fps during streaming.
+	if m.thinking && time.Since(m.lastUpdateTime) < 16*time.Millisecond {
+		return
+	}
+	m.lastUpdateTime = time.Now()
+
+	wrapped := wordWrap(m.history.String(), m.viewport.Width)
+	m.viewport.SetContent(wrapped)
+	m.viewport.GotoBottom()
 }
 
 // wordWrap breaks lines longer than width at word boundaries. Lines

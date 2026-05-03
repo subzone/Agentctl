@@ -8,6 +8,7 @@ tools:
   - shell
   - fs_read
   - fs_list
+  - web_fetch
 temperature: 0.3
 max_tokens: 4096
 ---

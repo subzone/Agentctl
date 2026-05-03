@@ -9,6 +9,7 @@ tools:
   - fs_read
   - fs_write
   - fs_list
+  - web_fetch
   - git
   - test_run
 temperature: 0.8

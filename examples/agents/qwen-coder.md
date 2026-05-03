@@ -9,6 +9,7 @@ tools:
   - fs_read
   - fs_write
   - fs_list
+  - web_fetch
 temperature: 0.7
 max_tokens: 4096
 ---

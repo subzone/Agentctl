@@ -166,6 +166,7 @@ including `coder`, `reviewer`, `planner`, `k8s-debug`, `terraform-plan`,
 | `fs_list`   | List a directory (recursive, skips `.git`/`node_modules`) | no |
 | `git`       | Common git operations                    | yes for writes    |
 | `test_run`  | Run the project's test command           | no                |
+| `web_fetch` | Fetch a URL and extract readable text    | no                |
 | `delegate`  | Call a sub-agent                         | no                |
 
 `fs_write` writes are reversible via `/undo`.
@@ -223,6 +224,11 @@ transport is not yet implemented.**
 | `/config`   | Open interactive provider/model manager |
 | `/spec`     | Show the agent's resolved spec |
 | `/model`    | Switch provider/model mid-session |
+| `/models`   | List available models, pick by number |
+| `/save`     | Save session snapshot (timestamped) |
+| `/sessions` | List saved sessions |
+| `/resume`   | Resume a saved session by id or number |
+| `/themes`   | List available themes with descriptions |
 | `/theme`    | Switch TUI theme |
 
 ---
@@ -283,8 +289,6 @@ These are real, not roadmap-ware. They affect what AgentCTL can be used for toda
   every time.
 - **No `/trust` for autonomous sessions.** Every `fs_write` and `shell`
   prompts. Fine for interactive use, blocks long-running headless runs.
-- **No conversation persistence beyond the active session.** No history
-  search, no resume.
 - **No team features.** No shared agent registry, no audit log, no RBAC,
   no sandboxed execution. Single-developer use only for now.
 - **No IDE integration.** Intentional — this is a CLI tool. Not planned.

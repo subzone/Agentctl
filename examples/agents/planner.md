@@ -7,6 +7,7 @@ model: anthropic/claude-haiku-4-5-20251001
 tools:
   - fs_read
   - fs_list
+  - web_fetch
 temperature: 0.2
 max_tokens: 2048
 ---

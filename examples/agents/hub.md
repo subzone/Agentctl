@@ -7,6 +7,7 @@ model: anthropic/claude-sonnet-4-6
 tools:
   - fs_read
   - fs_list
+  - web_fetch
 subagents:
   - spoke-coder
   - spoke-reviewer

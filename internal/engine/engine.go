@@ -34,6 +34,11 @@ type Config struct {
 	Temperature *float64
 	MaxTokens   int
 
+	// MaxContextTokens is the model's context window size. When estimated
+	// input tokens exceed 80% of this, the session auto-compacts. Zero
+	// means use a conservative default (128K).
+	MaxContextTokens int
+
 	// ResponseSchema constrains the model to produce valid JSON matching
 	// this schema. Nil means unconstrained text output.
 	ResponseSchema json.RawMessage
@@ -69,14 +74,15 @@ func Run(ctx context.Context, cfg Config, task string) error {
 // user turn and runs the engine loop; the resulting message history is
 // retained on the Session and reused on subsequent Steps.
 type Session struct {
-	cfg      Config
-	out      io.Writer
-	status   io.Writer
-	maxTurns int
-	schemas  []llm.ToolSchema
-	messages []llm.Message
-	usage    llm.Usage // cumulative across all Steps
-	lastIn   int       // input_tokens from the most recent provider call
+	cfg           Config
+	out           io.Writer
+	status        io.Writer
+	maxTurns      int
+	contextBudget int // max input tokens before compaction (80% of model window)
+	schemas       []llm.ToolSchema
+	messages      []llm.Message
+	usage         llm.Usage // cumulative across all Steps
+	lastIn        int       // input_tokens from the most recent provider call
 }
 
 // Usage returns the cumulative token counts across all Steps in this session.
@@ -112,12 +118,17 @@ func NewSession(cfg Config) *Session {
 	if maxTurns <= 0 {
 		maxTurns = defaultMaxTurns
 	}
+	contextBudget := cfg.MaxContextTokens
+	if contextBudget <= 0 {
+		contextBudget = 128_000 // conservative default
+	}
 	return &Session{
-		cfg:      cfg,
-		out:      out,
-		status:   status,
-		maxTurns: maxTurns,
-		schemas:  buildSchemas(cfg.Tools),
+		cfg:           cfg,
+		out:           out,
+		status:        status,
+		maxTurns:      maxTurns,
+		schemas:       buildSchemas(cfg.Tools),
+		contextBudget: contextBudget,
 	}
 }
 
@@ -137,6 +148,17 @@ func (s *Session) Messages() []llm.Message {
 // Reset clears the conversation history. Tool registry and provider
 // remain configured.
 func (s *Session) Reset() { s.messages = nil }
+
+// RestoreMessages replaces the message history with saved messages.
+// Used to resume a previous session from persistent storage.
+func (s *Session) RestoreMessages(msgs []llm.Message) {
+	s.messages = msgs
+}
+
+// SetUsage restores cumulative token counts from a saved session.
+func (s *Session) SetUsage(u llm.Usage) {
+	s.usage = u
+}
 
 // Truncate keeps at most the last maxExchanges user-initiated exchanges.
 // A user-initiated exchange begins at a user message containing only
@@ -173,10 +195,11 @@ func (s *Session) Step(ctx context.Context, task string) error {
 	}
 
 	s.messages = append(s.messages, llm.TextMessage(llm.RoleUser, task))
-	// Auto-compact if message history is too large to prevent context overflow.
-	if len(s.messages) > 30 {
-		s.messages = validateMessages(safeCompact(s.messages, 10))
-		fmt.Fprintln(s.status, "[auto-compacted: context was too large]")
+	// Auto-compact when estimated tokens exceed 80% of context budget.
+	if s.shouldCompact() {
+		target := s.contextBudget / 2 // compact to 50% to leave room
+		s.messages = validateMessages(tokenCompact(s.messages, target, s.cfg.System))
+		fmt.Fprintf(s.status, "[auto-compacted to ~%dk tokens]\n", target/1000)
 	}
 	wroteAny := false
 
@@ -274,8 +297,10 @@ func (s *Session) Step(ctx context.Context, task string) error {
 				return err
 			}
 			s.messages = append(s.messages, results)
-			if len(s.messages) > 30 {
-				s.messages = validateMessages(safeCompact(s.messages, 10))
+			if s.shouldCompact() {
+				target := s.contextBudget / 2
+				s.messages = validateMessages(tokenCompact(s.messages, target, s.cfg.System))
+				fmt.Fprintf(s.status, "[auto-compacted to ~%dk tokens]\n", target/1000)
 			}
 
 		case "max_tokens":
@@ -335,78 +360,97 @@ func validateMessages(msgs []llm.Message) []llm.Message {
 	return clean
 }
 
-// safeCompact keeps the last n messages but ensures the cut point is at
-// a user text message, not in the middle of a tool_calls/tool_result pair.
-// This prevents "tool message must follow tool_calls" errors from providers.
-// It adds a summary message explaining what was compacted.
-func safeCompact(msgs []llm.Message, keep int) []llm.Message {
-	originalLen := len(msgs)
-	if originalLen <= keep {
+// estimateTokens approximates the token count for a message list.
+// Uses ~4 chars per token heuristic — good enough for compaction decisions.
+func estimateTokens(msgs []llm.Message) int {
+	total := 0
+	for _, m := range msgs {
+		for _, b := range m.Content {
+			total += len(b.Text) + len(b.Output) + len(b.ToolInput) + len(b.ToolName) + 20 // overhead
+		}
+	}
+	return total / 4
+}
+
+// shouldCompact returns true when estimated tokens exceed 80% of the context budget.
+func (s *Session) shouldCompact() bool {
+	est := estimateTokens(s.messages)
+	// Also count system prompt.
+	est += len(s.cfg.System) / 4
+	return est > (s.contextBudget * 80 / 100)
+}
+
+// tokenCompact removes the oldest messages until estimated tokens are under
+// targetTokens. Cuts at safe boundaries (user text messages) and prepends
+// a summary of what was dropped.
+func tokenCompact(msgs []llm.Message, targetTokens int, system string) []llm.Message {
+	systemTokens := len(system) / 4
+	current := estimateTokens(msgs) + systemTokens
+	if current <= targetTokens {
 		return msgs
 	}
-	compactedCount := originalLen - keep
-	
-	target := originalLen - keep
-	if target < 1 {
-		target = 1
+
+	// Build a summary of the dropped portion.
+	var summaryParts []string
+	dropIdx := 0
+	for dropIdx < len(msgs)-2 && current > targetTokens {
+		m := msgs[dropIdx]
+		// Estimate tokens for this message.
+		msgTokens := 0
+		for _, b := range m.Content {
+			msgTokens += (len(b.Text) + len(b.Output) + len(b.ToolInput) + 20) / 4
+		}
+		// Collect summary snippets from user messages.
+		if m.Role == llm.RoleUser && allTextBlocks(m) && len(m.Content) > 0 {
+			snippet := m.Content[0].Text
+			if len(snippet) > 80 {
+				snippet = snippet[:80] + "..."
+			}
+			summaryParts = append(summaryParts, snippet)
+		}
+		current -= msgTokens
+		dropIdx++
 	}
-	// Search forward from target for a user text message (safe cut point).
-	cut := -1
-	for i := target; i < len(msgs); i++ {
-		if msgs[i].Role == llm.RoleUser && allTextBlocks(msgs[i]) {
-			cut = i
+
+	// Find a safe cut point (user text message) at or after dropIdx.
+	cut := dropIdx
+	for cut < len(msgs) {
+		if msgs[cut].Role == llm.RoleUser && allTextBlocks(msgs[cut]) {
 			break
 		}
+		cut++
 	}
-	if cut < 0 {
-		// Search backward.
-		for i := target - 1; i >= 0; i-- {
-			if msgs[i].Role == llm.RoleUser && allTextBlocks(msgs[i]) {
-				cut = i
-				break
+	if cut >= len(msgs)-1 {
+		cut = dropIdx // fallback
+	}
+
+	// Build the compacted result with a meaningful summary.
+	summary := fmt.Sprintf("(Earlier conversation compacted — %d messages removed. ", cut)
+	if len(summaryParts) > 0 {
+		max := 5
+		if len(summaryParts) < max {
+			max = len(summaryParts)
+		}
+		summary += "Topics discussed: "
+		for i, s := range summaryParts[:max] {
+			if i > 0 {
+				summary += "; "
 			}
+			summary += s
 		}
+		if len(summaryParts) > max {
+			summary += fmt.Sprintf(" and %d more", len(summaryParts)-max)
+		}
+		summary += ". "
 	}
-	if cut < 0 || cut >= len(msgs)-1 {
-		// Fallback: prepend synthetic message + keep last few.
-		n := keep
-		if len(msgs) < n {
-			n = len(msgs)
-		}
-		result := make([]llm.Message, 0, n+1)
-		summary := fmt.Sprintf("(Context compacted: %d messages removed. Earlier conversation history is lost. Focus on the current task.)", compactedCount)
-		result = append(result, llm.TextMessage(llm.RoleUser, summary))
-		tail := msgs[len(msgs)-n:]
-		// Skip any leading tool result messages in the tail.
-		for len(tail) > 0 && tail[0].Role == llm.RoleUser && !allTextBlocks(tail[0]) {
-			tail = tail[1:]
-		}
-		// Also skip orphaned assistant tool_calls at the start.
-		for len(tail) > 0 && tail[0].Role == llm.RoleAssistant && hasToolCalls(tail[0]) {
-			tail = tail[1:]
-		}
-		result = append(result, tail...)
-		return result
-	}
-	
-	// Normal case: we found a good cut point
-	// Add summary explaining what was lost
+	summary += "Focus on the current task.)"
+
 	result := make([]llm.Message, 0, len(msgs)-cut+1)
-	summary := fmt.Sprintf("(Context compacted: %d messages from earlier conversation removed. Key context from earlier may be lost - refer to system prompt for project context.)", cut)
 	result = append(result, llm.TextMessage(llm.RoleUser, summary))
 	result = append(result, msgs[cut:]...)
 	return result
 }
 
-// hasToolCalls reports whether an assistant message contains tool_use blocks.
-func hasToolCalls(m llm.Message) bool {
-	for _, b := range m.Content {
-		if b.Type == llm.BlockToolUse {
-			return true
-		}
-	}
-	return false
-}
 
 
 // executeTools runs each tool_use block in assistant. When multiple tools
@@ -454,7 +498,7 @@ func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context
 
 // readOnlyTools is the set of tool names that never need user confirmation
 // because they only read data without making any changes.
-var readOnlyTools = map[string]bool{"fs_read": true, "fs_list": true}
+var readOnlyTools = map[string]bool{"fs_read": true, "fs_list": true, "web_fetch": true}
 
 func runToolBlock(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), status io.Writer, b llm.ContentBlock) llm.ContentBlock {
 	// Read-only tools skip confirmation.

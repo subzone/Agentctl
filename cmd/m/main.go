@@ -50,6 +50,7 @@ func main() {
 	root.AddCommand(newChatCmd())
 	root.AddCommand(newInitCmd())
 	root.AddCommand(newConfigCmd())
+	root.AddCommand(newListCmd())
 	root.AddCommand(newChangelogCmd())
 	root.AddCommand(newTestCmd())
 

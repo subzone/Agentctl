@@ -25,13 +25,19 @@ import (
 )
 
 const (
-	// chatPrompt prefixes each user input line.
-	chatPrompt = "» "
-	// chatMaxExchanges bounds how many user-initiated exchanges the session
-	// retains across turns. Beyond this, the oldest are dropped to keep
-	// requests within provider context limits.
+	chatPrompt       = "» "
 	chatMaxExchanges = 8
 )
+
+// readOnlyTUITools are auto-approved in TUI mode (no y/n prompt).
+// Destructive tools (shell, fs_write, git) still require confirmation.
+var readOnlyTUITools = map[string]bool{
+	"fs_read":   true,
+	"fs_list":   true,
+	"web_fetch": true,
+	"test_run":  true,
+	"delegate":  true,
+}
 
 func newChatCmd() *cobra.Command {
 	cmd := &cobra.Command{
@@ -121,18 +127,25 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 		}
 		defer rt.close()
 		confirmCh := make(chan bool, 1)
+		// TUI tool confirmation: auto-approve read-only tools, prompt for
+		// destructive ones via the confirm channel.
 		tuiToolConfirm := func(_ context.Context, name string, input json.RawMessage) (bool, error) {
+			if readOnlyTUITools[name] {
+				streamCh <- streamMsg{chunk: fmt.Sprintf("→ %s %s\n", name, summarizeToolInput(input))}
+				return true, nil
+			}
 			streamCh <- streamMsg{chunk: fmt.Sprintf("→ Allow %s %s? [y/n] ", name, summarizeToolInput(input))}
 			return <-confirmCh, nil
 		}
 		sess := engine.NewSession(engine.Config{
-			Provider:    provider,
-			Model:       model,
-			System:      system,
-			Tools:       rt.registry,
-			Temperature: agent.Temperature,
-			MaxTokens:   maxTokens,
-			ToolConfirm: tuiToolConfirm,
+			Provider:         provider,
+			Model:            model,
+			System:           system,
+			Tools:            rt.registry,
+			Temperature:      agent.Temperature,
+			MaxTokens:        maxTokens,
+			MaxContextTokens: modelContextWindow[model],
+			ToolConfirm:      tuiToolConfirm,
 			ContinueConfirm: func(_ context.Context, turns int) (bool, error) {
 				streamCh <- streamMsg{chunk: fmt.Sprintf("→ Agent worked for %d turns. Continue? [y/n] ", turns)}
 				return <-confirmCh, nil
@@ -152,13 +165,14 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 
 	replToolConfirm := stdinToolConfirm(stderr, cmd.InOrStdin())
 	sess := engine.NewSession(engine.Config{
-		Provider:    provider,
-		Model:       model,
-		System:      system,
-		Tools:       rt.registry,
-		Temperature: agent.Temperature,
-		MaxTokens:   maxTokens,
-		ToolConfirm: replToolConfirm,
+		Provider:         provider,
+		Model:            model,
+		System:           system,
+		Tools:            rt.registry,
+		Temperature:      agent.Temperature,
+		MaxTokens:        maxTokens,
+		MaxContextTokens: modelContextWindow[model],
+		ToolConfirm:      replToolConfirm,
 		ContinueConfirm: func(_ context.Context, turns int) (bool, error) {
 			fmt.Fprintf(stderr, "Agent worked for %d turns. Continue? [Y/n]: ", turns)
 			sc := bufio.NewScanner(cmd.InOrStdin())
@@ -231,6 +245,8 @@ func chatLoop(ctx context.Context, sess *engine.Session, undo *tools.UndoStack, 
 				continue
 			}
 			sess.Truncate(chatMaxExchanges)
+			snap := exportSession(sess, "", sess.Model())
+			go func() { autoSaveSnapshot(snap) }()
 		}
 	}
 }
@@ -271,7 +287,7 @@ func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, statu
 		fmt.Fprintln(status, "or tell the current agent: 'follow the spec workflow for this task'")
 		return true, false
 	case "/help":
-		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /undo /model <provider/model> /models /theme [name] /themes /config /help")
+		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /undo /model <provider/model> /models /theme [name] /themes /save /sessions /resume <id> /config /help")
 		return true, false
 	}
 	if line == "/themes" || strings.HasPrefix(line, "/themes ") {
@@ -291,6 +307,18 @@ func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, statu
 			fmt.Fprintln(status, d)
 		}
 		fmt.Fprintln(status, "use /theme <name> to switch")
+		return true, false
+	}
+	if line == "/save" {
+		handleSessionSave(sess, status)
+		return true, false
+	}
+	if line == "/sessions" {
+		handleSessionList(status)
+		return true, false
+	}
+	if strings.HasPrefix(line, "/resume ") {
+		handleSessionResume(line, sess, status)
 		return true, false
 	}
 	if line == "/models" || strings.HasPrefix(line, "/models ") {
@@ -402,6 +430,83 @@ func handleModelsCommand(line string, sess *engine.Session, status io.Writer) {
 		fmt.Fprintf(status, "  %s%d) %s/%s\n", marker, i+1, cfg.Provider, m)
 	}
 	fmt.Fprintln(status, "\n  * = current | /models <number> to switch")
+}
+
+func handleSessionSave(sess *engine.Session, status io.Writer) {
+	store, err := sessionStore()
+	if err != nil {
+		fmt.Fprintf(status, "error: %v\n", err)
+		return
+	}
+	cfg, _ := userconfig.Load()
+	provider, model := "", sess.Model()
+	if cfg != nil {
+		provider = string(cfg.Provider)
+	}
+	id := sessionID("")
+	data := exportSession(sess, provider, model)
+	if err := store.SaveSession(context.Background(), id, data); err != nil {
+		fmt.Fprintf(status, "error saving session: %v\n", err)
+		return
+	}
+	fmt.Fprintf(status, "session saved: %s (%d messages)\n", id, len(data.Messages))
+}
+
+func handleSessionList(status io.Writer) {
+	store, err := sessionStore()
+	if err != nil {
+		fmt.Fprintf(status, "error: %v\n", err)
+		return
+	}
+	ids, err := store.ListSessions(context.Background())
+	if err != nil {
+		fmt.Fprintf(status, "error: %v\n", err)
+		return
+	}
+	if len(ids) == 0 {
+		fmt.Fprintln(status, "no saved sessions")
+		return
+	}
+	fmt.Fprintf(status, "saved sessions (%d):\n", len(ids))
+	for i, id := range ids {
+		fmt.Fprintf(status, "  %d) %s\n", i+1, id)
+	}
+	fmt.Fprintln(status, "use /resume <id or number> to restore")
+}
+
+func handleSessionResume(line string, sess *engine.Session, status io.Writer) {
+	arg := strings.TrimSpace(strings.TrimPrefix(line, "/resume"))
+	if arg == "" {
+		fmt.Fprintln(status, "usage: /resume <session-id or number>")
+		return
+	}
+	store, err := sessionStore()
+	if err != nil {
+		fmt.Fprintf(status, "error: %v\n", err)
+		return
+	}
+	// Allow picking by number from /sessions listing.
+	if n, nerr := strconv.Atoi(arg); nerr == nil {
+		ids, lerr := store.ListSessions(context.Background())
+		if lerr != nil {
+			fmt.Fprintf(status, "error: %v\n", lerr)
+			return
+		}
+		if n < 1 || n > len(ids) {
+			fmt.Fprintf(status, "pick a number between 1 and %d\n", len(ids))
+			return
+		}
+		arg = ids[n-1]
+	}
+	data, err := store.LoadSession(context.Background(), arg)
+	if err != nil {
+		fmt.Fprintf(status, "error: %v\n", err)
+		return
+	}
+	msgs := importSession(data)
+	sess.RestoreMessages(msgs)
+	sess.SetUsage(llm.Usage{InputTokens: data.InputTokens, OutputTokens: data.OutputTokens})
+	fmt.Fprintf(status, "resumed session %s (%d messages, %s/%s)\n", arg, len(msgs), data.Provider, data.Model)
 }
 
 // readLines spawns a goroutine that scans lines from r and forwards them

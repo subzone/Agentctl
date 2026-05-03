@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sessions & Autosave — AgentCTL</title>
+<meta name="description" content="Session persistence, autosave, and state management in AgentCTL.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+
+<nav class="nav"><div class="nav-inner">
+  <a href="index.html" class="nav-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</a>
+  <div class="nav-links"><a href="index.html#features">Features</a><a href="agents.html">Agents</a><a href="architecture.html">Architecture</a><a href="mcp.html">MCP</a><a href="changelog.html">Changelog</a>
+      <a href="sessions.html">Sessions</a><a href="install.html" class="nav-cta">Install</a></div>
+  <div class="lang-toggle">
+    <a href="sessions.html" class="lang-btn active">EN</a>
+    <a href="sr/sessions.html" class="lang-btn">SR</a>
+  </div>
+  <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+</div></nav>
+
+<section class="page-hero">
+  <h1><i class="fa-solid fa-floppy-disk" style="color:var(--accent)"></i> Sessions &amp; Autosave</h1>
+  <p>Automatic session persistence, encrypted storage, and state recovery.</p>
+</section>
+
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">How it works</div>
+      <h2>Autosave</h2>
+      <p>Your session is automatically saved after every step. No manual action needed.</p>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><i class="fa-solid fa-clock-rotate-left"></i> When does it save?</h3>
+      <ul>
+        <li><strong>TUI mode:</strong> After each completed step (tool execution, model response)</li>
+        <li><strong>Chat mode:</strong> After each message exchange</li>
+      </ul>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><i class="fa-solid fa-lock"></i> Where is it stored?</h3>
+      <pre><code>macOS: ~/Library/Application Support/m/sessions/
+Linux: ~/.config/m/sessions/</code></pre>
+      <p>The session is stored as an encrypted JSON file named <code>_autosave</code>.</p>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><i class="fa-solid fa-shield-halved"></i> Encryption</h3>
+      <p>Sessions are encrypted using AES-256-GCM. The encryption key is stored in your OS keychain:</p>
+      <ul>
+        <li><strong>macOS:</strong> macOS Keychain</li>
+        <li><strong>Linux:</strong> libsecret</li>
+      </ul>
+      <p>The key is generated on first use and never leaves your machine.</p>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><i class="fa-solid fa-database"></i> What's saved?</h3>
+      <ul>
+        <li>All messages (user, assistant, tool calls, tool results)</li>
+        <li>Provider and model used</li>
+        <li>Token usage (input/output)</li>
+        <li>Everything needed to reconstruct the session state</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Commands</div>
+      <h2>Session Management</h2>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><code>/save</code></h3>
+      <p>Create a named snapshot of the current session. The snapshot is timestamped and stored alongside the autosave.</p>
+      <pre><code>» /save
+session saved: 2025-07-04_12-30 (8 messages)</code></pre>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><code>/sessions</code></h3>
+      <p>List all saved sessions (including autosave and named snapshots).</p>
+      <pre><code>» /sessions
+saved sessions (2):
+  1) _autosave
+  2) 2025-07-04_12-30
+use /resume &lt;id or number&gt; to restore</code></pre>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><code>/resume &lt;id or number&gt;</code></h3>
+      <p>Restore a previously saved session. You can use the session id or the number from <code>/sessions</code>.</p>
+      <pre><code>» /resume 1
+resumed session _autosave (12 messages, alibaba/deepseek-v3.2)
+» continue where we left off</code></pre>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><code>/reset</code></h3>
+      <p>Clear the current conversation history and start fresh. The autosave is preserved separately — you can <code>/resume _autosave</code> to get it back.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Recovery</div>
+      <h2>What happens on crash?</h2>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><i class="fa-solid fa-triangle-exclamation"></i> Crash recovery</h3>
+      <p>If the app crashes or you <code>/exit</code>, your session is already saved. On next launch:</p>
+      <pre><code>» /sessions
+saved sessions (1):
+  1) _autosave
+
+» /resume 1
+resumed session _autosave (12 messages, alibaba/deepseek-v3.2)</code></pre>
+      <p>The <code>_autosave</code> session is overwritten after every step, so it always has your latest state.</p>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><i class="fa-solid fa-hand"></i> Best effort</h3>
+      <p>Autosave is <em>best effort</em> — if saving fails (disk full, permissions, etc.), the error is silently ignored. For critical work, always use <code>/save</code> explicitly or keep backups of important sessions.</p>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Security</div>
+      <h2>Privacy</h2>
+    </div>
+
+    <div class="docs-card">
+      <ul>
+        <li>Sessions are <strong>never</strong> sent to any external service</li>
+        <li>All data stays on your machine</li>
+        <li>Encryption key lives in your OS keychain, not in config files</li>
+        <li>The <code>_autosave</code> file is overwritten on each autosave, not appended</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="footer-inner">
+  <div class="footer-grid">
+    <div class="footer-brand"><div class="footer-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</div><p>MD-driven agent CLI for code, infrastructure, and automation.</p></div>
+    <div class="footer-col"><h4>Product</h4><a href="https://github.com/subzone/Agentctl/releases/latest">Download</a><a href="install.html">Installation</a><a href="changelog.html">Changelog</a>
+      <a href="sessions.html">Sessions</a></div>
+    <div class="footer-col"><h4>Resources</h4><a href="agents.html">Example Agents</a><a href="mcp.html">MCP Servers</a><a href="architecture.html">Architecture</a></div>
+    <div class="footer-col"><h4>Community</h4><a href="https://github.com/subzone/Agentctl">GitHub</a><a href="https://github.com/subzone/Agentctl/issues">Issues</a><a href="support.html">Support</a></div>
+  </div>
+  <div class="footer-bottom"><span>© 2025 AgentCTL</span><span>Built with <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/Agentctl"><i class="fa-brands fa-github"></i> subzone/Agentctl</a></span></div>
+</div></footer>
+</body>
+</html>
