@@ -1,0 +1,44 @@
+version: 2
+
+project_name: m
+
+builds:
+  - id: m
+    main: ./cmd/m
+    binary: m
+    env:
+      - CGO_ENABLED=0
+    goos:
+      - linux
+    goarch:
+      - amd64
+      - arm64
+    ldflags:
+      - -s -w -X main.Version={{.Version}}
+
+archives:
+  - id: tarballs
+    format: tar.gz
+    name_template: "m_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+
+nfpms:
+  - id: deb
+    package_name: m
+    vendor: AgentCTL
+    homepage: https://github.com/subzone/Agentctl
+    maintainer: Milenko Mitrovic
+    description: MD-driven agent CLI for code, infrastructure, and automation
+    license: MIT
+    formats:
+      - deb
+    bindir: /usr/local/bin
+
+changelog:
+  use: github-native
+
+release:
+  github:
+    owner: subzone
+    name: Agentctl
+  draft: false
+  prerelease: auto
