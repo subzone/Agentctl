@@ -232,6 +232,12 @@ internal/
    interfaces, not concrete implementations.
 6. **MD files are the source of truth.** Agents, skills, tools, MCP
    servers — all defined in Markdown with YAML frontmatter.
+7. **Shell over native tools for DevOps.** Kubernetes, Terraform, Helm,
+   and other infrastructure CLIs are accessed via the `shell` tool —
+   not compiled into the binary. This avoids version coupling (e.g.
+   client-go, terraform-exec) and keeps the binary small. For richer
+   structured output, use MCP servers. See
+   [DevOps patterns](devops-patterns.html).
 
 ## Next steps
 

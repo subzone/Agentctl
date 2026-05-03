@@ -112,8 +112,12 @@ The repo ships with these in [`examples/agents/`][examples]:
 | `local.md` | Ollama/qwen3-coder | read-only | General local assistant, no cost |
 | `summarize.md` | Claude Sonnet | read + list | Project summarizer |
 | `planner.md` | Claude Haiku | read + list | Task planning, no execution |
+| `k8s-debug.md` | Claude Sonnet | all + git | Kubernetes troubleshooting and triage |
+| `terraform-plan.md` | Claude Sonnet | all + git + test | Terraform plan review and module authoring |
+| `helm-deploy.md` | Claude Sonnet | all + git | Helm chart review, linting, and deployment |
 
-Read them as templates for your own.
+Read them as templates for your own. For DevOps-specific patterns and
+usage examples, see **[DevOps patterns](devops-patterns.html)**.
 
 [examples]: https://github.com/subzone/m/tree/main/examples/agents
 
@@ -208,6 +212,7 @@ Multiple spoke delegations in the same turn run in parallel.
 
 ## Next steps
 
+- **[DevOps patterns](devops-patterns.html)** — K8s, Terraform, Helm agents and MCP.
 - **[Architecture](architecture.html)** — how it's all wired up.
 - **[Configuration](configuration.html)** — env vars and file layout.
 - **[Troubleshooting](troubleshooting.html)** — agent validation

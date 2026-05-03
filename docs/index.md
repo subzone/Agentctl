@@ -37,6 +37,7 @@ runs them against your choice of model backend.
 - [Providers](providers.html) — Ollama, Anthropic, OpenAI, Gemini, Alibaba, LiteLLM
 - [Model comparison & cost guide](models.html) — pricing, recommendations, Steva Đubre example
 - [Custom agents](agents.html) — writing agents, tools, hub-and-spoke
+- [DevOps patterns](devops-patterns.html) — K8s, Terraform, Helm agents and MCP
 - [Troubleshooting](troubleshooting.html) — common issues
 - [Changelog](changelog.html) — release history
 
