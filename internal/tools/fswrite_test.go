@@ -93,3 +93,38 @@ func TestFSWriteInvalidMode(t *testing.T) {
 		t.Fatal("expected error for bad mode")
 	}
 }
+
+func TestFSWriteCreateFileMode(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "mode.txt")
+	w := NewFSWrite(nil, nil)
+	if _, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+path+`","mode":"create","content":"hello"}`)); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o644 {
+		t.Errorf("file mode = %o, want 0644", got)
+	}
+}
+
+func TestFSWritePatchPreservesFileMode(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "exec.sh")
+	if err := os.WriteFile(path, []byte("echo hello"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	w := NewFSWrite(nil, nil)
+	if _, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+path+`","mode":"patch","old_str":"hello","new_str":"world"}`)); err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatalf("Stat: %v", err)
+	}
+	if got := info.Mode().Perm(); got != 0o755 {
+		t.Errorf("file mode = %o, want 0755 (original should be preserved)", got)
+	}
+}

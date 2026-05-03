@@ -248,37 +248,10 @@ func isSafeTool(name string, input json.RawMessage) bool {
 		}
 	}
 
-	// Shell commands that are likely safe — require exact command word match
-	// (not just a prefix) and reject any shell operator that could chain
-	// additional commands or pipe output to network tools.
-	if name == "shell" {
-		var args struct {
-			Command string `json:"command"`
-		}
-		if err := json.Unmarshal(input, &args); err == nil {
-			cmd := args.Command
-			// Reject commands containing shell chaining operators or
-			// potentially dangerous keywords regardless of what comes before.
-			if strings.Contains(cmd, ";") ||
-				strings.Contains(cmd, "|") ||
-				strings.Contains(cmd, "&&") ||
-				strings.Contains(cmd, "rm") ||
-				strings.Contains(cmd, "delete") ||
-				strings.Contains(cmd, "mv") ||
-				strings.Contains(cmd, "cp") ||
-				strings.Contains(cmd, "chmod") {
-				return false
-			}
-			// Require that the command starts with an exact safe word
-			// (i.e. followed by a space or nothing — not a longer word).
-			safeWords := []string{"ls", "cat", "head", "tail", "find", "grep", "pwd", "echo", "which", "man", "help"}
-			for _, word := range safeWords {
-				if cmd == word || strings.HasPrefix(cmd, word+" ") {
-					return true
-				}
-			}
-		}
-	}
+	// Shell commands are never auto-approved: even simple-looking commands
+	// can exfiltrate data or modify the filesystem via redirections (>, >>),
+	// subshells ($(), backticks), backgrounding (&), or whitespace-hidden
+	// operators. All shell invocations require explicit user confirmation.
 
 	return false
 }

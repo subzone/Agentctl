@@ -186,6 +186,8 @@ func (f *FSWriteTool) runPatch(ctx context.Context, path, oldStr, newStr string)
 // commitWrite saves the current state of path to the undo stack (if any),
 // creates parent directories, and writes data using a write-then-rename
 // pattern so the target file is never left in a partially-written state.
+// The file mode is preserved when the destination already exists; otherwise
+// it defaults to 0644.
 func (f *FSWriteTool) commitWrite(path string, data []byte) error {
 	if f.Undo != nil {
 		f.Undo.Push(path)
@@ -194,6 +196,13 @@ func (f *FSWriteTool) commitWrite(path string, data []byte) error {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
+
+	// Determine the mode to use: preserve existing file mode, or default to 0644.
+	mode := os.FileMode(0o644)
+	if info, err := os.Stat(path); err == nil {
+		mode = info.Mode().Perm()
+	}
+
 	tmp, err := os.CreateTemp(dir, ".fswrite-*")
 	if err != nil {
 		return err
@@ -205,6 +214,10 @@ func (f *FSWriteTool) commitWrite(path string, data []byte) error {
 		return err
 	}
 	if err := tmp.Close(); err != nil {
+		os.Remove(tmpName)
+		return err
+	}
+	if err := os.Chmod(tmpName, mode); err != nil {
 		os.Remove(tmpName)
 		return err
 	}
