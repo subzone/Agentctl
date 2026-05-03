@@ -1,8 +1,8 @@
 ---
-title: Jira & Confluence integration
+title: Jira & Confluence
+layout: default
+nav_order: 9
 ---
-
-[← Docs home](./)
 
 # Jira & Confluence integration
 

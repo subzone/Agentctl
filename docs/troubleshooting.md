@@ -1,8 +1,8 @@
 ---
 title: Troubleshooting
+layout: default
+nav_order: 11
 ---
-
-[← Docs home](./)
 
 # Troubleshooting
 

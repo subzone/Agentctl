@@ -1,5 +1,8 @@
 ---
-title: m — MD-driven agent CLI
+title: Home
+layout: default
+nav_order: 1
+permalink: /
 ---
 
 # m

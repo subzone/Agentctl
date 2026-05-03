@@ -1,8 +1,8 @@
 ---
-title: DevOps patterns
+title: DevOps Patterns
+layout: default
+nav_order: 8
 ---
-
-[← Docs home](./)
 
 # DevOps patterns
 

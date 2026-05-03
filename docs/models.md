@@ -1,8 +1,8 @@
 ---
-title: Model comparison & cost guide
+title: Models & Pricing
+layout: default
+nav_order: 6
 ---
-
-[← Docs home](./)
 
 # Model comparison & cost guide
 

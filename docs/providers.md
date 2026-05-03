@@ -1,8 +1,8 @@
 ---
 title: Providers
+layout: default
+nav_order: 5
 ---
-
-[← Docs home](./)
 
 # Providers
 

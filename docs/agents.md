@@ -1,8 +1,8 @@
 ---
-title: Custom agents
+title: Custom Agents
+layout: default
+nav_order: 7
 ---
-
-[← Docs home](./)
 
 # Custom agents
 

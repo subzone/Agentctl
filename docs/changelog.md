@@ -1,8 +1,8 @@
 ---
 title: Changelog
+layout: default
+nav_order: 12
 ---
-
-[← Docs home](./)
 
 # Changelog
 

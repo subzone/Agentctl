@@ -1,8 +1,8 @@
 ---
 title: Configuration
+layout: default
+nav_order: 4
 ---
-
-[← Docs home](./)
 
 # Configuration
 
