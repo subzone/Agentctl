@@ -1,0 +1,15 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
+  <rect width="32" height="32" rx="6" fill="#4f46e5"/>
+  <!-- Left pillar -->
+  <rect x="4" y="4" width="6" height="24" rx="1" fill="#fff"/>
+  <!-- Right pillar -->
+  <rect x="22" y="4" width="6" height="24" rx="1" fill="#fff"/>
+  <!-- Left diagonal -->
+  <rect x="10" y="4" width="6" height="6" rx="1" fill="#fff"/>
+  <rect x="12" y="10" width="4" height="4" rx="1" fill="#fff"/>
+  <!-- Right diagonal -->
+  <rect x="16" y="4" width="6" height="6" rx="1" fill="#fff"/>
+  <rect x="16" y="10" width="4" height="4" rx="1" fill="#fff"/>
+  <!-- Center peak -->
+  <rect x="14" y="12" width="4" height="4" rx="1" fill="#fff"/>
+</svg>
