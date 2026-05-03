@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Example Agents — m</title>
+<meta name="description" content="20+ ready-to-use agents for coding, DevOps, review, planning, Jira integration, and more.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <a href="index.html" class="nav-logo">m</a>
+  <div class="nav-links"><a href="index.html#features">Features</a><a href="agents.html">Agents</a><a href="architecture.html">Architecture</a><a href="mcp.html">MCP</a><a href="changelog.html">Changelog</a><a href="install.html" class="nav-cta">Install</a></div>
+  <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+</div></nav>
+
+<section class="page-hero">
+  <h1><i class="fa-solid fa-robot" style="color:var(--accent)"></i> Example Agents</h1>
+  <p>Ship with the repo. Use as-is or fork as templates. Run with <code>m chat agents/name.md</code></p>
+</section>
+
+<!-- Coding -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label"><i class="fa-solid fa-code"></i> Coding</div><h2>Development agents</h2></div>
+    <div class="agents-grid">
+      <div class="agent-card"><div class="agent-name">coder.md</div><div class="agent-desc">Full coding assistant with planner sub-agent and GitHub MCP. Reads code, makes changes, runs tests.</div><div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">git</span><span class="tag">MCP</span><span class="tag">delegate</span></div></div>
+      <div class="agent-card"><div class="agent-name">qwen-coder.md</div><div class="agent-desc">Local coding assistant on Ollama. No API key, no cost. Good for offline work.</div><div class="agent-tags"><span class="tag tag-accent">Ollama</span><span class="tag">free</span><span class="tag">local</span></div></div>
+      <div class="agent-card"><div class="agent-name">reviewer.md</div><div class="agent-desc">Code review — read-only, never edits. Finds bugs, security issues, style problems.</div><div class="agent-tags"><span class="tag tag-accent">read-only</span><span class="tag">fs_read</span><span class="tag">fs_list</span></div></div>
+      <div class="agent-card"><div class="agent-name">writer.md</div><div class="agent-desc">Documentation and prose. READMEs, guides, comments. Reads existing docs for context.</div><div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">fs_read</span><span class="tag">fs_write</span></div></div>
+      <div class="agent-card"><div class="agent-name">planner.md</div><div class="agent-desc">Task planning — breaks work into numbered checklists. No execution, plans only.</div><div class="agent-tags"><span class="tag tag-accent">Claude Haiku</span><span class="tag">read-only</span></div></div>
+      <div class="agent-card"><div class="agent-name">summarize.md</div><div class="agent-desc">Project summarizer. Explores a directory and produces a 5–10 bullet summary.</div><div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">fs_read</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- DevOps -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label"><i class="fa-solid fa-server"></i> DevOps</div><h2>Infrastructure agents</h2></div>
+    <div class="agents-grid">
+      <div class="agent-card"><div class="agent-name">devops.md</div><div class="agent-desc">General DevOps — Dockerfiles, CI/CD, shell scripts, infra config. Explores before editing.</div><div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">fs_write</span></div></div>
+      <div class="agent-card"><div class="agent-name">k8s-debug.md</div><div class="agent-desc">Kubernetes troubleshooter. Systematic triage: events → describe → logs → root cause → fix.</div><div class="agent-tags"><span class="tag tag-accent">kubectl</span><span class="tag">shell</span><span class="tag">git</span></div></div>
+      <div class="agent-card"><div class="agent-name">terraform-plan.md</div><div class="agent-desc">Terraform plan review. Catches security issues, unexpected destroys, missing tags.</div><div class="agent-tags"><span class="tag tag-accent">terraform</span><span class="tag">shell</span><span class="tag">fs_write</span></div></div>
+      <div class="agent-card"><div class="agent-name">helm-deploy.md</div><div class="agent-desc">Helm chart management. Lints, renders templates, reviews values for production readiness.</div><div class="agent-tags"><span class="tag tag-accent">helm</span><span class="tag">shell</span><span class="tag">fs_write</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Jira / Ticket -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label"><i class="fa-brands fa-jira"></i> Ticket-driven</div><h2>Jira &amp; Confluence agents</h2></div>
+    <div class="agents-grid">
+      <div class="agent-card"><div class="agent-name">ticket-worker.md</div><div class="agent-desc">Reads Jira ticket → explores codebase → creates branch → implements → tests → commits → updates ticket.</div><div class="agent-tags"><span class="tag tag-accent">Jira MCP</span><span class="tag">Confluence</span><span class="tag">git</span><span class="tag">test_run</span></div></div>
+      <div class="agent-card"><div class="agent-name">ticket-reviewer.md</div><div class="agent-desc">Reviews code against ticket acceptance criteria. Posts findings back to Jira. Read-only.</div><div class="agent-tags"><span class="tag tag-accent">Jira MCP</span><span class="tag">git</span><span class="tag">read-only</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Orchestration -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label"><i class="fa-solid fa-diagram-project"></i> Orchestration</div><h2>Hub-and-spoke agents</h2></div>
+    <div class="agents-grid">
+      <div class="agent-card"><div class="agent-name">orchestrator.md</div><div class="agent-desc">Routes tasks to the right specialist automatically — coder, reviewer, writer, devops, planner, summarize.</div><div class="agent-tags"><span class="tag tag-accent">delegate</span><span class="tag">6 sub-agents</span></div></div>
+      <div class="agent-card"><div class="agent-name">hub.md</div><div class="agent-desc">Structured hub — delegates to spoke agents that return JSON with citations and confidence levels.</div><div class="agent-tags"><span class="tag tag-accent">structured output</span><span class="tag">delegate</span></div></div>
+      <div class="agent-card"><div class="agent-name">spoke-coder.md</div><div class="agent-desc">Spoke agent — writes code, returns structured JSON with sources, confidence, and caveats.</div><div class="agent-tags"><span class="tag tag-accent">response_schema</span><span class="tag">fs_write</span></div></div>
+      <div class="agent-card"><div class="agent-name">spoke-reviewer.md</div><div class="agent-desc">Spoke agent — reviews code, returns structured JSON. Read-only, terse, one issue per bullet.</div><div class="agent-tags"><span class="tag tag-accent">response_schema</span><span class="tag">read-only</span></div></div>
+      <div class="agent-card"><div class="agent-name">spoke-planner.md</div><div class="agent-desc">Spoke agent — creates implementation plans as structured JSON. 3–10 concrete steps.</div><div class="agent-tags"><span class="tag tag-accent">response_schema</span><span class="tag">read-only</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <h2>Build your own agent</h2>
+  <p>Any Markdown file with YAML frontmatter works. Start from an example and customize.</p>
+  <div class="hero-buttons">
+    <a href="https://github.com/subzone/m/tree/main/examples/agents" class="btn btn-white"><i class="fa-brands fa-github"></i> Browse on GitHub</a>
+  </div>
+</section>
+
+<footer class="footer"><div class="footer-inner">
+  <div class="footer-grid">
+    <div class="footer-brand"><div class="footer-logo">m</div><p>MD-driven agent CLI for code, infrastructure, and automation.</p></div>
+    <div class="footer-col"><h4>Product</h4><a href="https://github.com/subzone/m/releases/latest">Download</a><a href="install.html">Installation</a><a href="changelog.html">Changelog</a></div>
+    <div class="footer-col"><h4>Resources</h4><a href="agents.html">Example Agents</a><a href="mcp.html">MCP Servers</a><a href="architecture.html">Architecture</a></div>
+    <div class="footer-col"><h4>Community</h4><a href="https://github.com/subzone/m">GitHub</a><a href="https://github.com/subzone/m/issues">Issues</a><a href="support.html">Support</a></div>
+  </div>
+  <div class="footer-bottom"><span>© 2025 m project</span><span>Built with <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/m"><i class="fa-brands fa-github"></i> subzone/m</a></span></div>
+</div></footer>
+</body>
+</html>

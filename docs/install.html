@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Install m — macOS, Linux, Source</title>
+<meta name="description" content="Install m in 30 seconds. macOS .pkg, Linux .deb, or build from source.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <a href="index.html" class="nav-logo">m</a>
+  <div class="nav-links">
+    <a href="index.html#features">Features</a>
+    <a href="agents.html">Agents</a>
+    <a href="architecture.html">Architecture</a>
+    <a href="mcp.html">MCP</a>
+    <a href="changelog.html">Changelog</a>
+    <a href="install.html" class="nav-cta">Install</a>
+  </div>
+  <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+</div></nav>
+
+<section class="page-hero">
+  <h1><i class="fa-solid fa-download" style="color:var(--accent)"></i> Installation</h1>
+  <p>One binary. No dependencies. 30 seconds to your first chat.</p>
+</section>
+
+<section class="section">
+  <div class="section-inner">
+    <div class="platform-tabs">
+      <button class="platform-tab active" onclick="showPlatform('macos')"><i class="fa-brands fa-apple"></i> macOS</button>
+      <button class="platform-tab" onclick="showPlatform('linux')"><i class="fa-brands fa-linux"></i> Linux</button>
+      <button class="platform-tab" onclick="showPlatform('source')"><i class="fa-solid fa-code"></i> Source</button>
+    </div>
+
+    <!-- macOS -->
+    <div class="platform-content active" id="platform-macos">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h3>Download the .pkg</h3>
+            <p>Grab the universal binary (Intel + Apple Silicon) from the latest release.</p>
+            <a href="https://github.com/subzone/m/releases/latest" class="btn btn-primary" style="font-size:0.85rem;padding:10px 20px"><i class="fa-solid fa-arrow-down"></i> Download .pkg</a>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h3>Double-click to install</h3>
+            <p>The installer places <code>m</code> at <code>/usr/local/bin/m</code>. If macOS shows a Gatekeeper warning (unsigned .pkg), right-click → Open, or run:</p>
+            <div class="step-code">xattr -d com.apple.quarantine ~/Downloads/m_*.pkg</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h3>Run the wizard</h3>
+            <p>First launch opens a setup wizard — pick Ollama (local, free), Anthropic, OpenAI, Gemini, Alibaba, or LiteLLM.</p>
+            <div class="step-code"><span class="dim">$</span> m<br><br><span class="dim"># Pick your backend, paste an API key (or skip for Ollama), done.</span></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"><i class="fa-solid fa-check"></i></div>
+          <div class="step-content">
+            <h3>Verify</h3>
+            <div class="step-code"><span class="dim">$</span> m --version<br>m version 0.0.16</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Linux -->
+    <div class="platform-content" id="platform-linux">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h3>Download the .deb (Debian/Ubuntu)</h3>
+            <div class="step-code"><span class="dim">$</span> wget https://github.com/subzone/m/releases/latest/download/m_0.0.16_linux_amd64.deb<br><span class="dim">$</span> sudo dpkg -i m_*_linux_amd64.deb</div>
+            <p style="margin-top:12px">For ARM64 (Raspberry Pi, Graviton): grab <code>_linux_arm64.deb</code> instead.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h3>Or download the tarball (any distro)</h3>
+            <div class="step-code"><span class="dim">$</span> wget https://github.com/subzone/m/releases/latest/download/m_0.0.16_linux_amd64.tar.gz<br><span class="dim">$</span> tar -xzf m_*_linux_amd64.tar.gz<br><span class="dim">$</span> sudo mv m /usr/local/bin/</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h3>Run the wizard</h3>
+            <div class="step-code"><span class="dim">$</span> m<br><br><span class="dim"># Wizard installs Ollama if you pick local, or prompts for an API key.</span></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"><i class="fa-solid fa-check"></i></div>
+          <div class="step-content">
+            <h3>Verify</h3>
+            <div class="step-code"><span class="dim">$</span> m --version<br>m version 0.0.16</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Source -->
+    <div class="platform-content" id="platform-source">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h3>Clone and build</h3>
+            <p>Requires Go 1.26+.</p>
+            <div class="step-code"><span class="dim">$</span> git clone https://github.com/subzone/m.git<br><span class="dim">$</span> cd m<br><span class="dim">$</span> go install ./cmd/m</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h3>Add to PATH</h3>
+            <p>The binary lands in <code>$(go env GOPATH)/bin/m</code>. Make sure that's in your PATH.</p>
+            <div class="step-code"><span class="dim">$</span> export PATH="$PATH:$(go env GOPATH)/bin"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"><i class="fa-solid fa-check"></i></div>
+          <div class="step-content">
+            <h3>Verify</h3>
+            <div class="step-code"><span class="dim">$</span> m --version<br>m version dev</div>
+            <p style="margin-top:8px">Source builds report <code>dev</code> instead of a version number.</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">What's next</div>
+      <h2>You're ready to go</h2>
+    </div>
+    <div class="docs-grid">
+      <a href="index.html#examples" class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-terminal" style="color:var(--accent)"></i> Quickstart</div>
+        <div class="docs-card-desc">See m in action — terminal demo, slash commands, TUI overview.</div>
+      </a>
+      <a href="agents.html" class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-robot" style="color:var(--accent)"></i> Example Agents</div>
+        <div class="docs-card-desc">Browse 20+ ready-to-use agents for coding, DevOps, and more.</div>
+      </a>
+      <a href="mcp.html" class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-plug" style="color:var(--accent)"></i> MCP Servers</div>
+        <div class="docs-card-desc">Connect to Jira, GitHub, Confluence and other external tools.</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="footer-inner">
+  <div class="footer-grid">
+    <div class="footer-brand"><div class="footer-logo">m</div><p>MD-driven agent CLI for code, infrastructure, and automation.</p></div>
+    <div class="footer-col"><h4>Product</h4><a href="https://github.com/subzone/m/releases/latest">Download</a><a href="install.html">Installation</a><a href="changelog.html">Changelog</a></div>
+    <div class="footer-col"><h4>Resources</h4><a href="agents.html">Example Agents</a><a href="mcp.html">MCP Servers</a><a href="architecture.html">Architecture</a></div>
+    <div class="footer-col"><h4>Community</h4><a href="https://github.com/subzone/m">GitHub</a><a href="https://github.com/subzone/m/issues">Issues</a><a href="support.html">Support</a></div>
+  </div>
+  <div class="footer-bottom"><span>© 2025 m project</span><span>Built with <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/m"><i class="fa-brands fa-github"></i> subzone/m</a></span></div>
+</div></footer>
+
+<script>
+function showPlatform(id) {
+  document.querySelectorAll('.platform-content').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('.platform-tab').forEach(e => e.classList.remove('active'));
+  document.getElementById('platform-' + id).classList.add('active');
+  event.target.closest('.platform-tab').classList.add('active');
+}
+</script>
+</body>
+</html>

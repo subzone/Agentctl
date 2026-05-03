@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Changelog — m</title>
+<meta name="description" content="Full release history of m, from v0.0.1 to the latest version.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <a href="index.html" class="nav-logo">m</a>
+  <div class="nav-links"><a href="index.html#features">Features</a><a href="agents.html">Agents</a><a href="architecture.html">Architecture</a><a href="mcp.html">MCP</a><a href="changelog.html">Changelog</a><a href="install.html" class="nav-cta">Install</a></div>
+  <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+</div></nav>
+
+<section class="page-hero">
+  <h1><i class="fa-solid fa-clock-rotate-left" style="color:var(--accent)"></i> Changelog</h1>
+  <p>Full release history. Same content as <code>m changelog</code> in the CLI.</p>
+</section>
+
+<section class="section">
+  <div class="section-inner">
+    <div class="timeline">
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-star"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.12</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>Theme system</strong> — built-in themes (matrix, default, minimal) + custom themes via <code>~/.config/m/theme.yaml</code></li>
+          <li><strong>Matrix theme</strong> is the new default: green monochrome</li>
+          <li><strong>/theme command</strong> — list themes or switch live</li>
+          <li><strong>Responsive layout</strong> — header collapses on small terminals</li>
+          <li><strong>Tool activity visible in TUI</strong> — <code>→ fs_list</code> / <code>← 245 bytes</code></li>
+          <li><strong>Visual message styling</strong> — user (bold), tools (faint), errors (red)</li>
+          <li><strong>Gemini/Alibaba/LiteLLM fix</strong> — WithCompat() disables OpenAI-specific stream_options</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.11</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>Google Gemini provider</strong> — gemini-2.5-pro/flash via OpenAI-compat</li>
+          <li><strong>Alibaba Cloud provider</strong> — qwen-plus/turbo/max via DashScope</li>
+          <li><strong>m config command</strong> — interactive provider/model manager with model discovery</li>
+          <li><strong>Wizard updated</strong> to 6 providers</li>
+          <li><strong>Full provider/model label</strong> below the token box in TUI</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.10</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>Structured output post-processing</strong> — engine buffers JSON, extracts answer field</li>
+          <li><strong>Anthropic response-tool extraction</strong> — synthetic tool call intercepted</li>
+          <li><strong>Parallel tool execution</strong> — multiple tool calls run concurrently</li>
+          <li><strong>Ports/adapters layer</strong> — ConfigSource, Secrets, StateStore interfaces + MemoryStore</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.9</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>Engine-enforced structured output</strong> — response_schema in frontmatter constrains model to valid JSON</li>
+          <li><strong>Hub-and-spoke agents</strong> — orchestrator + spoke-coder/reviewer/planner with citations</li>
+          <li><strong>429 retry with backoff</strong> for Anthropic and OpenAI</li>
+          <li><strong>Ollama output cap</strong> — num_predict defaults to 8192</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.8</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>/model command</strong> — switch LLM mid-session, history preserved</li>
+          <li><strong>/compact</strong> — truncate history to last 4 exchanges</li>
+          <li><strong>Context window indicator</strong> — ctx: N% on input line</li>
+          <li><strong>Auto-continue on max_tokens</strong> — engine sends "continue" automatically</li>
+          <li><strong>fs_write + fs_list tools</strong> — create/patch files, list directories</li>
+          <li><strong>Orchestrator agent</strong> — routes to 6 specialists</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.6 – v0.0.7</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>Token count + cost in TUI header</strong></li>
+          <li><strong>fs_write tool</strong> — create/patch with user confirmation + undo</li>
+          <li><strong>fs_list tool</strong> — recursive, skips .git/node_modules</li>
+          <li><strong>New agents</strong> — reviewer, writer, devops, local</li>
+          <li><strong>Makefile + golangci-lint + CI gate</strong></li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.3 – v0.0.5</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>Chat TUI</strong> — full-screen bubbletea UI with banner, stats, scrolling chat</li>
+          <li><strong>Auto-fallback to line REPL</strong> when not a TTY</li>
+          <li><strong>thinking… spinner</strong> while waiting for first token</li>
+          <li><strong>Crash fix</strong> — strings.Builder copied by value panic</li>
+          <li><strong>Ollama daemon detection</strong> — 15s poll with backoff</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-rocket"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.1</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>Initial release</strong></li>
+          <li>Default chat — type <code>m</code> to talk</li>
+          <li>Setup wizard — Ollama, Anthropic, OpenAI, LiteLLM</li>
+          <li>Keychain-backed key storage</li>
+          <li>Tag-driven release pipeline — macOS .pkg + Linux .deb</li>
+        </ul>
+      </div></div>
+
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="footer-inner">
+  <div class="footer-grid">
+    <div class="footer-brand"><div class="footer-logo">m</div><p>MD-driven agent CLI for code, infrastructure, and automation.</p></div>
+    <div class="footer-col"><h4>Product</h4><a href="https://github.com/subzone/m/releases/latest">Download</a><a href="install.html">Installation</a><a href="changelog.html">Changelog</a></div>
+    <div class="footer-col"><h4>Resources</h4><a href="agents.html">Example Agents</a><a href="mcp.html">MCP Servers</a><a href="architecture.html">Architecture</a></div>
+    <div class="footer-col"><h4>Community</h4><a href="https://github.com/subzone/m">GitHub</a><a href="https://github.com/subzone/m/issues">Issues</a><a href="support.html">Support</a></div>
+  </div>
+  <div class="footer-bottom"><span>© 2025 m project</span><span>Built with <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/m"><i class="fa-brands fa-github"></i> subzone/m</a></span></div>
+</div></footer>
+</body>
+</html>

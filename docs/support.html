@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Support — m</title>
+<meta name="description" content="Troubleshooting, common issues, and how to get help with m.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <a href="index.html" class="nav-logo">m</a>
+  <div class="nav-links"><a href="index.html#features">Features</a><a href="agents.html">Agents</a><a href="architecture.html">Architecture</a><a href="mcp.html">MCP</a><a href="changelog.html">Changelog</a><a href="install.html" class="nav-cta">Install</a></div>
+  <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+</div></nav>
+
+<section class="page-hero">
+  <h1><i class="fa-solid fa-life-ring" style="color:var(--accent)"></i> Support</h1>
+  <p>Common issues, troubleshooting, and how to get help.</p>
+</section>
+
+<!-- Common issues -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Troubleshooting</div><h2>Common issues</h2></div>
+    <div style="max-width:760px;margin:0 auto">
+
+      <div class="trouble-item">
+        <h3><i class="fa-solid fa-triangle-exclamation"></i> Ollama daemon is not reachable</h3>
+        <p>The wizard couldn't connect to Ollama at <code>localhost:11434</code>. Start it manually:</p>
+        <div class="step-code" style="margin-top:12px"><span class="dim"># macOS</span><br>brew services start ollama<br><br><span class="dim"># Or one-off</span><br>ollama serve</div>
+        <p style="margin-top:12px">For remote Ollama: <code>export OLLAMA_HOST=http://host:11434</code></p>
+      </div>
+
+      <div class="trouble-item">
+        <h3><i class="fa-solid fa-triangle-exclamation"></i> API key not found</h3>
+        <p>The provider can't find a key in the OS keychain. Run the wizard to store one:</p>
+        <div class="step-code" style="margin-top:12px">m init</div>
+        <p style="margin-top:12px">Or set the env var directly: <code>ANTHROPIC_API_KEY=sk-ant-... m</code></p>
+      </div>
+
+      <div class="trouble-item">
+        <h3><i class="fa-solid fa-triangle-exclamation"></i> macOS Gatekeeper warning</h3>
+        <p>The .pkg is unsigned. Right-click → Open to bypass, or:</p>
+        <div class="step-code" style="margin-top:12px">xattr -d com.apple.quarantine ~/Downloads/m_*.pkg</div>
+      </div>
+
+      <div class="trouble-item">
+        <h3><i class="fa-solid fa-triangle-exclamation"></i> Agent failed validation</h3>
+        <p>Frontmatter has missing or invalid fields. Lint it:</p>
+        <div class="step-code" style="margin-top:12px">m validate my-agent.md</div>
+        <p style="margin-top:12px">Common causes: missing <code>name</code>, <code>type</code>, or <code>model</code>; model not in <code>provider/model</code> format; unknown field (typo).</p>
+      </div>
+
+      <div class="trouble-item">
+        <h3><i class="fa-solid fa-triangle-exclamation"></i> secret-tool not found (Linux)</h3>
+        <p>Install libsecret for keychain support:</p>
+        <div class="step-code" style="margin-top:12px"><span class="dim"># Debian/Ubuntu</span><br>sudo apt-get install libsecret-tools<br><br><span class="dim"># Fedora</span><br>sudo dnf install libsecret<br><br><span class="dim"># Arch</span><br>sudo pacman -S libsecret</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Get help -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Get help</div><h2>Still stuck?</h2></div>
+    <div class="features-grid" style="max-width:720px;margin:0 auto">
+      <a href="https://github.com/subzone/m/issues/new" class="feature-card" style="text-decoration:none">
+        <div class="feature-icon fi-purple"><i class="fa-solid fa-bug"></i></div>
+        <h3>Report a bug</h3>
+        <p>Open a GitHub issue with your <code>m --version</code>, OS, and the full error output.</p>
+      </a>
+      <a href="https://github.com/subzone/m/discussions" class="feature-card" style="text-decoration:none">
+        <div class="feature-icon fi-blue"><i class="fa-solid fa-comments"></i></div>
+        <h3>Ask a question</h3>
+        <p>GitHub Discussions for general questions, agent design help, and feature ideas.</p>
+      </a>
+      <a href="https://github.com/subzone/m/pulls" class="feature-card" style="text-decoration:none">
+        <div class="feature-icon fi-green"><i class="fa-solid fa-code-pull-request"></i></div>
+        <h3>Contribute</h3>
+        <p>PRs welcome. Check the architecture page for how the codebase is organized.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="footer-inner">
+  <div class="footer-grid">
+    <div class="footer-brand"><div class="footer-logo">m</div><p>MD-driven agent CLI for code, infrastructure, and automation.</p></div>
+    <div class="footer-col"><h4>Product</h4><a href="https://github.com/subzone/m/releases/latest">Download</a><a href="install.html">Installation</a><a href="changelog.html">Changelog</a></div>
+    <div class="footer-col"><h4>Resources</h4><a href="agents.html">Example Agents</a><a href="mcp.html">MCP Servers</a><a href="architecture.html">Architecture</a></div>
+    <div class="footer-col"><h4>Community</h4><a href="https://github.com/subzone/m">GitHub</a><a href="https://github.com/subzone/m/issues">Issues</a><a href="support.html">Support</a></div>
+  </div>
+  <div class="footer-bottom"><span>© 2025 m project</span><span>Built with <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/m"><i class="fa-brands fa-github"></i> subzone/m</a></span></div>
+</div></footer>
+</body>
+</html>

@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Architecture — m</title>
+<meta name="description" content="How m works — hexagonal architecture, provider system, engine loop, tool dispatch.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <a href="index.html" class="nav-logo">m</a>
+  <div class="nav-links"><a href="index.html#features">Features</a><a href="agents.html">Agents</a><a href="architecture.html">Architecture</a><a href="mcp.html">MCP</a><a href="changelog.html">Changelog</a><a href="install.html" class="nav-cta">Install</a></div>
+  <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+</div></nav>
+
+<section class="page-hero">
+  <h1><i class="fa-solid fa-sitemap" style="color:var(--accent)"></i> Architecture</h1>
+  <p>A single binary, hexagonal design, zero SDK dependencies.</p>
+</section>
+
+<!-- Overview -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Overview</div>
+      <h2>How m is built</h2>
+      <p>Ports-and-adapters pattern. The engine core has no knowledge of specific providers, tools, or transports.</p>
+    </div>
+    <div class="arch-grid">
+      <div class="arch-card"><i class="fa-solid fa-terminal"></i><h4>CLI Layer</h4><p>Cobra commands, TUI, REPL, wizard, config manager</p></div>
+      <div class="arch-card"><i class="fa-solid fa-gears"></i><h4>Engine</h4><p>Session, Step, tool dispatch, auto-continue, structured output</p></div>
+      <div class="arch-card"><i class="fa-solid fa-satellite-dish"></i><h4>LLM Providers</h4><p>6 adapters, self-registering, stdlib-only HTTP clients</p></div>
+      <div class="arch-card"><i class="fa-solid fa-screwdriver-wrench"></i><h4>Tools</h4><p>7 builtins + MCP tools, registry, confirm gate, undo stack</p></div>
+      <div class="arch-card"><i class="fa-solid fa-plug"></i><h4>MCP Client</h4><p>Stdio JSON-RPC, tool adapter, namespace isolation</p></div>
+      <div class="arch-card"><i class="fa-solid fa-shield-halved"></i><h4>Ports &amp; Adapters</h4><p>ConfigSource, Secrets, StateStore interfaces</p></div>
+    </div>
+  </div>
+</section>
+
+<!-- Diagram -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Data Flow</div><h2>Engine loop</h2></div>
+    <div class="diagram"><pre>
+  User message
+      │
+      ▼
+┌─────────────┐
+│ Session.Step │──→ Provider.Stream() ──→ Events channel
+└─────┬───────┘
+      │
+      ▼
+  ┌─────────────────────────────────────────┐
+  │ Event loop:                              │
+  │   EventText      → stream to terminal    │
+  │   EventToolCall  → collect tool calls    │
+  │   EventUsage     → accumulate tokens     │
+  │   EventDone      → check stop reason     │
+  │   EventError     → return error          │
+  └─────────┬───────────────────────────────┘
+            │
+            ▼
+  stop_reason?
+  ├── "end_turn"   → done, return
+  ├── "tool_use"   → execute tools (parallel) → loop
+  └── "max_tokens" → auto-inject "continue"  → loop
+    </pre></div>
+  </div>
+</section>
+
+<!-- Provider architecture -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Providers</div><h2>Self-registering, zero coupling</h2><p>Providers register via <code>init()</code> + <code>llm.Register()</code>. The engine never imports a provider directly.</p></div>
+    <div class="diagram"><pre>
+  llm.Resolve("anthropic/claude-sonnet-4-6")
+      │
+      ├── anthropic/  → Custom SSE (Messages API)
+      ├── openai/     → OpenAI SSE (Chat Completions)
+      ├── ollama/     → NDJSON streaming (/api/chat)
+      ├── gemini/     → OpenAI-compat (WithCompat)
+      ├── alibaba/    → OpenAI-compat (WithCompat)
+      └── litellm/    → OpenAI-compat (WithCompat)
+    </pre></div>
+    <div class="callout callout-info" style="max-width:720px;margin:24px auto"><strong>All LLM clients are stdlib-only</strong> — <code>net/http</code>, <code>bufio</code>, <code>encoding/json</code>. No SDK dependencies. Easy to debug and fork.</div>
+  </div>
+</section>
+
+<!-- Comparison -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Comparison</div><h2>How m compares</h2></div>
+    <div class="comparison">
+      <table>
+        <thead><tr><th>Feature</th><th>m</th><th>Cursor</th><th>GitHub Copilot</th><th>Aider</th><th>Continue</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Interface</strong></td><td>CLI / TUI</td><td>IDE (VS Code fork)</td><td>IDE plugin</td><td>CLI</td><td>IDE plugin</td></tr>
+          <tr><td><strong>Agent definition</strong></td><td>Markdown files</td><td>Built-in</td><td>Built-in</td><td>Config flags</td><td>JSON config</td></tr>
+          <tr><td><strong>Multi-provider</strong></td><td class="check">✓ 6 providers</td><td class="partial">~ 3</td><td class="cross">✗ OpenAI only</td><td class="check">✓ Many</td><td class="check">✓ Many</td></tr>
+          <tr><td><strong>Local models</strong></td><td class="check">✓ Ollama</td><td class="partial">~ Limited</td><td class="cross">✗</td><td class="check">✓</td><td class="check">✓</td></tr>
+          <tr><td><strong>MCP support</strong></td><td class="check">✓ Stdio</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td><td class="check">✓</td></tr>
+          <tr><td><strong>Sub-agents</strong></td><td class="check">✓ Hub-and-spoke</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td></tr>
+          <tr><td><strong>Structured output</strong></td><td class="check">✓ JSON schema</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td></tr>
+          <tr><td><strong>File write confirm</strong></td><td class="check">✓ Always</td><td class="check">✓ Diff view</td><td class="partial">~ Auto</td><td class="check">✓</td><td class="check">✓</td></tr>
+          <tr><td><strong>Version control</strong></td><td class="check">✓ Git tool built-in</td><td class="partial">~ IDE git</td><td class="partial">~ IDE git</td><td class="check">✓ Auto-commit</td><td class="cross">✗</td></tr>
+          <tr><td><strong>Binary size</strong></td><td>7.8 MB</td><td>~500 MB</td><td>Plugin</td><td>pip install</td><td>Plugin</td></tr>
+          <tr><td><strong>Dependencies</strong></td><td class="check">✓ Zero</td><td>Electron</td><td>VS Code</td><td>Python</td><td>VS Code</td></tr>
+          <tr><td><strong>Price</strong></td><td>Free (+ API costs)</td><td>$20/mo</td><td>$10/mo</td><td>Free (+ API)</td><td>Free (+ API)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Design principles -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Principles</div><h2>Design decisions</h2></div>
+    <div class="features-grid">
+      <div class="feature-card"><div class="feature-icon fi-purple"><i class="fa-solid fa-layer-group"></i></div><h3>Engine is provider-agnostic</h3><p>No provider-specific code in the engine or tools. Swap backends without touching core logic.</p></div>
+      <div class="feature-card"><div class="feature-icon fi-blue"><i class="fa-solid fa-cube"></i></div><h3>Stdlib-only LLM clients</h3><p>No SDK deps. Every HTTP call is plain net/http. Easy to debug, easy to fork.</p></div>
+      <div class="feature-card"><div class="feature-icon fi-green"><i class="fa-solid fa-key"></i></div><h3>Keys in the OS keychain</h3><p>macOS Keychain or Linux libsecret. Never in config files. Never in plaintext.</p></div>
+      <div class="feature-card"><div class="feature-icon fi-orange"><i class="fa-solid fa-file-lines"></i></div><h3>MD files are truth</h3><p>Agents, skills, tools, MCP servers — all defined in Markdown with YAML frontmatter.</p></div>
+      <div class="feature-card"><div class="feature-icon fi-pink"><i class="fa-solid fa-terminal"></i></div><h3>Shell over native tools</h3><p>K8s, Terraform, Helm accessed via shell — no client-go, no version coupling, binary stays small.</p></div>
+      <div class="feature-card"><div class="feature-icon fi-cyan"><i class="fa-solid fa-puzzle-piece"></i></div><h3>Ports for extensibility</h3><p>ConfigSource, Secrets, StateStore interfaces. Swap implementations without engine changes.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="footer-inner">
+  <div class="footer-grid">
+    <div class="footer-brand"><div class="footer-logo">m</div><p>MD-driven agent CLI for code, infrastructure, and automation.</p></div>
+    <div class="footer-col"><h4>Product</h4><a href="https://github.com/subzone/m/releases/latest">Download</a><a href="install.html">Installation</a><a href="changelog.html">Changelog</a></div>
+    <div class="footer-col"><h4>Resources</h4><a href="agents.html">Example Agents</a><a href="mcp.html">MCP Servers</a><a href="architecture.html">Architecture</a></div>
+    <div class="footer-col"><h4>Community</h4><a href="https://github.com/subzone/m">GitHub</a><a href="https://github.com/subzone/m/issues">Issues</a><a href="support.html">Support</a></div>
+  </div>
+  <div class="footer-bottom"><span>© 2025 m project</span><span>Built with <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/m"><i class="fa-brands fa-github"></i> subzone/m</a></span></div>
+</div></footer>
+</body>
+</html>

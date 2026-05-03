@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>m — MD-driven agent CLI for code, infra, and automation</title>
 <meta name="description" content="Agents are plain Markdown files with YAML frontmatter. The CLI runs them against 6 model backends with built-in tools, MCP, and sub-agent delegation.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="css/style.css">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
 </head>
@@ -15,14 +16,14 @@
   <div class="nav-inner">
     <a href="#" class="nav-logo">m</a>
     <div class="nav-links">
-      <a href="#features">Features</a>
-      <a href="#agents">Agents</a>
-      <a href="#examples">Examples</a>
-      <a href="#docs">Docs</a>
-      <a href="#faq">FAQ</a>
-      <a href="https://github.com/subzone/m/releases/latest" class="nav-cta">Download</a>
+      <a href="index.html#features">Features</a>
+      <a href="agents.html">Agents</a>
+      <a href="architecture.html">Architecture</a>
+      <a href="mcp.html">MCP</a>
+      <a href="changelog.html">Changelog</a>
+      <a href="install.html" class="nav-cta">Install</a>
     </div>
-    <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Menu">☰</button>
+    <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
   </div>
 </nav>
 
@@ -72,12 +73,12 @@
       <p>Local or hosted. Free or paid. Switch mid-session with <code>/model</code>.</p>
     </div>
     <div class="providers-row">
-      <div class="provider-item"><div class="provider-icon">🦙</div><div class="provider-name">Ollama</div></div>
-      <div class="provider-item"><div class="provider-icon">🟠</div><div class="provider-name">Anthropic</div></div>
-      <div class="provider-item"><div class="provider-icon">🟢</div><div class="provider-name">OpenAI</div></div>
-      <div class="provider-item"><div class="provider-icon">💎</div><div class="provider-name">Gemini</div></div>
-      <div class="provider-item"><div class="provider-icon">☁️</div><div class="provider-name">Alibaba</div></div>
-      <div class="provider-item"><div class="provider-icon">🔀</div><div class="provider-name">LiteLLM</div></div>
+      <div class="provider-item"><div class="provider-icon"><i class="fa-solid fa-horse" style="color:#7c3aed"></i></div><div class="provider-name">Ollama</div></div>
+      <div class="provider-item"><div class="provider-icon"><i class="fa-solid fa-mountain-sun" style="color:#d97706"></i></div><div class="provider-name">Anthropic</div></div>
+      <div class="provider-item"><div class="provider-icon"><i class="fa-solid fa-circle-nodes" style="color:#059669"></i></div><div class="provider-name">OpenAI</div></div>
+      <div class="provider-item"><div class="provider-icon"><i class="fa-solid fa-gem" style="color:#2563eb"></i></div><div class="provider-name">Gemini</div></div>
+      <div class="provider-item"><div class="provider-icon"><i class="fa-solid fa-cloud" style="color:#f97316"></i></div><div class="provider-name">Alibaba</div></div>
+      <div class="provider-item"><div class="provider-icon"><i class="fa-solid fa-shuffle" style="color:#8b5cf6"></i></div><div class="provider-name">LiteLLM</div></div>
     </div>
   </div>
 </section>
@@ -92,32 +93,32 @@
     </div>
     <div class="features-grid">
       <div class="feature-card">
-        <div class="feature-icon fi-purple">📄</div>
+        <div class="feature-icon fi-purple"><i class="fa-solid fa-file-code"></i></div>
         <h3>Agents as Markdown</h3>
         <p>YAML frontmatter defines model, tools, and permissions. The body is the system prompt. One file = one agent.</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon fi-blue">🛠️</div>
+        <div class="feature-icon fi-blue"><i class="fa-solid fa-screwdriver-wrench"></i></div>
         <h3>7 Built-in Tools</h3>
         <p>Shell, file read/write, directory listing, git, test runner, and sub-agent delegation. Every write requires user confirmation.</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon fi-green">🔌</div>
+        <div class="feature-icon fi-green"><i class="fa-solid fa-plug"></i></div>
         <h3>MCP Integration</h3>
         <p>Connect to Jira, GitHub, Confluence, or any MCP server. Tools are namespaced and auto-discovered.</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon fi-orange">🏗️</div>
+        <div class="feature-icon fi-orange"><i class="fa-solid fa-diagram-project"></i></div>
         <h3>Hub-and-Spoke</h3>
         <p>Orchestrator agents delegate to specialists that return structured JSON with citations and confidence levels.</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon fi-pink">🖥️</div>
+        <div class="feature-icon fi-pink"><i class="fa-solid fa-display"></i></div>
         <h3>Full-screen TUI</h3>
         <p>Token count, cost estimate, context window %, CPU/RAM stats, theming. Falls back to line REPL in pipes.</p>
       </div>
       <div class="feature-card">
-        <div class="feature-icon fi-cyan">🔒</div>
+        <div class="feature-icon fi-cyan"><i class="fa-solid fa-shield-halved"></i></div>
         <h3>Keys in the Keychain</h3>
         <p>API keys stored in macOS Keychain or Linux libsecret. Never in config files. Never in plaintext.</p>
       </div>
@@ -233,27 +234,27 @@ Always consider security.
     </div>
     <div class="docs-grid">
       <a href="https://github.com/subzone/m#quick-install" class="docs-card">
-        <div class="docs-card-title">Installation →</div>
+        <div class="docs-card-title">Installation</div>
         <div class="docs-card-desc">.pkg for macOS, .deb for Linux, or build from source with Go 1.26+.</div>
       </a>
       <a href="https://github.com/subzone/m/tree/main/examples/agents" class="docs-card">
-        <div class="docs-card-title">Example Agents →</div>
+        <div class="docs-card-title">Example Agents</div>
         <div class="docs-card-desc">20+ ready-to-use agents for coding, DevOps, review, planning, and more.</div>
       </a>
       <a href="https://github.com/subzone/m/blob/main/PLAN.md" class="docs-card">
-        <div class="docs-card-title">Architecture →</div>
+        <div class="docs-card-title">Architecture</div>
         <div class="docs-card-desc">Hexagonal design, provider system, engine loop, tool dispatch, MCP client.</div>
       </a>
       <a href="https://github.com/subzone/m/tree/main/examples/mcp" class="docs-card">
-        <div class="docs-card-title">MCP Servers →</div>
+        <div class="docs-card-title">MCP Servers</div>
         <div class="docs-card-desc">GitHub, Jira, Confluence MCP server definitions ready to plug in.</div>
       </a>
       <a href="https://github.com/subzone/m/releases" class="docs-card">
-        <div class="docs-card-title">Changelog →</div>
+        <div class="docs-card-title">Changelog</div>
         <div class="docs-card-desc">Full release history from v0.0.1 to the latest version.</div>
       </a>
       <a href="https://github.com/subzone/m/issues" class="docs-card">
-        <div class="docs-card-title">Issues & Support →</div>
+        <div class="docs-card-title">Issues &amp; Support</div>
         <div class="docs-card-desc">Report bugs, request features, or ask questions on GitHub.</div>
       </a>
     </div>
@@ -349,7 +350,7 @@ Always consider security.
     </div>
     <div class="footer-bottom">
       <span>© 2025 m project</span>
-      <span>Built with Go · <a href="https://github.com/subzone/m">subzone/m</a></span>
+      <span>Built with <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/m"><i class="fa-brands fa-github"></i> subzone/m</a></span>
     </div>
   </div>
 </footer>

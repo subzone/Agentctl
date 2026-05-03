@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCP Servers — m</title>
+<meta name="description" content="Connect m to Jira, GitHub, Confluence, and dozens of other tools via MCP.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <a href="index.html" class="nav-logo">m</a>
+  <div class="nav-links"><a href="index.html#features">Features</a><a href="agents.html">Agents</a><a href="architecture.html">Architecture</a><a href="mcp.html">MCP</a><a href="changelog.html">Changelog</a><a href="install.html" class="nav-cta">Install</a></div>
+  <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+</div></nav>
+
+<section class="page-hero">
+  <h1><i class="fa-solid fa-plug" style="color:var(--accent)"></i> MCP Servers</h1>
+  <p>Extend agents with external tools via Model Context Protocol. Stdio JSON-RPC, auto-discovered, namespaced.</p>
+</section>
+
+<!-- How it works -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">How it works</div><h2>Plug in any MCP server</h2><p>Define a server in a Markdown file, reference it from your agent, and its tools appear automatically.</p></div>
+    <div class="example-grid">
+      <div>
+        <div class="terminal"><div class="terminal-bar"><span class="terminal-dot r"></span><span class="terminal-dot y"></span><span class="terminal-dot g"></span><span class="terminal-title">examples/mcp/jira.md</span></div>
+        <div class="terminal-body">
+<span class="tool">---</span>
+<span class="output">name:</span> jira
+<span class="output">type:</span> mcp_server
+<span class="output">transport:</span> stdio
+<span class="output">command:</span>
+  - mcp-server-atlassian
+  - --jira
+<span class="output">env:</span>
+  JIRA_URL: ${env:JIRA_URL}
+  JIRA_TOKEN: ${secret:jira-token}
+<span class="output">tool_prefix:</span> jira
+<span class="tool">---</span>
+        </div></div>
+      </div>
+      <div class="example-text">
+        <h3>Three steps to connect</h3>
+        <ul class="example-list">
+          <li>Install the MCP server binary (pip, npm, or go install)</li>
+          <li>Create a <code>.md</code> definition file with connection details</li>
+          <li>Add <code>mcp: [jira]</code> to your agent's frontmatter</li>
+        </ul>
+        <p style="margin-top:16px">Tools are namespaced (<code>jira__get_issue</code>) to avoid collisions. The agent discovers available tools automatically via JSON-RPC handshake.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Included servers -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Included</div><h2>Ships with the repo</h2></div>
+    <div class="mcp-grid">
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-purple"><i class="fa-brands fa-github"></i></div><div class="mcp-card-name">GitHub</div></div>
+        <div class="mcp-card-desc">PR/issue/repo operations. Create PRs, search issues, manage repos. Used by the <code>coder.md</code> agent.</div>
+        <span class="mcp-card-status status-included"><i class="fa-solid fa-check"></i> Included</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-blue"><i class="fa-brands fa-jira"></i></div><div class="mcp-card-name">Jira</div></div>
+        <div class="mcp-card-desc">Search, read, create, update, and transition issues. JQL queries. Used by <code>ticket-worker.md</code>.</div>
+        <span class="mcp-card-status status-included"><i class="fa-solid fa-check"></i> Included</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-green"><i class="fa-brands fa-confluence"></i></div><div class="mcp-card-name">Confluence</div></div>
+        <div class="mcp-card-desc">Search, read, create, and update pages. CQL queries. Used by <code>ticket-worker.md</code>.</div>
+        <span class="mcp-card-status status-included"><i class="fa-solid fa-check"></i> Included</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Community / compatible -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Compatible</div><h2>Community MCP servers that work with m</h2><p>Any stdio-based MCP server works. Here are some that pair well with agent workflows.</p></div>
+    <div class="mcp-grid">
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-cyan"><i class="fa-solid fa-dharmachakra"></i></div><div class="mcp-card-name">kubectl</div></div>
+        <div class="mcp-card-desc">Structured Kubernetes operations — pod status as JSON, safe delete guards, namespace scoping.</div>
+        <span class="mcp-card-status status-community"><i class="fa-solid fa-users"></i> Community</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-orange"><i class="fa-solid fa-cubes"></i></div><div class="mcp-card-name">Terraform</div></div>
+        <div class="mcp-card-desc">Plan parsing, state inspection, resource graph queries. Structured plan output instead of raw text.</div>
+        <span class="mcp-card-status status-community"><i class="fa-solid fa-users"></i> Community</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-pink"><i class="fa-brands fa-slack"></i></div><div class="mcp-card-name">Slack</div></div>
+        <div class="mcp-card-desc">Send messages, read channels, search history. Useful for notification agents and ChatOps.</div>
+        <span class="mcp-card-status status-community"><i class="fa-solid fa-users"></i> Community</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-purple"><i class="fa-solid fa-database"></i></div><div class="mcp-card-name">PostgreSQL</div></div>
+        <div class="mcp-card-desc">Query databases, inspect schemas, run migrations. Read-only mode for safety.</div>
+        <span class="mcp-card-status status-community"><i class="fa-solid fa-users"></i> Community</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-blue"><i class="fa-brands fa-docker"></i></div><div class="mcp-card-name">Docker</div></div>
+        <div class="mcp-card-desc">Container management, image inspection, log streaming. Pairs with the DevOps agents.</div>
+        <span class="mcp-card-status status-community"><i class="fa-solid fa-users"></i> Community</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-green"><i class="fa-brands fa-aws"></i></div><div class="mcp-card-name">AWS</div></div>
+        <div class="mcp-card-desc">CloudFormation, S3, Lambda, ECS operations. Structured responses for infrastructure agents.</div>
+        <span class="mcp-card-status status-community"><i class="fa-solid fa-users"></i> Community</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-orange"><i class="fa-solid fa-magnifying-glass"></i></div><div class="mcp-card-name">Brave Search</div></div>
+        <div class="mcp-card-desc">Web search for agents that need to look up documentation, APIs, or current information.</div>
+        <span class="mcp-card-status status-community"><i class="fa-solid fa-users"></i> Community</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-cyan"><i class="fa-solid fa-envelope"></i></div><div class="mcp-card-name">Email (SMTP)</div></div>
+        <div class="mcp-card-desc">Send emails, read inbox. Useful for notification workflows and report delivery.</div>
+        <span class="mcp-card-status status-planned"><i class="fa-solid fa-clock"></i> Planned</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-pink"><i class="fa-solid fa-globe"></i></div><div class="mcp-card-name">HTTP/SSE Transport</div></div>
+        <div class="mcp-card-desc">Many MCP servers use HTTP instead of stdio. Support planned for a future release.</div>
+        <span class="mcp-card-status status-planned"><i class="fa-solid fa-clock"></i> Planned</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="footer-inner">
+  <div class="footer-grid">
+    <div class="footer-brand"><div class="footer-logo">m</div><p>MD-driven agent CLI for code, infrastructure, and automation.</p></div>
+    <div class="footer-col"><h4>Product</h4><a href="https://github.com/subzone/m/releases/latest">Download</a><a href="install.html">Installation</a><a href="changelog.html">Changelog</a></div>
+    <div class="footer-col"><h4>Resources</h4><a href="agents.html">Example Agents</a><a href="mcp.html">MCP Servers</a><a href="architecture.html">Architecture</a></div>
+    <div class="footer-col"><h4>Community</h4><a href="https://github.com/subzone/m">GitHub</a><a href="https://github.com/subzone/m/issues">Issues</a><a href="support.html">Support</a></div>
+  </div>
+  <div class="footer-bottom"><span>© 2025 m project</span><span>Built with <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/m"><i class="fa-brands fa-github"></i> subzone/m</a></span></div>
+</div></footer>
+</body>
+</html>
