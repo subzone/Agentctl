@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Arhitektura — m</title>
+<meta name="description" content="Kako m radi — heksagonalna arhitektura, provajderi, engine loop, dispatch alata, MCP. Bez folirantskog štoseva.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <a href="index.html" class="nav-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</a>
+  <div class="nav-links"><a href="index.html#features">Mogućnosti</a><a href="agents.html">Agenti</a><a href="architecture.html">Arhitektura</a><a href="mcp.html">MCP</a><a href="changelog.html">Istorija</a><a href="install.html" class="nav-cta">Instaliraj</a></div>
+  <div class="lang-toggle">
+    <a href="../architecture.html" class="lang-btn">EN</a>
+    <a href="architecture.html" class="lang-btn active">SR</a>
+  </div>
+  <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Meni"><i class="fa-solid fa-bars"></i></button>
+</div></nav>
+
+<section class="page-hero">
+  <h1><i class="fa-solid fa-sitemap" style="color:var(--accent)"></i> Arhitektura</h1>
+  <p>Jedan binary, heksagonalni dizajn, nula SDK zavisnosti. Evo kako sve ovo drži vodu.</p>
+</section>
+
+<!-- High-level layers -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Pregled</div>
+      <h2>Slojevita arhitektura</h2>
+      <p>Ports-and-adapters. Svaki sloj zavisi samo od interfejsa ispod. Ne pričamo o spaghetti kodu.</p>
+    </div>
+    <div class="flow">
+      <div class="flow-col">
+        <div class="flow-box flow-primary" style="width:100%;max-width:500px">
+          <i class="fa-solid fa-terminal"></i> &nbsp;CLI sloj
+          <div style="font-weight:400;font-size:0.75rem;margin-top:4px;opacity:0.85">main · run · chat · validate · init · config · TUI · REPL</div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-accent" style="width:100%;max-width:500px">
+          <i class="fa-solid fa-gears"></i> &nbsp;Engine
+          <div style="font-weight:400;font-size:0.75rem;margin-top:4px">Sesija · korak · dispatch alata · auto-nastavak · strukturirani izlaz</div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-row" style="width:100%;max-width:500px">
+          <div class="flow-box flow-purple flow-small"><i class="fa-solid fa-satellite-dish"></i> LLM</div>
+          <div class="flow-box flow-green flow-small"><i class="fa-solid fa-screwdriver-wrench"></i> Alati</div>
+          <div class="flow-box flow-orange flow-small"><i class="fa-solid fa-plug"></i> MCP</div>
+          <div class="flow-box flow-pink flow-small"><i class="fa-solid fa-file-code"></i> Konfig</div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-secondary" style="width:100%;max-width:500px">
+          <i class="fa-solid fa-shield-halved"></i> &nbsp;Portovi i adapteri
+          <div style="font-weight:400;font-size:0.75rem;margin-top:4px">ConfigSource · Secrets (OS Keychain) · StateStore · MemoryStore</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Engine loop -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Jezgro</div><h2>Engine loop</h2><p>Svaka korisnička poruka prolazi kroz isti ciklus. Engine ne zna ništa o provajderu — vidi samo događaje.</p></div>
+    <div class="flow">
+      <div class="flow-col">
+        <div class="flow-box flow-secondary"><i class="fa-solid fa-user"></i> &nbsp;Korisnička poruka</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-primary"><i class="fa-solid fa-play"></i> &nbsp;Session.Step()</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-purple"><i class="fa-solid fa-satellite-dish"></i> &nbsp;Provider.Stream()</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+
+        <div class="flow-group">
+          <div class="flow-group-title"><i class="fa-solid fa-rotate"></i> &nbsp;Petlja događaja</div>
+          <div class="flow-grid">
+            <div class="flow-box flow-secondary"><i class="fa-solid fa-font"></i><br>EventText<div class="flow-label">prosleđuj u terminal</div></div>
+            <div class="flow-box flow-orange"><i class="fa-solid fa-wrench"></i><br>EventToolCall<div class="flow-label">skupi pozive</div></div>
+            <div class="flow-box flow-green"><i class="fa-solid fa-chart-bar"></i><br>EventUsage<div class="flow-label">broj tokena</div></div>
+            <div class="flow-box flow-accent"><i class="fa-solid fa-flag-checkered"></i><br>EventDone<div class="flow-label">proveri stop razlog</div></div>
+            <div class="flow-box flow-pink"><i class="fa-solid fa-triangle-exclamation"></i><br>EventError<div class="flow-label">vrati grešku</div></div>
+          </div>
+        </div>
+
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-row">
+          <div class="flow-box flow-green flow-small"><i class="fa-solid fa-check"></i> end_turn<div class="flow-label">gotovo, vrati</div></div>
+          <div class="flow-box flow-orange flow-small"><i class="fa-solid fa-wrench"></i> tool_use<div class="flow-label">izvrši → opet</div></div>
+          <div class="flow-box flow-purple flow-small"><i class="fa-solid fa-forward"></i> max_tokens<div class="flow-label">nastavi → opet</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Provider resolution -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Provajderi</div><h2>Sami se registruju, bez vezivanja</h2><p>Provajderi se registruju preko <code>init()</code> + <code>llm.Register()</code>. Engine zove <code>llm.Resolve("provider/model")</code> i dobija <code>Provider</code> interfejs. Ništa komplikovano, ako čitaš.</p></div>
+    <div class="flow">
+      <div class="flow-col">
+        <div class="flow-box flow-primary" style="max-width:400px"><i class="fa-solid fa-magnifying-glass"></i> &nbsp;llm.Resolve("provider/model")</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-group">
+          <div class="flow-group-title">Registar provajdera</div>
+          <div class="flow-grid" style="grid-template-columns: repeat(3, 1fr)">
+            <div class="flow-box flow-orange flow-small"><i class="fa-solid fa-bolt"></i> Anthropic<div class="flow-label">Custom SSE</div></div>
+            <div class="flow-box flow-green flow-small"><i class="fa-solid fa-circle-nodes"></i> OpenAI<div class="flow-label">OpenAI SSE</div></div>
+            <div class="flow-box flow-purple flow-small"><i class="fa-solid fa-horse"></i> Ollama<div class="flow-label">NDJSON</div></div>
+            <div class="flow-box flow-accent flow-small"><i class="fa-solid fa-gem"></i> Gemini<div class="flow-label">Compat</div></div>
+            <div class="flow-box flow-pink flow-small"><i class="fa-solid fa-cloud"></i> Alibaba<div class="flow-label">Compat</div></div>
+            <div class="flow-box flow-secondary flow-small"><i class="fa-solid fa-shuffle"></i> LiteLLM<div class="flow-label">Compat</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="callout callout-info" style="max-width:720px;margin:24px auto"><strong>Svi LLM klijenti su stdlib-only</strong> — <code>net/http</code>, <code>bufio</code>, <code>encoding/json</code>. Bez SDK zavisnosti. Gemini, Alibaba i LiteLLM koriste <code>WithCompat()</code> koji isključi OpenAI specifične štoseve. Klin bez čekića.</div>
+  </div>
+</section>
+
+<!-- Tool system -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Alati</div><h2>Dispatch alata i bezbednost</h2><p>Svaki poziv alata prolazi kroz registar. Pisanje fajlova traži potvrdu korisnika. Undo vraća poslednje pisanje. Bez „pa ja sam mislio“.</p></div>
+    <div class="flow">
+      <div class="flow-col">
+        <div class="flow-box flow-primary"><i class="fa-solid fa-robot"></i> &nbsp;Model traži poziv alata</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-accent"><i class="fa-solid fa-book"></i> &nbsp;tools.Registry.Run()</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-group">
+          <div class="flow-group-title">Ugrađeni alati</div>
+          <div class="flow-grid" style="grid-template-columns: repeat(4, 1fr)">
+            <div class="flow-box flow-secondary flow-small"><i class="fa-solid fa-terminal"></i> shell</div>
+            <div class="flow-box flow-secondary flow-small"><i class="fa-solid fa-file"></i> fs_read</div>
+            <div class="flow-box flow-orange flow-small"><i class="fa-solid fa-pen"></i> fs_write<div class="flow-label">⚠️ potvrdi</div></div>
+            <div class="flow-box flow-secondary flow-small"><i class="fa-solid fa-folder-tree"></i> fs_list</div>
+            <div class="flow-box flow-secondary flow-small"><i class="fa-brands fa-git-alt"></i> git</div>
+            <div class="flow-box flow-secondary flow-small"><i class="fa-solid fa-vial"></i> test_run</div>
+            <div class="flow-box flow-purple flow-small"><i class="fa-solid fa-share"></i> delegate</div>
+            <div class="flow-box flow-green flow-small"><i class="fa-solid fa-plug"></i> MCP alati</div>
+          </div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-green"><i class="fa-solid fa-reply"></i> &nbsp;Rezultat → nazad u model kao tool_result</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Hub and spoke -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Delegacija</div><h2>Hub-and-spoke pattern</h2><p>Orkestrator delegira specijalistima. Spoke vraćaju strukturirani JSON. Više delegacija ide paralelno. Kao tim koji radi, ne kao tim na sastanku.</p></div>
+    <div class="flow">
+      <div class="flow-col">
+        <div class="flow-box flow-secondary"><i class="fa-solid fa-user"></i> &nbsp;Korisnički zahtev</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-primary" style="max-width:300px"><i class="fa-solid fa-diagram-project"></i> &nbsp;Hub agent<div style="font-weight:400;font-size:0.75rem;margin-top:4px">Razlaže zadatak, delegira, sintetizuje</div></div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-row">
+          <div class="flow-col" style="gap:4px">
+            <div class="flow-box flow-purple flow-small"><i class="fa-solid fa-code"></i> spoke-coder</div>
+            <div class="flow-label">svoj model + alati</div>
+          </div>
+          <div class="flow-col" style="gap:4px">
+            <div class="flow-box flow-green flow-small"><i class="fa-solid fa-magnifying-glass"></i> spoke-reviewer</div>
+            <div class="flow-label">read-only</div>
+          </div>
+          <div class="flow-col" style="gap:4px">
+            <div class="flow-box flow-orange flow-small"><i class="fa-solid fa-list-check"></i> spoke-planner</div>
+            <div class="flow-label">samo planira</div>
+          </div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-group" style="max-width:400px;margin:0 auto">
+          <div class="flow-group-title">Strukturirani JSON odgovor</div>
+          <div style="font-family:var(--mono);font-size:0.75rem;color:var(--fg2);line-height:1.6;text-align:left">
+            { <span style="color:var(--accent)">"answer"</span>: "...",<br>
+            &nbsp;&nbsp;<span style="color:var(--accent)">"sources"</span>: [{ file, summary }],<br>
+            &nbsp;&nbsp;<span style="color:var(--accent)">"confidence"</span>: "high",<br>
+            &nbsp;&nbsp;<span style="color:var(--accent)">"caveats"</span>: ["..."] }
+          </div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-accent"><i class="fa-solid fa-quote-left"></i> &nbsp;Hub sintetizuje sa citatima<div style="font-weight:400;font-size:0.75rem;margin-top:4px">[spoke-coder: main.go:10-25] ...</div></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- MCP flow -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">MCP</div><h2>MCP integracija — tok</h2><p>Agent referencira MCP server po imenu. Menadžer ga pokrene, rukuje se, otkrije alate i name-spejsuje ih. Bez ručne pelene.</p></div>
+    <div class="flow">
+      <div class="flow-col">
+        <div class="flow-box flow-secondary" style="max-width:350px;font-family:var(--mono);font-size:0.8rem">mcp: [jira, confluence]<div class="flow-label">u frontmatter-u agenta</div></div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-primary"><i class="fa-solid fa-play"></i> &nbsp;mcp.Manager.Open()</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-row">
+          <div class="flow-col" style="gap:4px">
+            <div class="flow-box flow-accent flow-small"><i class="fa-solid fa-rocket"></i> Pokreni proces</div>
+            <div class="flow-label">stdio transport</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-col" style="gap:4px">
+            <div class="flow-box flow-green flow-small"><i class="fa-solid fa-handshake"></i> JSON-RPC handshake</div>
+            <div class="flow-label">initialize + initialized</div>
+          </div>
+          <div class="flow-arrow">→</div>
+          <div class="flow-col" style="gap:4px">
+            <div class="flow-box flow-purple flow-small"><i class="fa-solid fa-list"></i> tools/list</div>
+            <div class="flow-label">otkrij alate</div>
+          </div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-group">
+          <div class="flow-group-title">Name-spejsovani alati (preko ToolAdapter-a)</div>
+          <div class="flow-grid" style="grid-template-columns: repeat(3, 1fr)">
+            <div class="flow-box flow-accent flow-small">jira__get_issue</div>
+            <div class="flow-box flow-accent flow-small">jira__search</div>
+            <div class="flow-box flow-accent flow-small">jira__add_comment</div>
+            <div class="flow-box flow-green flow-small">confluence__get_page</div>
+            <div class="flow-box flow-green flow-small">confluence__search</div>
+            <div class="flow-box flow-green flow-small">confluence__update_page</div>
+          </div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-secondary"><i class="fa-solid fa-merge"></i> &nbsp;Spojeni u tools.Registry uz ugrađene alate</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Structured output -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Strukturirani izlaz</div><h2>Provajderski-nativna JSON kontrola</h2><p>Kad <code>response_schema</code> postoji u frontmatter-u, engine forsira validan JSON preko nativnog mehanizma svakog provajdera. Bez parsiranja regex-om kao u 2018-oj.</p></div>
+    <div class="flow">
+      <div class="flow-col">
+        <div class="flow-box flow-secondary" style="max-width:350px;font-family:var(--mono);font-size:0.8rem">response_schema: { type: object, ... }<div class="flow-label">u frontmatter-u agenta</div></div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-row">
+          <div class="flow-box flow-orange flow-small"><i class="fa-solid fa-bolt"></i> Anthropic<div class="flow-label">response-tool + forced tool_choice</div></div>
+          <div class="flow-box flow-green flow-small"><i class="fa-solid fa-circle-nodes"></i> OpenAI<div class="flow-label">json_schema strict mode</div></div>
+          <div class="flow-box flow-purple flow-small"><i class="fa-solid fa-horse"></i> Ollama<div class="flow-label">format polje</div></div>
+        </div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-box flow-accent"><i class="fa-solid fa-filter"></i> &nbsp;Engine bafera ceo odgovor (bez stream-a)</div>
+        <div class="flow-arrow"><i class="fa-solid fa-arrow-down"></i></div>
+        <div class="flow-row">
+          <div class="flow-box flow-green flow-small"><i class="fa-solid fa-user"></i> Izvuci "answer"<div class="flow-label">prikaz korisniku</div></div>
+          <div class="flow-box flow-purple flow-small"><i class="fa-solid fa-database"></i> Sačuvaj ceo JSON<div class="flow-label">hub vidi strukturu</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Comparison -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Poređenje</div><h2>Kako m stoji prema ostalima</h2></div>
+    <div class="comparison">
+      <table>
+        <thead><tr><th>Karakteristika</th><th>m</th><th>Cursor</th><th>GitHub Copilot</th><th>Aider</th><th>Continue</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Interfejs</strong></td><td>CLI / TUI</td><td>IDE (VS Code fork)</td><td>IDE plugin</td><td>CLI</td><td>IDE plugin</td></tr>
+          <tr><td><strong>Definicija agenta</strong></td><td>Markdown fajlovi</td><td>Ugrađeno</td><td>Ugrađeno</td><td>Config flagovi</td><td>JSON config</td></tr>
+          <tr><td><strong>Više provajdera</strong></td><td class="check">✓ 6 provajdera</td><td class="partial">~ 3</td><td class="cross">✗ samo OpenAI</td><td class="check">✓ Mnogo</td><td class="check">✓ Mnogo</td></tr>
+          <tr><td><strong>Lokalni modeli</strong></td><td class="check">✓ Ollama</td><td class="partial">~ Ograničeno</td><td class="cross">✗</td><td class="check">✓</td><td class="check">✓</td></tr>
+          <tr><td><strong>MCP podrška</strong></td><td class="check">✓ Stdio</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td><td class="check">✓</td></tr>
+          <tr><td><strong>Sub-agenti</strong></td><td class="check">✓ Hub-and-spoke</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td></tr>
+          <tr><td><strong>Strukturirani izlaz</strong></td><td class="check">✓ JSON schema</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td><td class="cross">✗</td></tr>
+          <tr><td><strong>Potvrda za pisanje</strong></td><td class="check">✓ Uvek</td><td class="check">✓ Diff prikaz</td><td class="partial">~ Auto</td><td class="check">✓</td><td class="check">✓</td></tr>
+          <tr><td><strong>Verzionisanje</strong></td><td class="check">✓ Git ugrađen</td><td class="partial">~ IDE git</td><td class="partial">~ IDE git</td><td class="check">✓ Auto-commit</td><td class="cross">✗</td></tr>
+          <tr><td><strong>Veličina binary-a</strong></td><td>7.8 MB</td><td>~500 MB</td><td>Plugin</td><td>pip install</td><td>Plugin</td></tr>
+          <tr><td><strong>Zavisnosti</strong></td><td class="check">✓ Nula</td><td>Electron</td><td>VS Code</td><td>Python</td><td>VS Code</td></tr>
+          <tr><td><strong>Cena</strong></td><td>Besplatno (+ API)</td><td>$20/mes</td><td>$10/mes</td><td>Besplatno (+ API)</td><td>Besplatno (+ API)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- Design principles -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Principi</div><h2>Dizajnerske odluke</h2></div>
+    <div class="features-grid">
+      <div class="feature-card"><div class="feature-icon fi-purple"><i class="fa-solid fa-layer-group"></i></div><h3>Engine ne zna za provajdera</h3><p>Bez specifičnog provajderskog koda u engine-u ili alatima. Menjaj backend bez diranja jezgra. Onako kako treba.</p></div>
+      <div class="feature-card"><div class="feature-icon fi-blue"><i class="fa-solid fa-cube"></i></div><h3>Stdlib-only LLM klijenti</h3><p>Bez SDK zavisnosti. Svaki HTTP poziv je obični net/http. Lako se debaguje, lako se forka.</p></div>
+      <div class="feature-card"><div class="feature-icon fi-green"><i class="fa-solid fa-key"></i></div><h3>Ključevi u OS keychain-u</h3><p>macOS Keychain ili Linux libsecret. Nikad u config fajlovima. Nikad u plain tekstu. Nikad u javnom git logu.</p></div>
+      <div class="feature-card"><div class="feature-icon fi-orange"><i class="fa-solid fa-file-lines"></i></div><h3>MD fajlovi su istina</h3><p>Agenti, veštine, alati, MCP serveri — sve definisano u Markdownu sa YAML frontmatter-om. Bez UI klikača.</p></div>
+      <div class="feature-card"><div class="feature-icon fi-pink"><i class="fa-solid fa-terminal"></i></div><h3>Shell umesto native klijenata</h3><p>K8s, Terraform, Helm preko shell-a — bez client-go, bez verzionog vezivanja, binary ostaje mali.</p></div>
+      <div class="feature-card"><div class="feature-icon fi-cyan"><i class="fa-solid fa-puzzle-piece"></i></div><h3>Portovi za proširivost</h3><p>ConfigSource, Secrets, StateStore interfejsi. Menjaš implementaciju bez diranja engine-a.</p></div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="footer-inner">
+  <div class="footer-grid">
+    <div class="footer-brand"><div class="footer-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</div><p>MD-driven agent CLI za kod, infrastrukturu i automatizaciju. Bez gluposti.</p></div>
+    <div class="footer-col"><h4>Proizvod</h4><a href="https://github.com/subzone/m/releases/latest">Skini</a><a href="install.html">Instalacija</a><a href="changelog.html">Istorija</a></div>
+    <div class="footer-col"><h4>Resursi</h4><a href="agents.html">Primeri agenata</a><a href="mcp.html">MCP serveri</a><a href="architecture.html">Arhitektura</a></div>
+    <div class="footer-col"><h4>Zajednica</h4><a href="https://github.com/subzone/m">GitHub</a><a href="https://github.com/subzone/m/issues">Problemi</a><a href="support.html">Podrška</a></div>
+  </div>
+  <div class="footer-bottom"><span>© 2025 m projekat</span><span>Napravljeno sa <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/m"><i class="fa-brands fa-github"></i> subzone/m</a></span></div>
+</div></footer>
+</body>
+</html>

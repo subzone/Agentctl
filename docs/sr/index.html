@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m — MD agent CLI za kod, infru i automatizaciju</title>
+<meta name="description" content="Agenti su obični Markdown fajlovi sa YAML frontmatter-om. CLI ih vrti preko 6 modela, sa alatima, MCP-om i sub-agentima. Bez gluposti.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</a>
+    <div class="nav-links">
+      <a href="index.html#features">Mogućnosti</a>
+      <a href="agents.html">Agenti</a>
+      <a href="architecture.html">Arhitektura</a>
+      <a href="mcp.html">MCP</a>
+      <a href="changelog.html">Istorija</a>
+      <a href="install.html" class="nav-cta">Instaliraj</a>
+    </div>
+    <div class="lang-toggle">
+      <a href="../index.html" class="lang-btn">EN</a>
+      <a href="index.html" class="lang-btn active">SR</a>
+    </div>
+    <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Meni"><i class="fa-solid fa-bars"></i></button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge"><span class="hero-badge-dot"></span> v0.0.17 — Besplatno, dok mi se neko ne zameri</div>
+    <h1>Jedan fajl.<br><span class="hero-gradient">Jedan agent.</span></h1>
+    <p>Spustiš Markdown fajl u repo i dobiješ agenta koji radi posao — sa alatima, MCP integracijama i sub-agentima. 6 provajdera. 7 ugrađenih alata. Bez SDK-ova, bez runtime-a, bez izgovora. Ako ti ovo deluje komplikovano, vrati se na Notion. Ja se vraćam slanini.</p>
+    <div class="hero-buttons">
+      <a href="https://github.com/subzone/m/releases/latest" class="btn btn-primary">Skini za macOS / Linux →</a>
+      <a href="#examples" class="btn btn-ghost">Pokaži mi šta zna</a>
+    </div>
+
+    <div class="terminal-wrap">
+      <div class="terminal">
+        <div class="terminal-bar">
+          <span class="terminal-dot r"></span>
+          <span class="terminal-dot y"></span>
+          <span class="terminal-dot g"></span>
+          <span class="terminal-title">m — terminal</span>
+        </div>
+        <div class="terminal-body">
+<span class="prompt">$</span> <span class="cmd">m</span>
+<span class="comment"># Pri prvom pokretanju ide čarobnjak — biraš backend, ne paniči</span>
+
+<span class="prompt">»</span> <span class="cmd">popravi onaj test koji puca u api/handler.go</span>
+<span class="tool">→ fs_read</span> api/handler.go
+<span class="tool">→ shell</span> go test ./api/...
+<span class="tool">→ fs_write</span> api/handler.go <span class="comment">(patch: dodat nil check, kao da nisi mogao sam)</span>
+<span class="output">Da prepišem api/handler.go? [y/N]: y</span>
+<span class="tool">→ shell</span> go test ./api/...
+<span class="output">PASS</span>
+<span class="tool">→ git</span> commit -m "fix: nil check u handleru (hvala meni)"
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROVIDERS -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Provajderi</div>
+      <h2>Radi sa modelima koje već koristiš</h2>
+      <p>Lokalno ili u oblaku. Besplatno ili plaćeno. Menjaš u toku sesije sa <code>/model</code>. Bez plačeš-zoveš-supporta.</p>
+    </div>
+    <div class="providers-row">
+      <div class="provider-item"><div class="provider-icon"><i class="fa-solid fa-horse" style="color:#7c3aed"></i></div><div class="provider-name">Ollama</div></div>
+      <div class="provider-item"><div class="provider-icon"><i class="fa-solid fa-mountain-sun" style="color:#d97706"></i></div><div class="provider-name">Anthropic</div></div>
+      <div class="provider-item"><div class="provider-icon"><i class="fa-solid fa-circle-nodes" style="color:#059669"></i></div><div class="provider-name">OpenAI</div></div>
+      <div class="provider-item"><div class="provider-icon"><i class="fa-solid fa-gem" style="color:#2563eb"></i></div><div class="provider-name">Gemini</div></div>
+      <div class="provider-item"><div class="provider-icon"><i class="fa-solid fa-cloud" style="color:#f97316"></i></div><div class="provider-name">Alibaba</div></div>
+      <div class="provider-item"><div class="provider-icon"><i class="fa-solid fa-shuffle" style="color:#8b5cf6"></i></div><div class="provider-name">LiteLLM</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section section-alt" id="features">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Mogućnosti</div>
+      <h2>Sve što ti treba, ništa što ti ne treba</h2>
+      <p>Jedan binary od 7.8 MB. Bez SDK-ova, bez runtime-ova, bez demonskih procesa koji ti jedu RAM dok spavaš.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon fi-purple"><i class="fa-solid fa-file-code"></i></div>
+        <h3>Agenti kao Markdown</h3>
+        <p>YAML frontmatter definiše model, alate i dozvole. Telo je sistemski prompt. Jedan fajl = jedan agent. Ako ti ovo deluje teško, idi peri sudove.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-blue"><i class="fa-solid fa-screwdriver-wrench"></i></div>
+        <h3>7 ugrađenih alata</h3>
+        <p>Shell, čitanje/pisanje fajlova, listanje, git, runner za testove i delegacija sub-agentima. Svako pisanje traži potvrdu — da ne mlatiš nogama posle.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-green"><i class="fa-solid fa-plug"></i></div>
+        <h3>MCP integracija</h3>
+        <p>Kačiš Jiru, GitHub, Confluence, ili bilo koji MCP server. Alati se name-spejsuju i sami se otkriju. Bez ručnog koplja.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-orange"><i class="fa-solid fa-diagram-project"></i></div>
+        <h3>Hub-and-Spoke</h3>
+        <p>Orkestrator delegira specijalistima koji vraćaju strukturirani JSON sa citatima i nivoima sigurnosti. Da znaš ko je šta rekao i sa koliko obraza.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-pink"><i class="fa-solid fa-display"></i></div>
+        <h3>Full-screen TUI</h3>
+        <p>Token broj, procena cene, % konteksta, CPU/RAM, teme. Pada na obični REPL kad si u pajpu. Bez Electrona koji žvaće 4 GB.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-cyan"><i class="fa-solid fa-shield-halved"></i></div>
+        <h3>Ključevi u keychain-u</h3>
+        <p>API ključevi u macOS Keychain-u ili Linux libsecret-u. Nikad u config fajlovima. Nikad u plain tekstu. Nikad ne završavaju u javnom GitHub repou — kao kod onih kolega, znaš već.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EXAMPLES -->
+<section class="section" id="examples">
+  <div class="section-inner">
+    <div class="example-grid">
+      <div class="example-text">
+        <div class="section-label">Kako to radi</div>
+        <h3>Definišeš agenta u 10 linija</h3>
+        <p>Markdown sa YAML frontmatter-om i to je to. Telo postaje sistemski prompt. Alati, model, temperatura — sve deklarativno. Ako ti je ovo previše, programiranje nije za tebe.</p>
+        <ul class="example-list">
+          <li>Biraš model iz 6 provajdera</li>
+          <li>Biraš koje alate agent sme da koristi</li>
+          <li>Kačiš MCP servere za eksterne sisteme</li>
+          <li>Delegiraš sub-agentima za komplikovanije poslove</li>
+          <li>Dodaješ schema za strukturirani JSON odgovor</li>
+        </ul>
+      </div>
+      <div>
+        <div class="terminal">
+          <div class="terminal-bar">
+            <span class="terminal-dot r"></span><span class="terminal-dot y"></span><span class="terminal-dot g"></span>
+            <span class="terminal-title">devops.md</span>
+          </div>
+          <div class="terminal-body">
+<span class="tool">---</span>
+<span class="output">name:</span> devops
+<span class="output">type:</span> agent
+<span class="output">model:</span> anthropic/claude-sonnet-4-6
+<span class="output">tools:</span>
+  - shell
+  - fs_read
+  - fs_write
+  - git
+  - test_run
+<span class="output">temperature:</span> 0.3
+<span class="tool">---</span>
+Ti si DevOps inženjer.
+Istražuj projekat sa fs_list.
+Radi ciljane izmene sa fs_write.
+Bezbednost prvo, junior posle.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AGENT SHOWCASE -->
+<section class="section section-alt" id="agents">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Galerija agenata</div>
+      <h2>Spremni agenti, već u kutiji</h2>
+      <p>Dolaze sa binary-em. Koristi ih kako jesu, ili forkuj kao šablon. Ne pravim ti večeru.</p>
+    </div>
+    <div class="agents-grid">
+      <div class="agent-card">
+        <div class="agent-name">coder.md</div>
+        <div class="agent-desc">Pun coding asistent sa planer sub-agentom i GitHub MCP integracijom. Radi posao dok ti piješ kafu.</div>
+        <div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">git</span><span class="tag">MCP</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">k8s-debug.md</div>
+        <div class="agent-desc">Kubernetes spasilac. Trijažira pod krešove, mrežu i resurse. Bolji od onog kolege što samo restartuje pod-ove.</div>
+        <div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">kubectl</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">terraform-plan.md</div>
+        <div class="agent-desc">Pregleda Terraform planove, hvata sigurnosne probleme, krpi .tf fajlove pre nego što obrišeš produkciju.</div>
+        <div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">fs_write</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">ticket-worker.md</div>
+        <div class="agent-desc">Čita Jira tikete, radi posao, commituje, ažurira tiket. Sve što PM pretvara u sastanke od 45 minuta.</div>
+        <div class="agent-tags"><span class="tag tag-accent">Jira MCP</span><span class="tag">Confluence</span><span class="tag">git</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">helm-deploy.md</div>
+        <div class="agent-desc">Lintuje Helm chart-ove, renderuje template-e, pregleda values pre prod-a. Bez „radi kod mene“ priče.</div>
+        <div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">helm</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">orchestrator.md</div>
+        <div class="agent-desc">Sam usmerava posao na pravog specijalistu. Hub-and-spoke. Ti samo gledaš.</div>
+        <div class="agent-tags"><span class="tag tag-accent">delegate</span><span class="tag">6 sub-agenata</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">steva-djubre.md</div>
+        <div class="agent-desc">Mrgudni srpski DevOps SRE. Debeli sremac, ne razdvaja se od kulena, slanine, kobasica i dobrog pečenja. Najgori stav, najbolji rezultati — između dva zalogaja. Odgovara isključivo na srpskom. To bi bio ja, da.</div>
+        <div class="agent-tags"><span class="tag tag-accent">Srpski</span><span class="tag">sremac</span><span class="tag">kulen</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">qwen-coder.md</div>
+        <div class="agent-desc">Lokalni coding asistent. Vrti se na Ollami sa Qwen3-Coderom. Bez API ključa. Bez računa. Bez izgovora.</div>
+        <div class="agent-tags"><span class="tag tag-accent">Ollama</span><span class="tag">besplatno</span><span class="tag">lokalno</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DOCS -->
+<section class="section" id="docs">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Dokumentacija</div>
+      <h2>Sve je dokumentovano (čitaj, ne pitaj)</h2>
+    </div>
+    <div class="docs-grid">
+      <a href="https://github.com/subzone/m#quick-install" class="docs-card">
+        <div class="docs-card-title">Instalacija</div>
+        <div class="docs-card-desc">.pkg za macOS, .deb za Linux, ili buildaj iz izvora sa Go 1.26+.</div>
+      </a>
+      <a href="https://github.com/subzone/m/tree/main/examples/agents" class="docs-card">
+        <div class="docs-card-title">Primeri agenata</div>
+        <div class="docs-card-desc">20+ spremnih agenata za kod, DevOps, review, planiranje i ostalo.</div>
+      </a>
+      <a href="https://github.com/subzone/m/blob/main/PLAN.md" class="docs-card">
+        <div class="docs-card-title">Arhitektura</div>
+        <div class="docs-card-desc">Heksagonalni dizajn, provajderi, engine loop, dispatch alata, MCP klijent.</div>
+      </a>
+      <a href="https://github.com/subzone/m/tree/main/examples/mcp" class="docs-card">
+        <div class="docs-card-title">MCP serveri</div>
+        <div class="docs-card-desc">Definicije za GitHub, Jira, Confluence — gotove, ukačiš i radiš.</div>
+      </a>
+      <a href="https://github.com/subzone/m/releases" class="docs-card">
+        <div class="docs-card-title">Istorija promena</div>
+        <div class="docs-card-desc">Pun changelog od v0.0.1 do najnovije. Bez retuširanja.</div>
+      </a>
+      <a href="https://github.com/subzone/m/issues" class="docs-card">
+        <div class="docs-card-title">Problemi i podrška</div>
+        <div class="docs-card-desc">Prijavi bag, traži feature, ili postavi pitanje. Na GitHubu, ne u DM-u.</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section section-alt" id="faq">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Pitanja</div>
+      <h2>Ono što me stalno pitate</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Koje modele m podržava? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">Bilo koji iz 6 provajdera: Ollama (lokalno — Qwen, Llama, Mistral i drugovi), Anthropic (Claude), OpenAI (GPT-4o, GPT-4.1), Google Gemini, Alibaba Cloud (Qwen, DeepSeek), ili šta god što priča OpenAI-protokolom preko LiteLLM-a. Menjaš modele u sesiji sa <code>/model provider/model</code>. Bez restarta, bez jeftine drame.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Da li je besplatno? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">Sam m je besplatan i open source (MIT). Sa Ollamom — sve lokalno, nula dinara. Hostovani provajderi (Anthropic, OpenAI…) naplaćuju po tokenu — tipična coding sesija košta od 0.01 do 1.35 dolara, zavisno od modela. Manje nego kilo kulena na pijaci.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Da li može da menja moje fajlove? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">Može, ali svako pisanje traži tvoju potvrdu. Vidiš diff, kucneš <code>y</code> da odobriš, <code>n</code> da odbiješ. Agent vidi „korisnik je odbio“ i prilagodi se. Postoji i undo stack — <code>/undo</code> vraća poslednje pisanje. Tako da nema tih: „pa ja sam mislio da neće…“.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Po čemu je drugačiji od Cursor / Copilot / Aider? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">m je CLI-prvi, nije zalepljen za IDE. Agenti su Markdown fajlovi koje držiš u gitu pored koda. Bez vendor lock-ina — menjaš provajdera u jednoj liniji. Hub-and-spoke pattern dozvoljava da specijalisti rade zajedno. I to je jedan binary od 7.8 MB sa nula zavisnosti. Bez Electrona, bez node_modules od 2 GB.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Gde su mi API ključevi? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">U OS keychain-u — macOS Keychain ili Linux libsecret. Nikad u config fajlovima, nikad u plain tekstu, nikad u env varijablama (osim ako ih sam ne setuješ). Wizard sve to sredi sam. Bezbedno čak i za one što sve commituju.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Da li može za DevOps / infrastrukturu? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">Apsolutno. Repo dolazi sa namenskim agentima za Kubernetes debug, Terraform plan review, Helm chart upravljanje, i Jira/Confluence ticket-driven razvoj. Preko shell alata agenti pristupaju kubectl, terraform, helm — i bilo čemu drugom što imaš u $PATH. Kao da imaš juniora koji ne ide na pauzu.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <h2>Hoćeš da probaš?</h2>
+  <p>Instalira se za 30 sekundi. Wizard te uvodi odmah. Bez sastanka za onboarding.</p>
+  <div class="hero-buttons">
+    <a href="https://github.com/subzone/m/releases/latest" class="btn btn-white">Skini najnoviji release →</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="footer-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</div>
+        <p>MD-driven agent CLI za kod, infrastrukturu i automatizaciju. Bez gluposti.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Proizvod</h4>
+        <a href="https://github.com/subzone/m/releases/latest">Skini</a>
+        <a href="https://github.com/subzone/m#quick-install">Instalacija</a>
+        <a href="https://github.com/subzone/m/releases">Istorija</a>
+
+      </div>
+      <div class="footer-col">
+        <h4>Resursi</h4>
+        <a href="https://github.com/subzone/m/tree/main/examples/agents">Primeri agenata</a>
+        <a href="https://github.com/subzone/m/tree/main/examples/mcp">MCP serveri</a>
+        <a href="https://github.com/subzone/m/blob/main/PLAN.md">Arhitektura</a>
+        <a href="https://github.com/subzone/m/tree/main/examples/skills">Veštine</a>
+      </div>
+      <div class="footer-col">
+        <h4>Zajednica</h4>
+        <a href="https://github.com/subzone/m">GitHub</a>
+        <a href="https://github.com/subzone/m/issues">Problemi</a>
+        <a href="https://github.com/subzone/m/discussions">Diskusije</a>
+        <a href="https://github.com/subzone/m/pulls">Doprinesi</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2025 m projekat</span>
+      <span>Napravljeno sa <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/m"><i class="fa-brands fa-github"></i> subzone/m</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

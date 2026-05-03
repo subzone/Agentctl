@@ -226,6 +226,22 @@ img { max-width: 100%; }
 .footer-bottom a { color: rgba(255,255,255,0.5); }
 .footer-bottom a:hover { color: #fff; }
 
+/* ===== LANGUAGE TOGGLE ===== */
+.lang-toggle {
+  display: inline-flex; border: 1px solid var(--border); border-radius: 99px; overflow: hidden;
+  font-size: 0.78rem; font-weight: 600; margin-left: 12px;
+}
+.lang-btn {
+  padding: 5px 14px; cursor: pointer; background: none; border: none;
+  font-family: var(--sans); font-weight: 600; font-size: 0.78rem;
+  color: var(--fg3); transition: all 0.12s; text-decoration: none;
+}
+.lang-btn:hover { color: var(--fg); }
+.lang-btn.active { background: var(--accent); color: #fff; }
+[data-lang="sr"] { display: none; }
+html.sr [data-lang="en"] { display: none; }
+html.sr [data-lang="sr"] { display: revert; }
+
 /* ===== FLOW DIAGRAMS ===== */
 .flow { max-width: 720px; margin: 0 auto; }
 .flow-row { display: flex; align-items: center; justify-content: center; gap: 12px; margin: 8px 0; flex-wrap: wrap; }

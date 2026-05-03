@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Istorija promena — m</title>
+<meta name="description" content="Pun changelog m-a, od v0.0.1 do najnovije verzije. Bez retuširanja.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <a href="index.html" class="nav-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</a>
+  <div class="nav-links"><a href="index.html#features">Mogućnosti</a><a href="agents.html">Agenti</a><a href="architecture.html">Arhitektura</a><a href="mcp.html">MCP</a><a href="changelog.html">Istorija</a><a href="install.html" class="nav-cta">Instaliraj</a></div>
+  <div class="lang-toggle">
+    <a href="../changelog.html" class="lang-btn">EN</a>
+    <a href="changelog.html" class="lang-btn active">SR</a>
+  </div>
+  <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Meni"><i class="fa-solid fa-bars"></i></button>
+</div></nav>
+
+<section class="page-hero">
+  <h1><i class="fa-solid fa-clock-rotate-left" style="color:var(--accent)"></i> Istorija promena</h1>
+  <p>Pun changelog. Isti sadržaj kao <code>m changelog</code> u CLI-u. Bez friziranja brojeva.</p>
+</section>
+
+<section class="section">
+  <div class="section-inner">
+    <div class="timeline">
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-star"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.17</div><div class="timeline-date">Maj 2026</div>
+        <ul>
+          <li><strong>Landing strana proizvoda</strong> — pristojan sajt na subzone.github.io/m, čisti HTML/CSS, Font Awesome ikone, bez Jekyll-a</li>
+          <li><strong>Sajt sa 7 stranica</strong> — početna, instalacija (po platformama), galerija agenata, arhitektura (poređenje sa Cursor/Copilot/Aider), MCP serveri, istorija, podrška</li>
+          <li><strong>DevOps agenti</strong> — k8s-debug (Kubernetes trijaža), terraform-plan (review plana), helm-deploy (chart upravljanje)</li>
+          <li><strong>Jira/Confluence integracija</strong> — ticket-worker (tiket → grana → kod → test → ažuriranje), ticket-reviewer (po kriterijumu prihvatanja)</li>
+          <li><strong>MCP definicije</strong> za Jiru i Confluence (mcp-server-atlassian)</li>
+          <li><strong>Steva Đubre i Steve Trash</strong> — karakterni agenti, srpska/engleska varijanta, više modela</li>
+          <li><strong>ASCII art M baner</strong> u nav-u i futeru sajta</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.12</div><div class="timeline-date">Maj 2026</div>
+        <ul>
+          <li><strong>Sistem tema</strong> — ugrađene teme (matrix, default, minimal) + custom preko <code>~/.config/m/theme.yaml</code></li>
+          <li><strong>Matrix tema</strong> je novi default: zeleni monohrom — kao iz filma</li>
+          <li><strong>/theme komanda</strong> — listaj ili menjaj uživo</li>
+          <li><strong>Responzivni layout</strong> — header se kompaktuje na malim terminalima</li>
+          <li><strong>Aktivnost alata vidljiva u TUI-ju</strong> — <code>→ fs_list</code> / <code>← 245 bajta</code></li>
+          <li><strong>Vizuelni stil poruka</strong> — korisnik (bold), alati (utišano), greške (crveno)</li>
+          <li><strong>Gemini/Alibaba/LiteLLM fix</strong> — WithCompat() isključi OpenAI-specifični stream_options</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.11</div><div class="timeline-date">Maj 2026</div>
+        <ul>
+          <li><strong>Google Gemini provajder</strong> — gemini-2.5-pro/flash preko OpenAI-compat</li>
+          <li><strong>Alibaba Cloud provajder</strong> — qwen-plus/turbo/max preko DashScope-a</li>
+          <li><strong>m config komanda</strong> — interaktivno upravljanje provajderom/modelom uz otkrivanje modela</li>
+          <li><strong>Wizard ažuriran</strong> na 6 provajdera</li>
+          <li><strong>Pun provider/model ispod token boksa</strong> u TUI-ju</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.10</div><div class="timeline-date">Maj 2026</div>
+        <ul>
+          <li><strong>Post-procesiranje strukturiranog izlaza</strong> — engine bafera JSON, izvlači polje answer</li>
+          <li><strong>Anthropic response-tool ekstrakcija</strong> — sintetički poziv alata se hvata</li>
+          <li><strong>Paralelno izvršavanje alata</strong> — više poziva ide istovremeno</li>
+          <li><strong>Ports/adapters sloj</strong> — ConfigSource, Secrets, StateStore interfejsi + MemoryStore</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.9</div><div class="timeline-date">Maj 2026</div>
+        <ul>
+          <li><strong>Engine forsira strukturirani izlaz</strong> — response_schema u frontmatter-u tera model na valjan JSON</li>
+          <li><strong>Hub-and-spoke agenti</strong> — orkestrator + spoke-coder/reviewer/planner sa citatima</li>
+          <li><strong>429 retry sa backoff-om</strong> za Anthropic i OpenAI — bez panike</li>
+          <li><strong>Ollama izlazni cap</strong> — num_predict default 8192</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.8</div><div class="timeline-date">Maj 2026</div>
+        <ul>
+          <li><strong>/model komanda</strong> — menjaj LLM u toku sesije, istorija ostaje</li>
+          <li><strong>/compact</strong> — skraćuje istoriju na poslednje 4 razmene</li>
+          <li><strong>Indikator konteksta</strong> — ctx: N% u liniji za unos</li>
+          <li><strong>Auto-nastavak na max_tokens</strong> — engine sam šalje „nastavi“</li>
+          <li><strong>fs_write + fs_list alati</strong> — pravi/krpi fajlove, lista direktorijume</li>
+          <li><strong>Orkestrator agent</strong> — ruta ka 6 specijalista</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.6 – v0.0.7</div><div class="timeline-date">Maj 2026</div>
+        <ul>
+          <li><strong>Token broj + cena u TUI header-u</strong></li>
+          <li><strong>fs_write alat</strong> — pravi/krpi sa potvrdom korisnika + undo</li>
+          <li><strong>fs_list alat</strong> — rekurzivan, preskače .git/node_modules</li>
+          <li><strong>Novi agenti</strong> — reviewer, writer, devops, local</li>
+          <li><strong>Makefile + golangci-lint + CI gate</strong></li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.3 – v0.0.5</div><div class="timeline-date">Maj 2026</div>
+        <ul>
+          <li><strong>Chat TUI</strong> — full-screen bubbletea sa banerom, statistikom i scroll-om</li>
+          <li><strong>Auto-fallback na linijski REPL</strong> kad nema TTY-ja</li>
+          <li><strong>thinking… spinner</strong> dok čekamo prvi token</li>
+          <li><strong>Crash fix</strong> — strings.Builder kopiran by value, panika</li>
+          <li><strong>Ollama daemon detekcija</strong> — 15s polling sa backoff-om</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-rocket"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.1</div><div class="timeline-date">Maj 2026</div>
+        <ul>
+          <li><strong>Prvi release</strong></li>
+          <li>Default chat — kucneš <code>m</code> i pričaš</li>
+          <li>Setup wizard — Ollama, Anthropic, OpenAI, LiteLLM</li>
+          <li>Ključevi u keychain-u</li>
+          <li>Tag-driven release pipeline — macOS .pkg + Linux .deb</li>
+        </ul>
+      </div></div>
+
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="footer-inner">
+  <div class="footer-grid">
+    <div class="footer-brand"><div class="footer-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</div><p>MD-driven agent CLI za kod, infrastrukturu i automatizaciju. Bez gluposti.</p></div>
+    <div class="footer-col"><h4>Proizvod</h4><a href="https://github.com/subzone/m/releases/latest">Skini</a><a href="install.html">Instalacija</a><a href="changelog.html">Istorija</a></div>
+    <div class="footer-col"><h4>Resursi</h4><a href="agents.html">Primeri agenata</a><a href="mcp.html">MCP serveri</a><a href="architecture.html">Arhitektura</a></div>
+    <div class="footer-col"><h4>Zajednica</h4><a href="https://github.com/subzone/m">GitHub</a><a href="https://github.com/subzone/m/issues">Problemi</a><a href="support.html">Podrška</a></div>
+  </div>
+  <div class="footer-bottom"><span>© 2025 m projekat</span><span>Napravljeno sa <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/m"><i class="fa-brands fa-github"></i> subzone/m</a></span></div>
+</div></footer>
+</body>
+</html>

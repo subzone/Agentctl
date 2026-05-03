@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MCP serveri — m</title>
+<meta name="description" content="Spoji m sa Jirom, GitHub-om, Confluence-om i još desetinama alata preko MCP-a. Bez ljepenja na silu.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <a href="index.html" class="nav-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</a>
+  <div class="nav-links"><a href="index.html#features">Mogućnosti</a><a href="agents.html">Agenti</a><a href="architecture.html">Arhitektura</a><a href="mcp.html">MCP</a><a href="changelog.html">Istorija</a><a href="install.html" class="nav-cta">Instaliraj</a></div>
+  <div class="lang-toggle">
+    <a href="../mcp.html" class="lang-btn">EN</a>
+    <a href="mcp.html" class="lang-btn active">SR</a>
+  </div>
+  <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Meni"><i class="fa-solid fa-bars"></i></button>
+</div></nav>
+
+<section class="page-hero">
+  <h1><i class="fa-solid fa-plug" style="color:var(--accent)"></i> MCP serveri</h1>
+  <p>Proširi agente eksternim alatima preko Model Context Protocol-a. Stdio JSON-RPC, automatsko otkrivanje, name-spejsovano. Bez ručnog vezivanja žica.</p>
+</section>
+
+<!-- How it works -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Kako to radi</div><h2>Ukaчi bilo koji MCP server</h2><p>Definišeš server u Markdown fajlu, referenciraš iz agenta — alati se sami pojave. Bez magije, samo standardi.</p></div>
+    <div class="example-grid">
+      <div>
+        <div class="terminal"><div class="terminal-bar"><span class="terminal-dot r"></span><span class="terminal-dot y"></span><span class="terminal-dot g"></span><span class="terminal-title">examples/mcp/jira.md</span></div>
+        <div class="terminal-body">
+<span class="tool">---</span>
+<span class="output">name:</span> jira
+<span class="output">type:</span> mcp_server
+<span class="output">transport:</span> stdio
+<span class="output">command:</span>
+  - mcp-server-atlassian
+  - --jira
+<span class="output">env:</span>
+  JIRA_URL: ${env:JIRA_URL}
+  JIRA_TOKEN: ${secret:jira-token}
+<span class="output">tool_prefix:</span> jira
+<span class="tool">---</span>
+        </div></div>
+      </div>
+      <div class="example-text">
+        <h3>Tri koraka i radi</h3>
+        <ul class="example-list">
+          <li>Instaliraj MCP server binary (pip, npm ili go install)</li>
+          <li>Napravi <code>.md</code> fajl sa parametrima</li>
+          <li>Dodaj <code>mcp: [jira]</code> u frontmatter agenta</li>
+        </ul>
+        <p style="margin-top:16px">Alati se name-spejsuju (<code>jira__get_issue</code>) da se ne sudaraju. Agent automatski otkrije šta server nudi preko JSON-RPC handshake-a. Bez tvog miksanja.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Included servers -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">U paketu</div><h2>Dolaze sa repoom</h2></div>
+    <div class="mcp-grid">
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-purple"><i class="fa-brands fa-github"></i></div><div class="mcp-card-name">GitHub</div></div>
+        <div class="mcp-card-desc">PR/issue/repo operacije. Pravi PR-ove, traži issue-e, upravlja repo-ima. Koristi ga <code>coder.md</code>.</div>
+        <span class="mcp-card-status status-included"><i class="fa-solid fa-check"></i> U paketu</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-blue"><i class="fa-brands fa-jira"></i></div><div class="mcp-card-name">Jira</div></div>
+        <div class="mcp-card-desc">Pretraga, čitanje, kreiranje, ažuriranje, prelazi statusa. JQL upiti. Koristi ga <code>ticket-worker.md</code>.</div>
+        <span class="mcp-card-status status-included"><i class="fa-solid fa-check"></i> U paketu</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-green"><i class="fa-brands fa-confluence"></i></div><div class="mcp-card-name">Confluence</div></div>
+        <div class="mcp-card-desc">Pretraga, čitanje, kreiranje, ažuriranje stranica. CQL upiti. Koristi ga <code>ticket-worker.md</code>.</div>
+        <span class="mcp-card-status status-included"><i class="fa-solid fa-check"></i> U paketu</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Community / compatible -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Kompatibilno</div><h2>MCP serveri zajednice koji rade sa m</h2><p>Bilo koji stdio MCP server radi. Evo onih koji se dobro slažu sa agentima.</p></div>
+    <div class="mcp-grid">
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-cyan"><i class="fa-solid fa-dharmachakra"></i></div><div class="mcp-card-name">kubectl</div></div>
+        <div class="mcp-card-desc">Strukturirane Kubernetes operacije — status pod-a kao JSON, sigurnost na delete-u, scope po namespace-u.</div>
+        <span class="mcp-card-status status-community"><i class="fa-solid fa-users"></i> Zajednica</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-orange"><i class="fa-solid fa-cubes"></i></div><div class="mcp-card-name">Terraform</div></div>
+        <div class="mcp-card-desc">Parsiranje plana, inspekcija stanja, upiti nad graf-om resursa. Strukturirano umesto sirovog teksta.</div>
+        <span class="mcp-card-status status-community"><i class="fa-solid fa-users"></i> Zajednica</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-pink"><i class="fa-brands fa-slack"></i></div><div class="mcp-card-name">Slack</div></div>
+        <div class="mcp-card-desc">Šalje poruke, čita kanale, pretražuje istoriju. Korisno za notifikacije i ChatOps. Bez emoji-poplave.</div>
+        <span class="mcp-card-status status-community"><i class="fa-solid fa-users"></i> Zajednica</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-purple"><i class="fa-solid fa-database"></i></div><div class="mcp-card-name">PostgreSQL</div></div>
+        <div class="mcp-card-desc">Upiti nad bazom, inspekcija šeme, izvršavanje migracija. Read-only mod za sigurnost — da ne obrišeš tabelu.</div>
+        <span class="mcp-card-status status-community"><i class="fa-solid fa-users"></i> Zajednica</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-blue"><i class="fa-brands fa-docker"></i></div><div class="mcp-card-name">Docker</div></div>
+        <div class="mcp-card-desc">Upravljanje kontejnerima, inspekcija slike, stream logova. Lepo se slaže sa DevOps agentima.</div>
+        <span class="mcp-card-status status-community"><i class="fa-solid fa-users"></i> Zajednica</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-green"><i class="fa-brands fa-aws"></i></div><div class="mcp-card-name">AWS</div></div>
+        <div class="mcp-card-desc">CloudFormation, S3, Lambda, ECS operacije. Strukturirani odgovori za infra agente.</div>
+        <span class="mcp-card-status status-community"><i class="fa-solid fa-users"></i> Zajednica</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-orange"><i class="fa-solid fa-magnifying-glass"></i></div><div class="mcp-card-name">Brave Search</div></div>
+        <div class="mcp-card-desc">Web pretraga za agente koji moraju da pogledaju dokumentaciju, API ili neku aktuelnu informaciju.</div>
+        <span class="mcp-card-status status-community"><i class="fa-solid fa-users"></i> Zajednica</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-cyan"><i class="fa-solid fa-envelope"></i></div><div class="mcp-card-name">Email (SMTP)</div></div>
+        <div class="mcp-card-desc">Slanje mailova, čitanje inbox-a. Korisno za notifikacije i izveštaje. Da te ne zovu kolege.</div>
+        <span class="mcp-card-status status-planned"><i class="fa-solid fa-clock"></i> Planirano</span>
+      </div>
+      <div class="mcp-card">
+        <div class="mcp-card-header"><div class="mcp-card-icon fi-pink"><i class="fa-solid fa-globe"></i></div><div class="mcp-card-name">HTTP/SSE transport</div></div>
+        <div class="mcp-card-desc">Mnogi MCP serveri koriste HTTP umesto stdio-a. Podrška dolazi u nekom budućem release-u.</div>
+        <span class="mcp-card-status status-planned"><i class="fa-solid fa-clock"></i> Planirano</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="footer-inner">
+  <div class="footer-grid">
+    <div class="footer-brand"><div class="footer-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</div><p>MD-driven agent CLI za kod, infrastrukturu i automatizaciju. Bez gluposti.</p></div>
+    <div class="footer-col"><h4>Proizvod</h4><a href="https://github.com/subzone/m/releases/latest">Skini</a><a href="install.html">Instalacija</a><a href="changelog.html">Istorija</a></div>
+    <div class="footer-col"><h4>Resursi</h4><a href="agents.html">Primeri agenata</a><a href="mcp.html">MCP serveri</a><a href="architecture.html">Arhitektura</a></div>
+    <div class="footer-col"><h4>Zajednica</h4><a href="https://github.com/subzone/m">GitHub</a><a href="https://github.com/subzone/m/issues">Problemi</a><a href="support.html">Podrška</a></div>
+  </div>
+  <div class="footer-bottom"><span>© 2025 m projekat</span><span>Napravljeno sa <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/m"><i class="fa-brands fa-github"></i> subzone/m</a></span></div>
+</div></footer>
+</body>
+</html>

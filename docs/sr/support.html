@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Podrška — m</title>
+<meta name="description" content="Rešavanje problema, česte greške i kako da dobiješ pomoć. Pre nego što kreneš da paničiš.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <a href="index.html" class="nav-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</a>
+  <div class="nav-links"><a href="index.html#features">Mogućnosti</a><a href="agents.html">Agenti</a><a href="architecture.html">Arhitektura</a><a href="mcp.html">MCP</a><a href="changelog.html">Istorija</a><a href="install.html" class="nav-cta">Instaliraj</a></div>
+  <div class="lang-toggle">
+    <a href="../support.html" class="lang-btn">EN</a>
+    <a href="support.html" class="lang-btn active">SR</a>
+  </div>
+  <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Meni"><i class="fa-solid fa-bars"></i></button>
+</div></nav>
+
+<section class="page-hero">
+  <h1><i class="fa-solid fa-life-ring" style="color:var(--accent)"></i> Podrška</h1>
+  <p>Česti problemi, kako da ih rešiš, i gde da tražiš pomoć kad zaista zapne. Pre toga — restartuj jednom, oboje znamo.</p>
+</section>
+
+<!-- Common issues -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Rešavanje problema</div><h2>Česti problemi</h2></div>
+    <div style="max-width:760px;margin:0 auto">
+
+      <div class="trouble-item">
+        <h3><i class="fa-solid fa-triangle-exclamation"></i> Ollama daemon nije dostupan</h3>
+        <p>Wizard ne može da se zakači na Ollamu na <code>localhost:11434</code>. Pokreni je ručno:</p>
+        <div class="step-code" style="margin-top:12px"><span class="dim"># macOS</span><br>brew services start ollama<br><br><span class="dim"># Ili jedan pokret</span><br>ollama serve</div>
+        <p style="margin-top:12px">Za udaljenu Ollamu: <code>export OLLAMA_HOST=http://host:11434</code></p>
+      </div>
+
+      <div class="trouble-item">
+        <h3><i class="fa-solid fa-triangle-exclamation"></i> API ključ nije pronađen</h3>
+        <p>Provajder ne nalazi ključ u OS keychain-u. Pokreni wizard da ga sačuvaš:</p>
+        <div class="step-code" style="margin-top:12px">m init</div>
+        <p style="margin-top:12px">Ili setuj env varijablu direktno: <code>ANTHROPIC_API_KEY=sk-ant-... m</code>. Ali ne commituj fajl sa ključem, mooolim te.</p>
+      </div>
+
+      <div class="trouble-item">
+        <h3><i class="fa-solid fa-triangle-exclamation"></i> macOS Gatekeeper upozorenje</h3>
+        <p>.pkg je nepotpisan. Desni klik → Open da zaobiđeš, ili:</p>
+        <div class="step-code" style="margin-top:12px">xattr -d com.apple.quarantine ~/Downloads/m_*.pkg</div>
+      </div>
+
+      <div class="trouble-item">
+        <h3><i class="fa-solid fa-triangle-exclamation"></i> Validacija agenta pala</h3>
+        <p>U frontmatter-u nešto fali ili je krivo. Lintuj ga:</p>
+        <div class="step-code" style="margin-top:12px">m validate moj-agent.md</div>
+        <p style="margin-top:12px">Tipični uzroci: nedostaje <code>name</code>, <code>type</code> ili <code>model</code>; model nije u formatu <code>provider/model</code>; nepoznato polje (typo). Pa pročitaj poruku, tu piše šta fali.</p>
+      </div>
+
+      <div class="trouble-item">
+        <h3><i class="fa-solid fa-triangle-exclamation"></i> secret-tool nije pronađen (Linux)</h3>
+        <p>Instaliraj libsecret za podršku keychain-u:</p>
+        <div class="step-code" style="margin-top:12px"><span class="dim"># Debian/Ubuntu</span><br>sudo apt-get install libsecret-tools<br><br><span class="dim"># Fedora</span><br>sudo dnf install libsecret<br><br><span class="dim"># Arch</span><br>sudo pacman -S libsecret</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Get help -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label">Dobij pomoć</div><h2>I dalje zaglavljen?</h2></div>
+    <div class="features-grid" style="max-width:720px;margin:0 auto">
+      <a href="https://github.com/subzone/m/issues/new" class="feature-card" style="text-decoration:none">
+        <div class="feature-icon fi-purple"><i class="fa-solid fa-bug"></i></div>
+        <h3>Prijavi bag</h3>
+        <p>Otvori GitHub issue sa <code>m --version</code>, OS-om i celim error log-om. Ne sa „nešto ne radi“.</p>
+      </a>
+      <a href="https://github.com/subzone/m/discussions" class="feature-card" style="text-decoration:none">
+        <div class="feature-icon fi-blue"><i class="fa-solid fa-comments"></i></div>
+        <h3>Postavi pitanje</h3>
+        <p>GitHub Discussions za opšta pitanja, dizajn agenta, i ideje za feature.</p>
+      </a>
+      <a href="https://github.com/subzone/m/pulls" class="feature-card" style="text-decoration:none">
+        <div class="feature-icon fi-green"><i class="fa-solid fa-code-pull-request"></i></div>
+        <h3>Doprinesi</h3>
+        <p>PR-ovi su dobrodošli. Pogledaj stranu sa arhitekturom da vidiš kako je kod organizovan.</p>
+      </a>
+    </div>
+  </div>
+</section>
+
+<footer class="footer"><div class="footer-inner">
+  <div class="footer-grid">
+    <div class="footer-brand"><div class="footer-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</div><p>MD-driven agent CLI za kod, infrastrukturu i automatizaciju. Bez gluposti.</p></div>
+    <div class="footer-col"><h4>Proizvod</h4><a href="https://github.com/subzone/m/releases/latest">Skini</a><a href="install.html">Instalacija</a><a href="changelog.html">Istorija</a></div>
+    <div class="footer-col"><h4>Resursi</h4><a href="agents.html">Primeri agenata</a><a href="mcp.html">MCP serveri</a><a href="architecture.html">Arhitektura</a></div>
+    <div class="footer-col"><h4>Zajednica</h4><a href="https://github.com/subzone/m">GitHub</a><a href="https://github.com/subzone/m/issues">Problemi</a><a href="support.html">Podrška</a></div>
+  </div>
+  <div class="footer-bottom"><span>© 2025 m projekat</span><span>Napravljeno sa <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/m"><i class="fa-brands fa-github"></i> subzone/m</a></span></div>
+</div></footer>
+</body>
+</html>

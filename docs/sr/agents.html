@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="sr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Primeri agenata — m</title>
+<meta name="description" content="20+ spremnih agenata za kod, DevOps, review, planiranje, Jira integraciju i ostalo. Bez izgovora.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="../css/style.css">
+<link rel="icon" type="image/svg+xml" href="../favicon.svg">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <a href="index.html" class="nav-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</a>
+  <div class="nav-links"><a href="index.html#features">Mogućnosti</a><a href="agents.html">Agenti</a><a href="architecture.html">Arhitektura</a><a href="mcp.html">MCP</a><a href="changelog.html">Istorija</a><a href="install.html" class="nav-cta">Instaliraj</a></div>
+  <div class="lang-toggle">
+    <a href="../agents.html" class="lang-btn">EN</a>
+    <a href="agents.html" class="lang-btn active">SR</a>
+  </div>
+  <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Meni"><i class="fa-solid fa-bars"></i></button>
+</div></nav>
+
+<section class="page-hero">
+  <h1><i class="fa-solid fa-robot" style="color:var(--accent)"></i> Primeri agenata</h1>
+  <p>Dolaze sa repoom. Koristi ih kako jesu, ili forkuj kao šablon. Pokrećeš sa <code>m chat agents/ime.md</code>. Jednostavno za one koji znaju da kucaju.</p>
+</section>
+
+<!-- Coding -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label"><i class="fa-solid fa-code"></i> Kodiranje</div><h2>Razvojni agenti</h2></div>
+    <div class="agents-grid">
+      <div class="agent-card"><div class="agent-name">coder.md</div><div class="agent-desc">Pun coding asistent sa planer sub-agentom i GitHub MCP. Čita kod, menja, testira. Kao da imaš juniora koji ne pita gluposti.</div><div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">git</span><span class="tag">MCP</span><span class="tag">delegate</span></div></div>
+      <div class="agent-card"><div class="agent-name">qwen-coder.md</div><div class="agent-desc">Lokalni coding asistent na Ollami. Bez API ključa, bez para. Idealno za kad si u vozu bez interneta.</div><div class="agent-tags"><span class="tag tag-accent">Ollama</span><span class="tag">besplatno</span><span class="tag">lokalno</span></div></div>
+      <div class="agent-card"><div class="agent-name">reviewer.md</div><div class="agent-desc">Code review — read-only, ništa ne dira. Hvata bagove, sigurnosne probleme, stilske gluposti. Ne pravi izgovore.</div><div class="agent-tags"><span class="tag tag-accent">read-only</span><span class="tag">fs_read</span><span class="tag">fs_list</span></div></div>
+      <div class="agent-card"><div class="agent-name">writer.md</div><div class="agent-desc">Dokumentacija i tekst. README, vodiči, komentari. Čita postojeće dokumente da ne piše opet istu priču.</div><div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">fs_read</span><span class="tag">fs_write</span></div></div>
+      <div class="agent-card"><div class="agent-name">planner.md</div><div class="agent-desc">Planiranje — razlaže posao na numerisane stavke. Ne radi, samo planira. Kao tipični arhitekta.</div><div class="agent-tags"><span class="tag tag-accent">Claude Haiku</span><span class="tag">read-only</span></div></div>
+      <div class="agent-card"><div class="agent-name">summarize.md</div><div class="agent-desc">Sažetak projekta. Istraži direktorijum i izbaci 5–10 stavki. Bolje od onog što piše rukovodilac u izveštaju.</div><div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">fs_read</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- DevOps -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label"><i class="fa-solid fa-server"></i> DevOps</div><h2>Infrastrukturni agenti</h2></div>
+    <div class="agents-grid">
+      <div class="agent-card"><div class="agent-name">devops.md</div><div class="agent-desc">Generalni DevOps — Dockerfajlovi, CI/CD, shell skripte, infra konfig. Prvo istražuje, pa menja. Za razliku od nekih.</div><div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">fs_write</span></div></div>
+      <div class="agent-card"><div class="agent-name">k8s-debug.md</div><div class="agent-desc">Kubernetes spasilac. Sistematski: events → describe → logs → korenski uzrok → fix. Bez restartovanja pod-a kao panika.</div><div class="agent-tags"><span class="tag tag-accent">kubectl</span><span class="tag">shell</span><span class="tag">git</span></div></div>
+      <div class="agent-card"><div class="agent-name">terraform-plan.md</div><div class="agent-desc">Pregled Terraform plana. Hvata sigurnosne probleme, neočekivane destroyove, fale tagove. Pre nego što obrišeš VPC.</div><div class="agent-tags"><span class="tag tag-accent">terraform</span><span class="tag">shell</span><span class="tag">fs_write</span></div></div>
+      <div class="agent-card"><div class="agent-name">helm-deploy.md</div><div class="agent-desc">Helm chart upravljanje. Lintuje, renderuje template-e, pregleda values pre prod-a. Bez „radi kod mene“ teorije.</div><div class="agent-tags"><span class="tag tag-accent">helm</span><span class="tag">shell</span><span class="tag">fs_write</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Jira / Ticket -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label"><i class="fa-brands fa-jira"></i> Tiket-vodjeni</div><h2>Jira &amp; Confluence agenti</h2></div>
+    <div class="agents-grid">
+      <div class="agent-card"><div class="agent-name">ticket-worker.md</div><div class="agent-desc">Čita Jira tiket → istraži kod → napravi granu → implementira → testira → commituje → ažurira tiket. Sve dok ti pričaš na standupu.</div><div class="agent-tags"><span class="tag tag-accent">Jira MCP</span><span class="tag">Confluence</span><span class="tag">git</span><span class="tag">test_run</span></div></div>
+      <div class="agent-card"><div class="agent-name">ticket-reviewer.md</div><div class="agent-desc">Pregleda kod prema kriterijumima prihvatanja iz tiketa. Postavlja nalaze nazad u Jiru. Read-only, bez panike.</div><div class="agent-tags"><span class="tag tag-accent">Jira MCP</span><span class="tag">git</span><span class="tag">read-only</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Orchestration -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label"><i class="fa-solid fa-diagram-project"></i> Orkestracija</div><h2>Hub-and-spoke agenti</h2></div>
+    <div class="agents-grid">
+      <div class="agent-card"><div class="agent-name">orchestrator.md</div><div class="agent-desc">Sam usmerava posao na pravog specijalistu — coder, reviewer, writer, devops, planner, summarize. Bez tvog mikromenadžmenta.</div><div class="agent-tags"><span class="tag tag-accent">delegate</span><span class="tag">6 sub-agenata</span></div></div>
+      <div class="agent-card"><div class="agent-name">hub.md</div><div class="agent-desc">Strukturirani hub — delegira spoke agentima koji vraćaju JSON sa citatima i nivoom sigurnosti.</div><div class="agent-tags"><span class="tag tag-accent">strukturirani izlaz</span><span class="tag">delegate</span></div></div>
+      <div class="agent-card"><div class="agent-name">spoke-coder.md</div><div class="agent-desc">Spoke — piše kod, vraća JSON sa izvorima, sigurnošću, i napomenama. Da znaš ko je šta rekao.</div><div class="agent-tags"><span class="tag tag-accent">response_schema</span><span class="tag">fs_write</span></div></div>
+      <div class="agent-card"><div class="agent-name">spoke-reviewer.md</div><div class="agent-desc">Spoke — review-uje kod, vraća JSON. Read-only, kratak, jedna stavka po tački. Nema rasprave.</div><div class="agent-tags"><span class="tag tag-accent">response_schema</span><span class="tag">read-only</span></div></div>
+      <div class="agent-card"><div class="agent-name">spoke-planner.md</div><div class="agent-desc">Spoke — pravi planove kao JSON. 3–10 konkretnih koraka. Bez „razmotrićemo opcije“ priče.</div><div class="agent-tags"><span class="tag tag-accent">response_schema</span><span class="tag">read-only</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- Personality -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header"><div class="section-label"><i class="fa-solid fa-masks-theater"></i> Ličnost</div><h2>Karakterni agenti</h2></div>
+    <div class="agents-grid">
+      <div class="agent-card"><div class="agent-name">steva-djubre.md</div><div class="agent-desc">Steva Đubre — mrgudni srpski DevOps SRE sa 25+ godina staža. Debeli sremac, ne razdvaja se od kulena, slanine i kobasica, a za rakiju i pravo pečenje (jagnjetina, prase — bez rasprave) bi te isključio iz on-call rotacije. Odgovara isključivo na srpskom. Najgori stav, najbolji rezultati. To bi bio ja.</div><div class="agent-tags"><span class="tag tag-accent">Srpski</span><span class="tag">sremac</span><span class="tag">kulen</span><span class="tag">Claude Sonnet</span></div></div>
+      <div class="agent-card"><div class="agent-name">steve-trash.md</div><div class="agent-desc">Steve Trash — engleska verzija. Isti grozni stav, isti veliki rezultati. Ismeva tvoj kod dok ga popravlja.</div><div class="agent-tags"><span class="tag tag-accent">Engleski</span><span class="tag">DeepSeek</span><span class="tag">svi alati</span></div></div>
+      <div class="agent-card"><div class="agent-name">steva-djubre-max.md</div><div class="agent-desc">Steva na Qwen Max — premium Alibaba varijanta za najkvalitetnije srpske odgovore. Skup, ali isplati se.</div><div class="agent-tags"><span class="tag tag-accent">Alibaba</span><span class="tag">qwen-max</span></div></div>
+      <div class="agent-card"><div class="agent-name">steva-djubre-flash.md</div><div class="agent-desc">Steva na Qwen Flash — brza i jeftina varijanta. Isti karakter, manja cena. Za kad ti se ne razbacuje sa parama.</div><div class="agent-tags"><span class="tag tag-accent">Alibaba</span><span class="tag">qwen-flash</span></div></div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <h2>Napravi svog agenta</h2>
+  <p>Bilo koji Markdown sa YAML frontmatter-om radi. Krenи od primera, prilagodi sebi. Nije raketna nauka.</p>
+  <div class="hero-buttons">
+    <a href="https://github.com/subzone/m/tree/main/examples/agents" class="btn btn-white"><i class="fa-brands fa-github"></i> Pregledaj na GitHubu</a>
+  </div>
+</section>
+
+<footer class="footer"><div class="footer-inner">
+  <div class="footer-grid">
+    <div class="footer-brand"><div class="footer-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</div><p>MD-driven agent CLI za kod, infrastrukturu i automatizaciju. Bez gluposti.</p></div>
+    <div class="footer-col"><h4>Proizvod</h4><a href="https://github.com/subzone/m/releases/latest">Skini</a><a href="install.html">Instalacija</a><a href="changelog.html">Istorija</a></div>
+    <div class="footer-col"><h4>Resursi</h4><a href="agents.html">Primeri agenata</a><a href="mcp.html">MCP serveri</a><a href="architecture.html">Arhitektura</a></div>
+    <div class="footer-col"><h4>Zajednica</h4><a href="https://github.com/subzone/m">GitHub</a><a href="https://github.com/subzone/m/issues">Problemi</a><a href="support.html">Podrška</a></div>
+  </div>
+  <div class="footer-bottom"><span>© 2025 m projekat</span><span>Napravljeno sa <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/m"><i class="fa-brands fa-github"></i> subzone/m</a></span></div>
+</div></footer>
+</body>
+</html>
