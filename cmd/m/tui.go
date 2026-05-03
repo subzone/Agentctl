@@ -732,6 +732,9 @@ var modelPricing = map[string]pricing{
 	"qwen3.6-plus":            {0.80, 2.0},
 	"qwen3.6-flash":           {0.15, 0.60},
 	"qwen3-coder-plus":        {0.80, 2.0},
+	"glm-5":                   {0.50, 0.50},
+	"glm-4-plus":              {0.35, 0.35},
+	"glm-4-flash":             {0.01, 0.01},
 }
 
 var modelContextWindow = map[string]int{
@@ -761,6 +764,9 @@ var modelContextWindow = map[string]int{
 	"qwen3.6-plus":            131_072,
 	"qwen3.6-flash":           131_072,
 	"qwen3-coder-plus":        131_072,
+	"glm-5":                   128_000,
+	"glm-4-plus":              128_000,
+	"glm-4-flash":             128_000,
 }
 
 func contextPercent(lastInputTokens int, model string) int {

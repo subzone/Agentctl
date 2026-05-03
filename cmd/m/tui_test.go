@@ -96,6 +96,20 @@ func TestEstimateCost(t *testing.T) {
 		t.Errorf("cost = %f, want ~0.0105", cost)
 	}
 
+	// GLM-5: $0.50/M in, $0.50/M out
+	cost = estimateCost(u, "glm-5")
+	// 1000 * 0.5/1M + 500 * 0.5/1M = 0.0005 + 0.00025 = 0.00075
+	if cost < 0.0007 || cost > 0.0008 {
+		t.Errorf("GLM-5 cost = %f, want ~0.00075", cost)
+	}
+
+	// GLM-4-flash: $0.01/M in, $0.01/M out (very cheap!)
+	cost = estimateCost(u, "glm-4-flash")
+	// 1000 * 0.01/1M + 500 * 0.01/1M = 0.00001 + 0.000005 = 0.000015
+	if cost < 0.000014 || cost > 0.000016 {
+		t.Errorf("GLM-4-flash cost = %f, want ~0.000015", cost)
+	}
+
 	// Unknown model returns 0.
 	if got := estimateCost(u, "qwen3-coder"); got != 0 {
 		t.Errorf("unknown model cost = %f, want 0", got)
@@ -111,6 +125,14 @@ func TestContextPercent(t *testing.T) {
 	// Half full.
 	if got := contextPercent(100000, "claude-sonnet-4-6"); got != 50 {
 		t.Errorf("contextPercent(100000, claude-sonnet-4-6) = %d, want 50", got)
+	}
+	// GLM-5 model.
+	if got := contextPercent(12800, "glm-5"); got != 10 {
+		t.Errorf("contextPercent(12800, glm-5) = %d, want 10", got)
+	}
+	// GLM-4-plus model.
+	if got := contextPercent(64000, "glm-4-plus"); got != 50 {
+		t.Errorf("contextPercent(64000, glm-4-plus) = %d, want 50", got)
 	}
 	// Unknown model returns -1.
 	if got := contextPercent(5000, "qwen3-coder"); got != -1 {
