@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>m — MD-driven agent CLI for code, infra, and automation</title>
+<meta name="description" content="Agents are plain Markdown files with YAML frontmatter. The CLI runs them against 6 model backends with built-in tools, MCP, and sub-agent delegation.">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+</head>
+<body>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-inner">
+    <a href="#" class="nav-logo">m</a>
+    <div class="nav-links">
+      <a href="#features">Features</a>
+      <a href="#agents">Agents</a>
+      <a href="#examples">Examples</a>
+      <a href="#docs">Docs</a>
+      <a href="#faq">FAQ</a>
+      <a href="https://github.com/subzone/m/releases/latest" class="nav-cta">Download</a>
+    </div>
+    <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Menu">☰</button>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge"><span class="hero-badge-dot"></span> Open source</div>
+    <h1>One file.<br><span class="hero-gradient">One agent.</span></h1>
+    <p>Drop a Markdown file into your repo and get a fully-equipped AI agent with tools, MCP integrations, and sub-agent delegation. 6 providers. 7 built-in tools. Zero boilerplate.</p>
+    <div class="hero-buttons">
+      <a href="https://github.com/subzone/m/releases/latest" class="btn btn-primary">Download for macOS / Linux →</a>
+      <a href="#examples" class="btn btn-ghost">See it in action</a>
+    </div>
+
+    <div class="terminal-wrap">
+      <div class="terminal">
+        <div class="terminal-bar">
+          <span class="terminal-dot r"></span>
+          <span class="terminal-dot y"></span>
+          <span class="terminal-dot g"></span>
+          <span class="terminal-title">m — terminal</span>
+        </div>
+        <div class="terminal-body">
+<span class="prompt">$</span> <span class="cmd">m</span>
+<span class="comment"># Setup wizard runs on first launch — pick your backend</span>
+
+<span class="prompt">»</span> <span class="cmd">fix the failing test in api/handler.go</span>
+<span class="tool">→ fs_read</span> api/handler.go
+<span class="tool">→ shell</span> go test ./api/...
+<span class="tool">→ fs_write</span> api/handler.go <span class="comment">(patch: fix nil check)</span>
+<span class="output">Overwrite api/handler.go? [y/N]: y</span>
+<span class="tool">→ shell</span> go test ./api/...
+<span class="output">PASS</span>
+<span class="tool">→ git</span> commit -m "fix: nil check in handler"
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PROVIDERS -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Providers</div>
+      <h2>Works with the models you already use</h2>
+      <p>Local or hosted. Free or paid. Switch mid-session with <code>/model</code>.</p>
+    </div>
+    <div class="providers-row">
+      <div class="provider-item"><div class="provider-icon">🦙</div><div class="provider-name">Ollama</div></div>
+      <div class="provider-item"><div class="provider-icon">🟠</div><div class="provider-name">Anthropic</div></div>
+      <div class="provider-item"><div class="provider-icon">🟢</div><div class="provider-name">OpenAI</div></div>
+      <div class="provider-item"><div class="provider-icon">💎</div><div class="provider-name">Gemini</div></div>
+      <div class="provider-item"><div class="provider-icon">☁️</div><div class="provider-name">Alibaba</div></div>
+      <div class="provider-item"><div class="provider-icon">🔀</div><div class="provider-name">LiteLLM</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="section section-alt" id="features">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Features</div>
+      <h2>Everything you need, nothing you don't</h2>
+      <p>A single 7.8 MB binary. No SDKs, no runtimes, no daemons.</p>
+    </div>
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon fi-purple">📄</div>
+        <h3>Agents as Markdown</h3>
+        <p>YAML frontmatter defines model, tools, and permissions. The body is the system prompt. One file = one agent.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-blue">🛠️</div>
+        <h3>7 Built-in Tools</h3>
+        <p>Shell, file read/write, directory listing, git, test runner, and sub-agent delegation. Every write requires user confirmation.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-green">🔌</div>
+        <h3>MCP Integration</h3>
+        <p>Connect to Jira, GitHub, Confluence, or any MCP server. Tools are namespaced and auto-discovered.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-orange">🏗️</div>
+        <h3>Hub-and-Spoke</h3>
+        <p>Orchestrator agents delegate to specialists that return structured JSON with citations and confidence levels.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-pink">🖥️</div>
+        <h3>Full-screen TUI</h3>
+        <p>Token count, cost estimate, context window %, CPU/RAM stats, theming. Falls back to line REPL in pipes.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon fi-cyan">🔒</div>
+        <h3>Keys in the Keychain</h3>
+        <p>API keys stored in macOS Keychain or Linux libsecret. Never in config files. Never in plaintext.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- EXAMPLES -->
+<section class="section" id="examples">
+  <div class="section-inner">
+    <div class="example-grid">
+      <div class="example-text">
+        <div class="section-label">How it works</div>
+        <h3>Define an agent in 10 lines</h3>
+        <p>A Markdown file with YAML frontmatter is all you need. The body becomes the system prompt. Tools, model, temperature — everything is declarative.</p>
+        <ul class="example-list">
+          <li>Choose any model from 6 providers</li>
+          <li>Pick which tools the agent can use</li>
+          <li>Connect MCP servers for external integrations</li>
+          <li>Delegate to sub-agents for complex workflows</li>
+          <li>Add structured output schemas for JSON responses</li>
+        </ul>
+      </div>
+      <div>
+        <div class="terminal">
+          <div class="terminal-bar">
+            <span class="terminal-dot r"></span><span class="terminal-dot y"></span><span class="terminal-dot g"></span>
+            <span class="terminal-title">devops.md</span>
+          </div>
+          <div class="terminal-body">
+<span class="tool">---</span>
+<span class="output">name:</span> devops
+<span class="output">type:</span> agent
+<span class="output">model:</span> anthropic/claude-sonnet-4-6
+<span class="output">tools:</span>
+  - shell
+  - fs_read
+  - fs_write
+  - git
+  - test_run
+<span class="output">temperature:</span> 0.3
+<span class="tool">---</span>
+You are a DevOps engineer.
+Explore the project with fs_list.
+Make targeted changes with fs_write.
+Always consider security.
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- AGENT SHOWCASE -->
+<section class="section section-alt" id="agents">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Agent Gallery</div>
+      <h2>Ready-to-use agents included</h2>
+      <p>Ship with the binary. Use as-is or fork as templates for your own.</p>
+    </div>
+    <div class="agents-grid">
+      <div class="agent-card">
+        <div class="agent-name">coder.md</div>
+        <div class="agent-desc">Full coding assistant with planner sub-agent and GitHub MCP integration.</div>
+        <div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">git</span><span class="tag">MCP</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">k8s-debug.md</div>
+        <div class="agent-desc">Kubernetes troubleshooter. Triages pod crashes, networking, and resource issues.</div>
+        <div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">kubectl</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">terraform-plan.md</div>
+        <div class="agent-desc">Reviews Terraform plans, catches security issues, patches .tf files.</div>
+        <div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">fs_write</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">ticket-worker.md</div>
+        <div class="agent-desc">Reads Jira tickets, implements the work, commits, and updates the ticket.</div>
+        <div class="agent-tags"><span class="tag tag-accent">Jira MCP</span><span class="tag">Confluence</span><span class="tag">git</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">helm-deploy.md</div>
+        <div class="agent-desc">Lints Helm charts, renders templates, reviews values for production readiness.</div>
+        <div class="agent-tags"><span class="tag tag-accent">Claude Sonnet</span><span class="tag">shell</span><span class="tag">helm</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">orchestrator.md</div>
+        <div class="agent-desc">Routes tasks to the right specialist agent automatically. Hub-and-spoke.</div>
+        <div class="agent-tags"><span class="tag tag-accent">delegate</span><span class="tag">6 sub-agents</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">reviewer.md</div>
+        <div class="agent-desc">Code review agent. Read-only — never edits files. Finds bugs, security issues, style.</div>
+        <div class="agent-tags"><span class="tag tag-accent">read-only</span><span class="tag">fs_read</span></div>
+      </div>
+      <div class="agent-card">
+        <div class="agent-name">qwen-coder.md</div>
+        <div class="agent-desc">Local coding assistant. Runs on Ollama with Qwen3-Coder. No API key needed.</div>
+        <div class="agent-tags"><span class="tag tag-accent">Ollama</span><span class="tag">free</span><span class="tag">local</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- DOCS -->
+<section class="section" id="docs">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Documentation</div>
+      <h2>Everything is documented</h2>
+    </div>
+    <div class="docs-grid">
+      <a href="https://github.com/subzone/m#quick-install" class="docs-card">
+        <div class="docs-card-title">Installation →</div>
+        <div class="docs-card-desc">.pkg for macOS, .deb for Linux, or build from source with Go 1.26+.</div>
+      </a>
+      <a href="https://github.com/subzone/m/tree/main/examples/agents" class="docs-card">
+        <div class="docs-card-title">Example Agents →</div>
+        <div class="docs-card-desc">20+ ready-to-use agents for coding, DevOps, review, planning, and more.</div>
+      </a>
+      <a href="https://github.com/subzone/m/blob/main/PLAN.md" class="docs-card">
+        <div class="docs-card-title">Architecture →</div>
+        <div class="docs-card-desc">Hexagonal design, provider system, engine loop, tool dispatch, MCP client.</div>
+      </a>
+      <a href="https://github.com/subzone/m/tree/main/examples/mcp" class="docs-card">
+        <div class="docs-card-title">MCP Servers →</div>
+        <div class="docs-card-desc">GitHub, Jira, Confluence MCP server definitions ready to plug in.</div>
+      </a>
+      <a href="https://github.com/subzone/m/releases" class="docs-card">
+        <div class="docs-card-title">Changelog →</div>
+        <div class="docs-card-desc">Full release history from v0.0.1 to the latest version.</div>
+      </a>
+      <a href="https://github.com/subzone/m/issues" class="docs-card">
+        <div class="docs-card-title">Issues & Support →</div>
+        <div class="docs-card-desc">Report bugs, request features, or ask questions on GitHub.</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section section-alt" id="faq">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">FAQ</div>
+      <h2>Frequently asked questions</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          What models does m support? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">Any model from 6 providers: Ollama (local — Qwen, Llama, Mistral, etc.), Anthropic (Claude), OpenAI (GPT-4o, GPT-4.1), Google Gemini, Alibaba Cloud (Qwen, DeepSeek), or any OpenAI-compatible endpoint via LiteLLM. Switch models mid-session with <code>/model provider/model</code>.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Is it free? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">m itself is free and open source (MIT). With Ollama, everything runs locally at zero cost. Hosted providers (Anthropic, OpenAI, etc.) charge per-token — a typical coding session costs $0.01–$1.35 depending on the model.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Can it edit my files? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">Yes, but every file write requires your explicit confirmation. You see a diff preview and type <code>y</code> to approve or <code>n</code> to decline. The agent sees "user declined" and adjusts. There's also an undo stack — type <code>/undo</code> to revert the last write.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          How is this different from Cursor / Copilot / Aider? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">m is CLI-first, not IDE-bound. Agents are plain Markdown files you version-control alongside your code. There's no vendor lock-in — switch providers with one line. The hub-and-spoke pattern lets you compose specialist agents that work together. And it's a single 7.8 MB binary with zero dependencies.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Where are my API keys stored? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">In your OS keychain — macOS Keychain or Linux libsecret. Never in config files, never in plaintext, never in environment variables (unless you explicitly set them). The setup wizard handles storage automatically.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Can I use it for DevOps / infrastructure work? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">Absolutely. The repo ships with purpose-built agents for Kubernetes debugging, Terraform plan review, Helm chart management, and Jira/Confluence ticket-driven development. Through the shell tool, agents have access to kubectl, terraform, helm, and any other CLI on your system.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <h2>Ready to try it?</h2>
+  <p>Install in 30 seconds. First-run wizard gets you chatting immediately.</p>
+  <div class="hero-buttons">
+    <a href="https://github.com/subzone/m/releases/latest" class="btn btn-white">Download Latest Release →</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="footer-logo">m</div>
+        <p>MD-driven agent CLI for code, infrastructure, and automation. Open source.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="https://github.com/subzone/m/releases/latest">Download</a>
+        <a href="https://github.com/subzone/m#quick-install">Installation</a>
+        <a href="https://github.com/subzone/m/releases">Changelog</a>
+
+      </div>
+      <div class="footer-col">
+        <h4>Resources</h4>
+        <a href="https://github.com/subzone/m/tree/main/examples/agents">Example Agents</a>
+        <a href="https://github.com/subzone/m/tree/main/examples/mcp">MCP Servers</a>
+        <a href="https://github.com/subzone/m/blob/main/PLAN.md">Architecture</a>
+        <a href="https://github.com/subzone/m/tree/main/examples/skills">Skills</a>
+      </div>
+      <div class="footer-col">
+        <h4>Community</h4>
+        <a href="https://github.com/subzone/m">GitHub</a>
+        <a href="https://github.com/subzone/m/issues">Issues</a>
+        <a href="https://github.com/subzone/m/discussions">Discussions</a>
+        <a href="https://github.com/subzone/m/pulls">Contribute</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2025 m project</span>
+      <span>Built with Go · <a href="https://github.com/subzone/m">subzone/m</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
