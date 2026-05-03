@@ -10,10 +10,10 @@ import (
 
 func TestDelegateRunSuccess(t *testing.T) {
 	var got struct {
-		name, task string
+		name, task, model string
 	}
-	spawn := func(_ context.Context, name, task string) (string, error) {
-		got.name, got.task = name, task
+	spawn := func(_ context.Context, name, task, model string) (string, error) {
+		got.name, got.task, got.model = name, task, model
 		return "subagent reply", nil
 	}
 	d := NewDelegate(spawn, []string{"planner", "researcher"})
@@ -24,13 +24,13 @@ func TestDelegateRunSuccess(t *testing.T) {
 	if out != "subagent reply" {
 		t.Errorf("out = %q", out)
 	}
-	if got.name != "planner" || got.task != "plan it" {
+	if got.name != "planner" || got.task != "plan it" || got.model != "" {
 		t.Errorf("captured = %+v", got)
 	}
 }
 
 func TestDelegateRejectsNotInList(t *testing.T) {
-	d := NewDelegate(func(context.Context, string, string) (string, error) {
+	d := NewDelegate(func(context.Context, string, string, string) (string, error) {
 		t.Fatal("spawn should not be called")
 		return "", nil
 	}, []string{"planner"})
@@ -41,7 +41,7 @@ func TestDelegateRejectsNotInList(t *testing.T) {
 }
 
 func TestDelegateRequiresFields(t *testing.T) {
-	d := NewDelegate(func(context.Context, string, string) (string, error) { return "", nil }, []string{"planner"})
+	d := NewDelegate(func(context.Context, string, string, string) (string, error) { return "", nil }, []string{"planner"})
 	cases := []string{
 		`{"task":"x"}`,
 		`{"name":"planner"}`,
@@ -58,7 +58,7 @@ func TestDelegateRequiresFields(t *testing.T) {
 
 func TestDelegatePropagatesSpawnError(t *testing.T) {
 	want := errors.New("upstream broke")
-	d := NewDelegate(func(context.Context, string, string) (string, error) {
+	d := NewDelegate(func(context.Context, string, string, string) (string, error) {
 		return "", want
 	}, []string{"planner"})
 	_, err := d.Run(context.Background(), json.RawMessage(`{"name":"planner","task":"go"}`))
@@ -98,5 +98,26 @@ func TestDelegateNoSpawnSurfacesError(t *testing.T) {
 	_, err := d.Run(context.Background(), json.RawMessage(`{"name":"planner","task":"go"}`))
 	if err == nil || !strings.Contains(err.Error(), "no spawn function") {
 		t.Errorf("got %v", err)
+	}
+}
+
+func TestDelegateModelOverride(t *testing.T) {
+	var got struct {
+		name, task, model string
+	}
+	spawn := func(_ context.Context, name, task, model string) (string, error) {
+		got.name, got.task, got.model = name, task, model
+		return "subagent reply", nil
+	}
+	d := NewDelegate(spawn, []string{"planner", "researcher"})
+	out, err := d.Run(context.Background(), json.RawMessage(`{"name":"planner","task":"plan it","model":"anthropic/claude-3-5-haiku"}`))
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	if out != "subagent reply" {
+		t.Errorf("out = %q", out)
+	}
+	if got.name != "planner" || got.task != "plan it" || got.model != "anthropic/claude-3-5-haiku" {
+		t.Errorf("captured = %+v", got)
 	}
 }

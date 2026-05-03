@@ -121,6 +121,10 @@ func loadOrCreateConfig(cmd *cobra.Command) (*userconfig.Config, error) {
 // and exports it as the env var that provider's factory expects. We
 // deliberately don't write the key into the user's shell env — it lives
 // only in this process for the duration of the chat session.
+//
+// Keychain is tried first; if missing or if the keychain tool is unavailable,
+// falls back to the corresponding environment variable (e.g., ANTHROPIC_API_KEY).
+// This allows users without keychain tooling to simply export the API key.
 func applyConfig(cfg *userconfig.Config) error {
 	switch cfg.Provider {
 	case userconfig.ProviderOllama:
@@ -128,36 +132,51 @@ func applyConfig(cfg *userconfig.Config) error {
 			os.Setenv("OLLAMA_HOST", cfg.BaseURL)
 		}
 	case userconfig.ProviderAnthropic:
-		key, err := userconfig.GetAPIKey(cfg.Provider)
+		key, err := userconfig.GetAPIKeyWithFallback(cfg.Provider)
 		if err != nil {
-			return fmt.Errorf("read anthropic key from keychain: %w", err)
+			return fmt.Errorf("read anthropic key: %w", err)
 		}
-		os.Setenv("ANTHROPIC_API_KEY", key)
+		if key != "" {
+			os.Setenv("ANTHROPIC_API_KEY", key)
+		}
 	case userconfig.ProviderOpenAI:
-		key, err := userconfig.GetAPIKey(cfg.Provider)
+		key, err := userconfig.GetAPIKeyWithFallback(cfg.Provider)
 		if err != nil {
-			return fmt.Errorf("read openai key from keychain: %w", err)
+			return fmt.Errorf("read openai key: %w", err)
 		}
-		os.Setenv("OPENAI_API_KEY", key)
+		if key != "" {
+			os.Setenv("OPENAI_API_KEY", key)
+		}
 	case userconfig.ProviderGemini:
-		key, err := userconfig.GetAPIKey(cfg.Provider)
+		key, err := userconfig.GetAPIKeyWithFallback(cfg.Provider)
 		if err != nil {
-			return fmt.Errorf("read gemini key from keychain: %w", err)
+			return fmt.Errorf("read gemini key: %w", err)
 		}
-		os.Setenv("GEMINI_API_KEY", key)
+		if key != "" {
+			os.Setenv("GEMINI_API_KEY", key)
+		}
 	case userconfig.ProviderAlibaba:
-		key, err := userconfig.GetAPIKey(cfg.Provider)
+		key, err := userconfig.GetAPIKeyWithFallback(cfg.Provider)
 		if err != nil {
-			return fmt.Errorf("read alibaba key from keychain: %w", err)
+			return fmt.Errorf("read alibaba key: %w", err)
 		}
-		os.Setenv("DASHSCOPE_API_KEY", key)
+		if key != "" {
+			os.Setenv("DASHSCOPE_API_KEY", key)
+		}
+		if cfg.BaseURL != "" {
+			os.Setenv("DASHSCOPE_BASE_URL", cfg.BaseURL)
+		}
 	case userconfig.ProviderLiteLLM:
-		key, err := userconfig.GetAPIKey(cfg.Provider)
+		key, err := userconfig.GetAPIKeyWithFallback(cfg.Provider)
 		if err != nil {
-			return fmt.Errorf("read litellm key from keychain: %w", err)
+			return fmt.Errorf("read litellm key: %w", err)
 		}
-		os.Setenv("LITELLM_API_KEY", key)
-		os.Setenv("LITELLM_BASE_URL", cfg.BaseURL)
+		if key != "" {
+			os.Setenv("LITELLM_API_KEY", key)
+		}
+		if cfg.BaseURL != "" {
+			os.Setenv("LITELLM_BASE_URL", cfg.BaseURL)
+		}
 	default:
 		return fmt.Errorf("unknown provider %q in config", cfg.Provider)
 	}

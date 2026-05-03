@@ -17,6 +17,7 @@ import (
 	"github.com/subzone/Agentctl/internal/engine"
 	"github.com/subzone/Agentctl/internal/llm"
 	"github.com/subzone/Agentctl/internal/tools"
+	"github.com/subzone/Agentctl/internal/userconfig"
 )
 
 // streamMsg unifies model-text chunks and the final completion event.
@@ -231,10 +232,24 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendHistory("(history cleared)\n")
 				return m, nil
 			case "/help":
-				m.appendHistory("commands: /exit /quit /reset /compact /undo /model <provider/model> /theme [name] /config /help\n")
+				m.appendHistory("commands: /exit /quit /reset /compact /undo /model <provider/model> /models /theme [name] /config /help\n")
 				return m, nil
 			case "/config":
 				m.appendHistory("run `m config` from the shell to manage providers and models\n")
+				return m, nil
+			}
+			if line == "/models" || strings.HasPrefix(line, "/models ") {
+				buf := &strings.Builder{}
+				handleModelsCommand(line, m.sess, buf)
+				result := buf.String()
+				m.appendHistory(result)
+				// Update provider/model display if switched
+				if strings.Contains(result, "switched to ") {
+					if cfg, err := userconfig.Load(); err == nil {
+						m.provider = string(cfg.Provider)
+						m.model = cfg.Model
+					}
+				}
 				return m, nil
 			}
 			if strings.HasPrefix(line, "/model ") {
@@ -598,7 +613,7 @@ func (m tuiModel) View() string {
 
 	header := lipgloss.JoinHorizontal(lipgloss.Top, bannerBox, spacerL, tokenBox, spacerR, statsBox)
 
-	cmdsBar := m.styles.Dim.Padding(0, 2).Render("/exit /reset /compact /undo /model /config /theme /help")
+	cmdsBar := m.styles.Dim.Padding(0, 2).Render("/exit /reset /compact /undo /model /models /config /theme /help")
 
 	cwdLabel := ""
 	if cwd, err := os.Getwd(); err == nil {

@@ -34,8 +34,9 @@ type spawner struct {
 // spawn runs the named subagent with task and returns its final assistant
 // text. The subagent's tokens stream to s.out prefixed with "[<name>] " so
 // the user can see the delegated reasoning live; the same text is captured
-// and returned to the parent.
-func (s *spawner) spawn(ctx context.Context, name, task string) (string, error) {
+// and returned to the parent. The model parameter is optional; if empty,
+// the subagent's default model from its spec is used.
+func (s *spawner) spawn(ctx context.Context, name, task, model string) (string, error) {
 	if s.spawnDepth > MaxSubagentDepth {
 		return "", fmt.Errorf("delegate: max subagent depth (%d) reached; cannot spawn %q", MaxSubagentDepth, name)
 	}
@@ -46,7 +47,13 @@ func (s *spawner) spawn(ctx context.Context, name, task string) (string, error) 
 	}
 	spec := doc.Spec.(*config.AgentSpec)
 
-	provider, model, err := llm.Resolve(spec.Model)
+	// Use provided model override, or fall back to agent's default
+	modelToUse := spec.Model
+	if model != "" {
+		modelToUse = model
+	}
+
+	provider, resolvedModel, err := llm.Resolve(modelToUse)
 	if err != nil {
 		return "", err
 	}
@@ -80,7 +87,7 @@ func (s *spawner) spawn(ctx context.Context, name, task string) (string, error) 
 	var captured bytes.Buffer
 	cfg := engine.Config{
 		Provider:       provider,
-		Model:          model,
+		Model:          resolvedModel,
 		System:         doc.Body,
 		Tools:          rt.registry,
 		Temperature:    spec.Temperature,

@@ -167,7 +167,7 @@ func TestSpawnerRunsSubagentEndToEnd(t *testing.T) {
 		spawnDepth: 1,
 	}
 
-	got, err := sp.spawn(context.Background(), "planner", "plan it")
+	got, err := sp.spawn(context.Background(), "planner", "plan it", "")
 	if err != nil {
 		t.Fatalf("spawn: %v", err)
 	}
@@ -264,7 +264,7 @@ func TestHubDelegatesToSubagent(t *testing.T) {
 
 func TestSpawnerDepthLimit(t *testing.T) {
 	sp := &spawner{spawnDepth: MaxSubagentDepth + 1}
-	_, err := sp.spawn(context.Background(), "anything", "go")
+	_, err := sp.spawn(context.Background(), "anything", "go", "")
 	if err == nil || !strings.Contains(err.Error(), "max subagent depth") {
 		t.Errorf("got %v", err)
 	}
@@ -272,7 +272,7 @@ func TestSpawnerDepthLimit(t *testing.T) {
 
 func TestSpawnerUnknownSubagent(t *testing.T) {
 	sp := &spawner{spawnDepth: 1, docs: nil, out: io.Discard, status: io.Discard}
-	_, err := sp.spawn(context.Background(), "ghost", "go")
+	_, err := sp.spawn(context.Background(), "ghost", "go", "")
 	if err == nil || !strings.Contains(err.Error(), "ghost") {
 		t.Errorf("got %v", err)
 	}

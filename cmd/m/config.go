@@ -167,7 +167,15 @@ func discoverModels(ctx context.Context, cfg *userconfig.Config) ([]string, erro
 		if err != nil {
 			return nil, err
 		}
-		return discoverDashScope(ctx, key)
+		baseURL := os.Getenv("DASHSCOPE_BASE_URL")
+		if baseURL == "" {
+			if cfg.BaseURL != "" {
+				baseURL = cfg.BaseURL
+			} else {
+				baseURL = "https://dashscope-intl.aliyuncs.com/compatible-mode"
+			}
+		}
+		return discoverDashScope(ctx, key, baseURL)
 	case userconfig.ProviderOllama:
 		return discoverOllama(ctx)
 	case userconfig.ProviderLiteLLM:
@@ -299,16 +307,22 @@ func discoverGemini(ctx context.Context) ([]string, error) {
 }
 
 // discoverDashScope queries the Alibaba DashScope models endpoint.
-// Returns all model IDs without filtering.
-func discoverDashScope(ctx context.Context, key string) ([]string, error) {
-	req, _ := http.NewRequestWithContext(ctx, http.MethodGet,
-		"https://dashscope-intl.aliyuncs.com/compatible-mode/v1/models", nil)
+// Filters to chat-capable text models only (skips TTS, ASR, image, embedding,
+// VL, OCR, realtime, captioner, and other non-chat models). Also deduplicates
+// dated snapshots when a canonical alias exists.
+func discoverDashScope(ctx context.Context, key, baseURL string) ([]string, error) {
+	listURL := strings.TrimSuffix(baseURL, "/") + "/v1/models"
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, listURL, nil)
 	req.Header.Set("Authorization", "Bearer "+key)
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusNotFound {
+		// Token plans don't expose /v1/models — probe known models.
+		return probeDashScopeModels(ctx, key, baseURL)
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("DashScope API returned %s", resp.Status)
 	}
@@ -320,18 +334,145 @@ func discoverDashScope(ctx context.Context, key string) ([]string, error) {
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, err
 	}
+	skip := []string{
+		"tts", "asr", "image", "vl", "ocr", "embedding",
+		"realtime", "captioner", "wan2", "ccai", "tongyi",
+		"slp", "s2s", "livetranslate", "z-image", "-mt-",
+		"omni", "character", "qvq",
+	}
+	// Collect all IDs, build a set for dedup.
+	all := make(map[string]bool)
+	for _, m := range result.Data {
+		all[m.ID] = true
+	}
 	var out []string
 	for _, m := range result.Data {
+		id := strings.ToLower(m.ID)
+		exclude := false
+		for _, s := range skip {
+			if strings.Contains(id, s) {
+				exclude = true
+				break
+			}
+		}
+		if exclude {
+			continue
+		}
+		// Skip dated snapshots (e.g. qwen-plus-2025-01-25) when the
+		// canonical name (qwen-plus) or -latest variant exists.
+		if isDatedSnapshot(m.ID) {
+			base := stripDateSuffix(m.ID)
+			if all[base] || all[base+"-latest"] {
+				continue
+			}
+		}
+		// Skip -latest aliases when the bare name exists (prefer "qwen-plus" over "qwen-plus-latest").
+		if strings.HasSuffix(m.ID, "-latest") {
+			base := strings.TrimSuffix(m.ID, "-latest")
+			if all[base] {
+				continue
+			}
+		}
 		out = append(out, m.ID)
 	}
 	return out, nil
 }
 
-// apiKeyFromEnvOrKeychain tries the env var first, then the keychain.
-func apiKeyFromEnvOrKeychain(envVar string) (string, error) {
-	if key := os.Getenv(envVar); key != "" {
-		return key, nil
+// isDatedSnapshot returns true if the model ID ends with a date like -2025-01-25.
+func isDatedSnapshot(id string) bool {
+	// Match -YYYY-MM-DD at end.
+	if len(id) < 11 {
+		return false
 	}
+	suffix := id[len(id)-11:]
+	if suffix[0] != '-' {
+		return false
+	}
+	// Check pattern: -NNNN-NN-NN
+	for i, c := range suffix[1:] {
+		if i == 4 || i == 7 {
+			if c != '-' {
+				return false
+			}
+		} else if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
+}
+
+// stripDateSuffix removes a trailing -YYYY-MM-DD from a model ID.
+func stripDateSuffix(id string) string {
+	if len(id) >= 11 {
+		return id[:len(id)-11]
+	}
+	return id
+}
+
+// dashScopeProbeModels is the list of known chat-capable models available on
+// DashScope token plans. Probed when /v1/models returns 404.
+var dashScopeProbeModels = []string{
+	"qwen3.6-plus", "qwen3.6-flash", "qwen3.6-max-preview",
+	"qwen3.5-plus", "qwen3.5-flash",
+	"qwen3-max", "qwen3-coder-plus", "qwen3-coder-flash",
+	"qwen-plus", "qwen-max", "qwen-turbo",
+	"deepseek-v3.2", "deepseek-r1",
+	"glm-5", "glm-4-plus", "glm-4-flash",
+	"MiniMax-M2.5", "MiniMax-Text-01",
+}
+
+// probeDashScopeModels sends a minimal chat request to each candidate model
+// and returns the ones that respond successfully. Used for token plans that
+// don't expose /v1/models. Probes run in parallel; 200 and 429 (rate-limited)
+// both count as "available".
+func probeDashScopeModels(ctx context.Context, key, baseURL string) ([]string, error) {
+	chatURL := strings.TrimSuffix(baseURL, "/") + "/v1/chat/completions"
+	type probeResult struct {
+		model  string
+		ok     bool
+	}
+	ch := make(chan probeResult, len(dashScopeProbeModels))
+	for _, m := range dashScopeProbeModels {
+		go func(model string) {
+			body := fmt.Sprintf(`{"model":%q,"messages":[{"role":"user","content":"hi"}],"max_tokens":1}`, model)
+			req, _ := http.NewRequestWithContext(ctx, http.MethodPost, chatURL, strings.NewReader(body))
+			req.Header.Set("Authorization", "Bearer "+key)
+			req.Header.Set("Content-Type", "application/json")
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				ch <- probeResult{model, false}
+				return
+			}
+			// 200 = works, 429 = rate-limited but exists.
+			// 400 with model_not_found = doesn't exist.
+			// 400 with invalid_api_key = not in plan.
+			avail := resp.StatusCode == http.StatusOK || resp.StatusCode == http.StatusTooManyRequests
+			resp.Body.Close()
+			ch <- probeResult{model, avail}
+		}(m)
+	}
+	available := make(map[string]bool)
+	for range dashScopeProbeModels {
+		r := <-ch
+		if r.ok {
+			available[r.model] = true
+		}
+	}
+	// Preserve the order from the probe list.
+	var out []string
+	for _, m := range dashScopeProbeModels {
+		if available[m] {
+			out = append(out, m)
+		}
+	}
+	return out, nil
+}
+
+// apiKeyFromEnvOrKeychain tries the env var first, then the keychain.
+// apiKeyFromEnvOrKeychain tries the env var first, then falls back to the
+// keychain (via GetAPIKeyWithFallback which tries keychain first, then env).
+// This is used for model discovery where we have the env var name directly.
+func apiKeyFromEnvOrKeychain(envVar string) (string, error) {
 	// Map env var to provider name for keychain lookup.
 	providerMap := map[string]userconfig.Provider{
 		"ANTHROPIC_API_KEY": userconfig.ProviderAnthropic,
@@ -341,10 +482,15 @@ func apiKeyFromEnvOrKeychain(envVar string) (string, error) {
 		"LITELLM_API_KEY":   userconfig.ProviderLiteLLM,
 	}
 	if p, ok := providerMap[envVar]; ok {
-		key, err := userconfig.GetAPIKey(p)
+		// Use fallback: keychain first, then env var.
+		key, err := userconfig.GetAPIKeyWithFallback(p)
 		if err == nil {
 			return key, nil
 		}
+	}
+	// Fallback: just try the env var directly.
+	if key := os.Getenv(envVar); key != "" {
+		return key, nil
 	}
 	return "", fmt.Errorf("%s not set and no key in keychain", envVar)
 }

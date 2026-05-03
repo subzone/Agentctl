@@ -583,11 +583,23 @@ func setupAlibaba(w *wiz) (*userconfig.Config, error) {
 	}
 	fmt.Fprintln(w.out, "\u2713 key saved to OS keychain")
 
+	baseURL, err := w.prompt("Base URL (enter for default, or paste token-plan URL): ")
+	if err != nil {
+		return nil, err
+	}
+	baseURL = strings.TrimSpace(baseURL)
+	if baseURL == "" {
+		baseURL = "https://dashscope-intl.aliyuncs.com/compatible-mode"
+	}
+	// Strip trailing /v1 if user pasted the full OpenAI-compat URL.
+	baseURL = strings.TrimSuffix(baseURL, "/v1")
+	baseURL = strings.TrimSuffix(baseURL, "/")
+
 	os.Setenv("DASHSCOPE_API_KEY", key)
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	models, scanErr := discoverDashScope(ctx, key)
+	models, scanErr := discoverDashScope(ctx, key, baseURL)
 
 	var model string
 	if scanErr == nil && len(models) > 0 {
@@ -644,6 +656,7 @@ func setupAlibaba(w *wiz) (*userconfig.Config, error) {
 	return &userconfig.Config{
 		Provider: userconfig.ProviderAlibaba,
 		Model:    model,
+		BaseURL:  baseURL,
 	}, nil
 }
 

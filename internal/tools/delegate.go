@@ -9,9 +9,10 @@ import (
 )
 
 // SpawnFunc runs a named subagent with a task and returns its final
-// assistant text. Implementations are responsible for cycle detection,
-// depth limiting, and resource cleanup; the tool just calls through.
-type SpawnFunc func(ctx context.Context, name, task string) (string, error)
+// assistant text. The model parameter is optional; if empty, the subagent
+// uses its default model from the agent definition. Implementations are
+// responsible for cycle detection, depth limiting, and resource cleanup.
+type SpawnFunc func(ctx context.Context, name, task, model string) (string, error)
 
 // DelegateTool exposes a "delegate" function to the model so it can hand
 // off subtasks to subagents listed in its frontmatter.
@@ -40,7 +41,9 @@ func (d *DelegateTool) Description() string {
 	return fmt.Sprintf(
 		"Delegate a subtask to a named subagent and wait for its final reply. "+
 			"Available subagents: %s. Use this when a different agent is better "+
-			"suited to handle a portion of the work; pass the full context they need.",
+			"suited to handle a portion of the work; pass the full context they need. "+
+			"Optionally specify a model (e.g., anthropic/claude-3-5-haiku) to override "+
+			"the subagent's default model.",
 		strings.Join(d.available, ", "),
 	)
 }
@@ -64,6 +67,10 @@ func (d *DelegateTool) InputSchema() json.RawMessage {
 				"type":        "string",
 				"description": "task description for the subagent (full context, not just a hint)",
 			},
+			"model": map[string]any{
+				"type":        "string",
+				"description": "optional model override (e.g., anthropic/claude-3-5-haiku, alibaba/glm-5). If not specified, uses the subagent's default model.",
+			},
 		},
 		"required": []string{"name", "task"},
 	}
@@ -74,8 +81,9 @@ func (d *DelegateTool) InputSchema() json.RawMessage {
 // Run implements Tool.
 func (d *DelegateTool) Run(ctx context.Context, input json.RawMessage) (string, error) {
 	var args struct {
-		Name string `json:"name"`
-		Task string `json:"task"`
+		Name  string `json:"name"`
+		Task  string `json:"task"`
+		Model string `json:"model"`
 	}
 	if err := json.Unmarshal(input, &args); err != nil {
 		return "", fmt.Errorf("invalid input: %w", err)
@@ -92,7 +100,7 @@ func (d *DelegateTool) Run(ctx context.Context, input json.RawMessage) (string, 
 	if d.spawn == nil {
 		return "", errors.New("delegate: no spawn function wired (engine misconfigured)")
 	}
-	return d.spawn(ctx, args.Name, args.Task)
+	return d.spawn(ctx, args.Name, args.Task, args.Model)
 }
 
 func (d *DelegateTool) allowed(name string) bool {

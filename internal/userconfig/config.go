@@ -132,3 +132,66 @@ func Save(cfg *Config) error {
 
 // IsNotExist reports whether err indicates the config file is missing.
 func IsNotExist(err error) bool { return errors.Is(err, fs.ErrNotExist) }
+
+// envVarForProvider returns the environment variable name that holds the
+// API key for a given provider. Returns empty string for providers that
+// don't use an API key (e.g., local Ollama).
+func envVarForProvider(p Provider) string {
+	switch p {
+	case ProviderAnthropic:
+		return "ANTHROPIC_API_KEY"
+	case ProviderOpenAI:
+		return "OPENAI_API_KEY"
+	case ProviderGemini:
+		return "GEMINI_API_KEY"
+	case ProviderAlibaba:
+		return "DASHSCOPE_API_KEY"
+	case ProviderLiteLLM:
+		return "LITELLM_API_KEY"
+	case ProviderOllama:
+		return "" // Local, no API key needed
+	default:
+		return ""
+	}
+}
+
+// GetAPIKeyWithFallback tries the keychain first, then falls back to the
+// corresponding environment variable. This allows users without keychain
+// tooling to simply export the API key in their shell.
+//
+// Returns the key string if found in either location, or an error if neither
+// exists. For providers that don't require an API key (e.g., local Ollama),
+// returns empty string and no error.
+func GetAPIKeyWithFallback(provider Provider) (string, error) {
+	// For providers that don't need an API key, short-circuit.
+	envVar := envVarForProvider(provider)
+	if envVar == "" {
+		return "", nil
+	}
+
+	// Try keychain first.
+	key, err := GetAPIKey(provider)
+	if err == nil {
+		return key, nil
+	}
+
+	// If keychain error is anything other than "not found", it might be
+	// a tool-missing error on Linux. In that case, still try env var.
+	// Also try env var if the key simply wasn't stored.
+	if !IsKeyNotFound(err) {
+		// Keychain tool missing or broken; try env var as fallback.
+		if val := os.Getenv(envVar); val != "" {
+			return val, nil
+		}
+		// Return original error to preserve context about keychain failure.
+		return "", err
+	}
+
+	// Key not found in keychain — try environment variable.
+	if val := os.Getenv(envVar); val != "" {
+		return val, nil
+	}
+
+	// Neither keychain nor env var has the key.
+	return "", fmt.Errorf("no API key found for %s: neither in keychain nor in $%s", provider, envVar)
+}

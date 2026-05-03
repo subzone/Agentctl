@@ -9,8 +9,10 @@ import (
 	"io"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
@@ -19,6 +21,7 @@ import (
 	"github.com/subzone/Agentctl/internal/engine"
 	"github.com/subzone/Agentctl/internal/llm"
 	"github.com/subzone/Agentctl/internal/tools"
+	"github.com/subzone/Agentctl/internal/userconfig"
 )
 
 const (
@@ -268,7 +271,11 @@ func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, statu
 		fmt.Fprintln(status, "or tell the current agent: 'follow the spec workflow for this task'")
 		return true, false
 	case "/help":
-		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /undo /model <provider/model> /theme [name] /config /help")
+		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /undo /model <provider/model> /models /theme [name] /config /help")
+		return true, false
+	}
+	if line == "/models" || strings.HasPrefix(line, "/models ") {
+		handleModelsCommand(line, sess, status)
 		return true, false
 	}
 	if strings.HasPrefix(line, "/model ") {
@@ -306,6 +313,69 @@ func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, statu
 		return true, false
 	}
 	return false, false
+}
+
+// handleModelsCommand implements /models (list) and /models N (pick).
+func handleModelsCommand(line string, sess *engine.Session, status io.Writer) {
+	cfg, err := userconfig.Load()
+	if err != nil {
+		fmt.Fprintf(status, "error: %v\n", err)
+		return
+	}
+
+	arg := strings.TrimSpace(strings.TrimPrefix(line, "/models"))
+
+	// /models N — pick from last listing
+	if arg != "" {
+		n, err := strconv.Atoi(arg)
+		if err != nil {
+			fmt.Fprintf(status, "usage: /models (list) or /models <number> (pick)\n")
+			return
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
+		defer cancel()
+		models, err := discoverModels(ctx, cfg)
+		if err != nil {
+			fmt.Fprintf(status, "error: %v\n", err)
+			return
+		}
+		if n < 1 || n > len(models) {
+			fmt.Fprintf(status, "pick a number between 1 and %d\n", len(models))
+			return
+		}
+		picked := models[n-1]
+		full := string(cfg.Provider) + "/" + picked
+		p, model, err := llm.Resolve(full)
+		if err != nil {
+			fmt.Fprintf(status, "error: %v\n", err)
+			return
+		}
+		sess.SetModel(p, model)
+		fmt.Fprintf(status, "switched to %s\n", full)
+		return
+	}
+
+	// /models — list available
+	fmt.Fprintf(status, "scanning %s for models...\n", cfg.Provider)
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	models, err := discoverModels(ctx, cfg)
+	if err != nil {
+		fmt.Fprintf(status, "error: %v\n", err)
+		return
+	}
+	if len(models) == 0 {
+		fmt.Fprintln(status, "no models found")
+		return
+	}
+	for i, m := range models {
+		marker := "  "
+		if m == cfg.Model {
+			marker = "* "
+		}
+		fmt.Fprintf(status, "  %s%d) %s/%s\n", marker, i+1, cfg.Provider, m)
+	}
+	fmt.Fprintln(status, "\n  * = current | /models <number> to switch")
 }
 
 // readLines spawns a goroutine that scans lines from r and forwards them

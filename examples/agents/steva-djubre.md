@@ -3,7 +3,7 @@ name: steva-djubre
 type: agent
 description: Steva Đubre — Super Senior DevOps SRE sa najgorim stavom ali najboljim rezultatima.
 version: 1
-model: alibaba/deepseek-v3.2
+model: alibaba/glm-5
 tools:
   - shell
   - fs_read

@@ -64,6 +64,22 @@ m
 API keys are stored in the OS keychain (macOS Keychain / Linux libsecret).
 Never in config files, never in plaintext.
 
+### API key fallback
+
+If you don't want to use the keychain (or `secret-tool` isn't installed on Linux),
+you can set API keys via environment variables instead:
+
+```bash
+export ANTHROPIC_API_KEY=sk-ant-...
+export OPENAI_API_KEY=sk-...
+export GEMINI_API_KEY=...
+export DASHSCOPE_API_KEY=...  # Alibaba
+export LITELLM_API_KEY=...
+```
+
+The CLI checks keychain first, then falls back to the environment variable.
+This works for both the main `m` command and for model discovery (`m config scan`).
+
 ---
 
 ## Defining an agent
