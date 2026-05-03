@@ -1,38 +1,310 @@
 # m
 
-`m` is an MD-driven agent CLI for code, infrastructure, and automation work.
-Agents are plain Markdown files with YAML frontmatter; the CLI runs them
-against your choice of model backend.
+> Working title. The binary is `m` for now — the project will likely be renamed
+> before v0.1.0. See [Naming](#naming) below.
 
-## Quick install
+A small, single-binary CLI for running AI agents defined as Markdown files
+against your choice of LLM. Aimed at developers and DevOps people who live in
+the terminal and want to script agentic work without IDE lock-in or SDK
+sprawl.
 
-**macOS** — download the `.pkg` from the [latest release][releases] and
-double-click. Installs `/usr/local/bin/m`.
+**Status:** alpha. ~1 month of evenings of work. Works for the author's daily
+use, but expect breaking changes until v0.1.0. Tagged releases (`v0.0.1` →
+`v0.0.17`) ship as macOS `.pkg` and Linux `.deb`.
 
-**Linux (Debian/Ubuntu)** — download the `.deb` and:
-
-```bash
-sudo dpkg -i m_*_linux_amd64.deb
+```text
+$ m
+» fix the failing test in api/handler.go
+→ fs_read   api/handler.go
+→ shell     go test ./api/...
+→ fs_write  api/handler.go   (patch: nil check)
+  Overwrite api/handler.go? [y/N]: y
+→ shell     go test ./api/...
+  PASS
+→ git       commit -m "fix: nil check in handler"
 ```
 
-## First run
+Full docs site (EN + SR): **<https://subzone.github.io/m/>**
+
+---
+
+## Why this exists
+
+- **Agents are files, not config** — define an agent as a Markdown file with
+  YAML frontmatter, version it in git alongside your code, share it like any
+  other source file.
+- **No LLM SDK dependencies** — every provider client is plain `net/http` +
+  `encoding/json`. The build won't break when a vendor SDK changes.
+- **CLI-first, IDE-agnostic** — pipes, scripts, cron, CI all work because
+  it's a normal binary that reads stdin and writes stdout.
+- **Plays well with existing tooling** — `kubectl`, `terraform`, `helm`,
+  `git`, `make` are reachable through the shell tool. Not a replacement for
+  Cursor or Claude Code; a complementary tool for terminal-driven dev/DevOps
+  work.
+
+---
+
+## Install
+
+| Platform | How |
+|----------|-----|
+| macOS    | Download `.pkg` from [latest release][releases] → double-click. Installs to `/usr/local/bin/m`. |
+| Linux (Debian/Ubuntu) | `sudo dpkg -i m_*_linux_amd64.deb` |
+| Linux (other) | Tarball: `tar -xzf m_*_linux_amd64.tar.gz && sudo mv m /usr/local/bin/` |
+| From source | `go install github.com/subzone/m/cmd/m@latest` (requires Go 1.26+) |
+
+First run launches a setup wizard:
 
 ```bash
 m
+# Pick a provider (Ollama / Anthropic / OpenAI / Gemini / Alibaba / LiteLLM)
+# Paste an API key (or skip for Ollama)
+# Done — drops you into a chat with the default agent
 ```
 
-A four-option wizard runs on first launch — pick Ollama+Qwen3-Coder,
-Anthropic, OpenAI, or a LiteLLM proxy. After setup, every subsequent
-`m` drops you straight into a chat with your default agent.
+API keys are stored in the OS keychain (macOS Keychain / Linux libsecret).
+Never in config files, never in plaintext.
 
-## Documentation
+---
 
-Full docs at **<https://subzone.github.io/m/>** — covering installation,
-configuration, the four supported providers, custom agents, and
-troubleshooting.
+## Defining an agent
+
+A complete agent is one Markdown file:
+
+```markdown
+---
+name: devops
+type: agent
+model: anthropic/claude-sonnet-4-6
+tools:
+  - shell
+  - fs_read
+  - fs_write
+  - git
+  - test_run
+temperature: 0.3
+---
+You are a DevOps engineer.
+Explore the project with fs_list before editing.
+Make targeted changes with fs_write.
+Always consider security.
+```
+
+Run it:
+
+```bash
+m chat examples/agents/devops.md
+m run examples/agents/devops.md "audit the Dockerfile"
+```
+
+The repo ships **27 example agents** in [`examples/agents/`](examples/agents/),
+including `coder`, `reviewer`, `planner`, `k8s-debug`, `terraform-plan`,
+`helm-deploy`, `ticket-worker`, plus persona variants (`steva-djubre.md`,
+`steve-trash.md`).
+
+---
+
+## Built-in tools
+
+| Tool        | Purpose                                  | User confirmation |
+|-------------|------------------------------------------|-------------------|
+| `shell`     | Run a shell command                      | yes (per call)    |
+| `fs_read`   | Read a file                              | no                |
+| `fs_write`  | Create or patch a file                   | yes (diff preview) |
+| `fs_list`   | List a directory (recursive, skips `.git`/`node_modules`) | no |
+| `git`       | Common git operations                    | yes for writes    |
+| `test_run`  | Run the project's test command           | no                |
+| `delegate`  | Call a sub-agent                         | no                |
+
+`fs_write` writes are reversible via `/undo`.
+
+---
+
+## Providers
+
+Selected per-agent via `model: provider/model-name`. Switch providers
+mid-session with `/model provider/model`.
+
+| Provider   | Transport   | Notes |
+|------------|-------------|-------|
+| `ollama`   | NDJSON      | Local, free. Default for the wizard. |
+| `anthropic`| Custom SSE  | Claude family. Native tool use, response-tool for structured output. |
+| `openai`   | OpenAI SSE  | GPT-4o / GPT-4.1. `json_schema` strict mode. |
+| `gemini`   | OpenAI-compat | `gemini-2.5-pro` / `flash` via Google's OpenAI-compat endpoint. |
+| `alibaba`  | OpenAI-compat | DashScope: `qwen-plus` / `turbo` / `max`. |
+| `litellm`  | OpenAI-compat | Proxy passthrough — opens up ~100 more models. |
+
+All clients are stdlib-only. Gemini, Alibaba and LiteLLM use a `WithCompat()`
+flag that disables OpenAI-specific stream options.
+
+---
+
+## MCP integrations
+
+Three MCP server definitions ship in [`examples/mcp/`](examples/mcp/):
+
+- `github` — PR/issue/repo operations
+- `jira`   — search, read, create, update, transition issues
+- `confluence` — search, read, create, update pages
+
+Reference one from an agent:
+
+```yaml
+mcp: [jira, confluence]
+```
+
+Tools are namespaced (`jira__get_issue`, `confluence__update_page`) and merged
+into the same registry as built-ins. Transport: stdio JSON-RPC. **HTTP/SSE
+transport is not yet implemented.**
+
+---
+
+## Slash commands (chat REPL)
+
+| Command     | Effect |
+|-------------|--------|
+| `/help`     | Show available commands |
+| `/exit`, `/quit` | Leave the session |
+| `/reset`    | Clear chat history |
+| `/compact`  | Truncate history to last 4 exchanges |
+| `/undo`     | Revert the most recent `fs_write` |
+| `/config`   | Open interactive provider/model manager |
+| `/spec`     | Show the agent's resolved spec |
+| `/model`    | Switch provider/model mid-session |
+| `/theme`    | Switch TUI theme |
+
+---
+
+## Architecture
+
+Hexagonal layout, ~8.8k LOC, 24 test files. No SDK dependencies for LLM
+clients.
+
+```
+cmd/m/                CLI entry, TUI, REPL, slash commands
+internal/engine/      Session loop, tool dispatch, structured output
+internal/llm/         Provider registry + 6 stdlib-only clients
+internal/tools/       Built-in tool implementations
+internal/mcp/         JSON-RPC stdio client, tool adapter
+internal/config/      Frontmatter parsing, agent/MCP/skill schemas
+internal/ports/       ConfigSource, Secrets, StateStore interfaces
+internal/adapters/    Keychain (macOS/libsecret), file-backed stores
+examples/agents/      27 ready-to-use agents
+examples/mcp/         3 MCP server definitions
+docs/                 Static product site (EN + SR), GitHub Pages
+```
+
+The engine never sees provider-specific code — providers register themselves
+via `init()` + `llm.Register()`, and the engine only consumes a
+`Provider.Stream(ctx, req) → <-chan Event` interface.
+
+For a deeper walk-through (engine loop, hub-and-spoke delegation, MCP flow,
+structured output mechanics), see the
+[architecture page](https://subzone.github.io/m/architecture.html) or
+[`PLAN.md`](PLAN.md).
+
+---
+
+## What works today
+
+- Single-binary install on macOS / Linux (amd64 + arm64)
+- 6 LLM providers, switchable mid-session
+- 7 built-in tools with user confirmation on writes + undo
+- MCP stdio transport with auto-discovery and namespacing
+- Hub-and-spoke sub-agent delegation
+- Provider-native structured output enforcement (`response_schema`)
+- Full-screen TUI with token/cost/context indicators, falls back to line REPL in pipes
+- Theming
+- Tagged release pipeline producing `.pkg` and `.deb`
+
+## Known gaps
+
+These are real, not roadmap-ware. They affect what `m` can be used for today:
+
+- **No codebase RAG / context retrieval.** Agents see what they explicitly
+  read with `fs_read` / `fs_list`. There's no embedding store, no
+  similarity search, no smart context window packing. See
+  [Codebase context (RAG)](#codebase-context-rag) below for options.
+- **MCP HTTP/SSE transport not implemented.** Stdio only. Many real-world
+  MCP servers use HTTP — they don't work yet.
+- **No agent discovery command** (`m list`). You have to point at a path
+  every time.
+- **No `/trust` for autonomous sessions.** Every `fs_write` and `shell`
+  prompts. Fine for interactive use, blocks long-running headless runs.
+- **No conversation persistence beyond the active session.** No history
+  search, no resume.
+- **No team features.** No shared agent registry, no audit log, no RBAC,
+  no sandboxed execution. Single-developer use only for now.
+- **No IDE integration.** Intentional — this is a CLI tool. Not planned.
+
+The internal UX backlog is in [`UX_IMPROVEMENTS_PLAN.md`](UX_IMPROVEMENTS_PLAN.md).
+
+---
+
+## Codebase context (RAG)
+
+Not built in. Three reasonable paths if you need it:
+
+1. **MCP route** — point `m` at any vector-store MCP server (Qdrant,
+   Chroma, etc.). The agent gets `vector__search` as a normal tool. No
+   `m` changes needed; this is how it'll work for now.
+2. **A `code_search` built-in tool** that wraps `ripgrep` + a small in-memory
+   index over the working tree. Cheaper than embeddings, often enough for
+   "find similar functions". Probably the next logical addition.
+3. **First-class embedding store** in `internal/` with a pluggable backend.
+   Bigger lift, only worth it if there's a commercial story behind it.
+
+If RAG matters for your use case, option 1 unblocks you today.
+
+---
+
+## Naming
+
+`m` is a placeholder. Reasons it's not the long-term name:
+
+- Two characters — un-Googleable.
+- Collides with several existing CLIs and shell builtins on different
+  distros.
+- Says nothing about what it does.
+
+Open to suggestions. Current shortlist (none decided):
+
+- `mdrun` — descriptive, googleable, says exactly what it does
+- `agentctl` — kubectl-style, says it's a CLI for agents
+- `quill` / `scroll` — leans into the "agents are scrolls" metaphor
+- `subzone` — the existing GitHub org as the product name
+
+If you have ideas, open an issue.
+
+---
+
+## Building from source
+
+```bash
+git clone https://github.com/subzone/m.git
+cd m
+make build       # produces ./m
+make test        # runs go test ./...
+make lint        # golangci-lint
+```
+
+Requires Go 1.26+.
+
+---
+
+## Contributing
+
+Early-stage project. Bugs, design feedback, and PRs all welcome. Before a
+PR for a non-trivial change, open an issue so we can align on scope —
+the architecture is small enough that one wrong abstraction hurts.
+
+- Issues: <https://github.com/subzone/m/issues>
+- Discussions: <https://github.com/subzone/m/discussions>
+
+---
 
 ## License
 
-MIT License. See LICENSE file for details.
+MIT. See [LICENSE](LICENSE).
 
 [releases]: https://github.com/subzone/m/releases/latest
