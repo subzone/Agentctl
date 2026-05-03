@@ -8,8 +8,8 @@ import (
 	"errors"
 	"os"
 
-	"github.com/subzone/m/internal/llm"
-	"github.com/subzone/m/internal/llm/openai"
+	"github.com/subzone/Agentctl/internal/llm"
+	"github.com/subzone/Agentctl/internal/llm/openai"
 )
 
 const defaultBaseURL = "https://generativelanguage.googleapis.com/v1beta/openai"

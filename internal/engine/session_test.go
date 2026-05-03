@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/subzone/m/internal/llm"
-	"github.com/subzone/m/internal/tools"
+	"github.com/subzone/Agentctl/internal/llm"
+	"github.com/subzone/Agentctl/internal/tools"
 )
 
 // recordingProvider captures every Stream call's request, then replays a

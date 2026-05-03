@@ -14,9 +14,9 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
-	"github.com/subzone/m/internal/engine"
-	"github.com/subzone/m/internal/llm"
-	"github.com/subzone/m/internal/tools"
+	"github.com/subzone/Agentctl/internal/engine"
+	"github.com/subzone/Agentctl/internal/llm"
+	"github.com/subzone/Agentctl/internal/tools"
 )
 
 // streamMsg unifies model-text chunks and the final completion event.

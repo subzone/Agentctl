@@ -9,7 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/subzone/m/internal/userconfig"
+	"github.com/subzone/Agentctl/internal/userconfig"
 )
 
 // release captures the user-visible highlights for one tagged version.

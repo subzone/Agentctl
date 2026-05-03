@@ -7,7 +7,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/viewport"
 
-	"github.com/subzone/m/internal/llm"
+	"github.com/subzone/Agentctl/internal/llm"
 )
 
 // TestAppendHistorySurvivesValueCopy locks in the fix for the v0.0.3

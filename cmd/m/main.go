@@ -7,16 +7,16 @@ import (
 
 	"github.com/spf13/cobra"
 
-	"github.com/subzone/m/internal/config"
-	"github.com/subzone/m/internal/userconfig"
+	"github.com/subzone/Agentctl/internal/config"
+	"github.com/subzone/Agentctl/internal/userconfig"
 
 	// Side-effect: register LLM providers.
-	_ "github.com/subzone/m/internal/llm/alibaba"
-	_ "github.com/subzone/m/internal/llm/anthropic"
-	_ "github.com/subzone/m/internal/llm/gemini"
-	_ "github.com/subzone/m/internal/llm/litellm"
-	_ "github.com/subzone/m/internal/llm/ollama"
-	_ "github.com/subzone/m/internal/llm/openai"
+	_ "github.com/subzone/Agentctl/internal/llm/alibaba"
+	_ "github.com/subzone/Agentctl/internal/llm/anthropic"
+	_ "github.com/subzone/Agentctl/internal/llm/gemini"
+	_ "github.com/subzone/Agentctl/internal/llm/litellm"
+	_ "github.com/subzone/Agentctl/internal/llm/ollama"
+	_ "github.com/subzone/Agentctl/internal/llm/openai"
 )
 
 //go:embed default_agent.md

@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/subzone/m/internal/config"
+	"github.com/subzone/Agentctl/internal/config"
 )
 
 func TestResolveAndMissing(t *testing.T) {

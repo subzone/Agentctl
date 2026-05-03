@@ -1,4 +1,4 @@
-module github.com/subzone/m
+module github.com/subzone/Agentctl
 
 go 1.26.1
 

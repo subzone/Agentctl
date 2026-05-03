@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/subzone/m/internal/llm"
+	"github.com/subzone/Agentctl/internal/llm"
 )
 
 const defaultBaseURL = "https://api.openai.com"

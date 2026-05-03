@@ -9,8 +9,8 @@ import (
 	"os"
 	"strings"
 
-	"github.com/subzone/m/internal/llm"
-	"github.com/subzone/m/internal/llm/openai"
+	"github.com/subzone/Agentctl/internal/llm"
+	"github.com/subzone/Agentctl/internal/llm/openai"
 )
 
 func init() {

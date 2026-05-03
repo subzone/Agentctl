@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
-	"github.com/subzone/m/internal/llm"
+	"github.com/subzone/Agentctl/internal/llm"
 )
 
 func TestExtractStructuredResponseFromToolCall(t *testing.T) {

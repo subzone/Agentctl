@@ -23,7 +23,7 @@ $ m
 → git       commit -m "fix: nil check in handler"
 ```
 
-Full docs site (EN + SR): **<https://subzone.github.io/m/>**
+Full docs site (EN + SR): **<https://subzone.github.io/Agentctl/>**
 
 ---
 
@@ -50,7 +50,7 @@ Full docs site (EN + SR): **<https://subzone.github.io/m/>**
 | macOS    | Download `.pkg` from [latest release][releases] → double-click. Installs to `/usr/local/bin/m`. |
 | Linux (Debian/Ubuntu) | `sudo dpkg -i m_*_linux_amd64.deb` |
 | Linux (other) | Tarball: `tar -xzf m_*_linux_amd64.tar.gz && sudo mv m /usr/local/bin/` |
-| From source | `go install github.com/subzone/m/cmd/m@latest` (requires Go 1.26+) |
+| From source | `go install github.com/subzone/Agentctl/cmd/m@latest` (requires Go 1.26+) |
 
 First run launches a setup wizard:
 
@@ -199,7 +199,7 @@ via `init()` + `llm.Register()`, and the engine only consumes a
 
 For a deeper walk-through (engine loop, hub-and-spoke delegation, MCP flow,
 structured output mechanics), see the
-[architecture page](https://subzone.github.io/m/architecture.html) or
+[architecture page](https://subzone.github.io/Agentctl/architecture.html) or
 [`PLAN.md`](PLAN.md).
 
 ---
@@ -268,8 +268,8 @@ like how "Kubernetes" is the product but `kubectl` is the binary.
 ## Building from source
 
 ```bash
-git clone https://github.com/subzone/m.git
-cd m
+git clone https://github.com/subzone/Agentctl.git
+cd Agentctl
 make build       # produces ./m
 make test        # runs go test ./...
 make lint        # golangci-lint
@@ -285,8 +285,8 @@ Early-stage project. Bugs, design feedback, and PRs all welcome. Before a
 PR for a non-trivial change, open an issue so we can align on scope —
 the architecture is small enough that one wrong abstraction hurts.
 
-- Issues: <https://github.com/subzone/m/issues>
-- Discussions: <https://github.com/subzone/m/discussions>
+- Issues: <https://github.com/subzone/Agentctl/issues>
+- Discussions: <https://github.com/subzone/Agentctl/discussions>
 
 ---
 
@@ -294,4 +294,4 @@ the architecture is small enough that one wrong abstraction hurts.
 
 MIT. See [LICENSE](LICENSE).
 
-[releases]: https://github.com/subzone/m/releases/latest
+[releases]: https://github.com/subzone/Agentctl/releases/latest

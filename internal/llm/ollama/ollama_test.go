@@ -9,7 +9,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/subzone/m/internal/llm"
+	"github.com/subzone/Agentctl/internal/llm"
 )
 
 func TestParseStreamHappyText(t *testing.T) {

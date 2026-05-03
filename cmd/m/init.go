@@ -17,7 +17,7 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/subzone/m/internal/userconfig"
+	"github.com/subzone/Agentctl/internal/userconfig"
 )
 
 func newInitCmd() *cobra.Command {

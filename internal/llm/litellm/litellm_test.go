@@ -4,7 +4,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/subzone/m/internal/llm"
+	"github.com/subzone/Agentctl/internal/llm"
 )
 
 func TestRegistration(t *testing.T) {

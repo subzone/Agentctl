@@ -15,10 +15,10 @@ import (
 	"github.com/spf13/cobra"
 	"golang.org/x/term"
 
-	"github.com/subzone/m/internal/config"
-	"github.com/subzone/m/internal/engine"
-	"github.com/subzone/m/internal/llm"
-	"github.com/subzone/m/internal/tools"
+	"github.com/subzone/Agentctl/internal/config"
+	"github.com/subzone/Agentctl/internal/engine"
+	"github.com/subzone/Agentctl/internal/llm"
+	"github.com/subzone/Agentctl/internal/tools"
 )
 
 const (
