@@ -23,6 +23,12 @@ back_to_top_text: "Back to top"
 
 footer_content: '<a href="https://github.com/subzone/m">m</a> &mdash; MD-driven agent CLI &middot; MIT License'
 
+head_extra: |
+  <link rel="stylesheet" href="/m/assets/css/custom.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
 callouts:
   warning:
     title: Warning
