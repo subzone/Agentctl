@@ -184,15 +184,35 @@ func (f *FSWriteTool) runPatch(ctx context.Context, path, oldStr, newStr string)
 }
 
 // commitWrite saves the current state of path to the undo stack (if any),
-// creates parent directories, and atomically writes data.
+// creates parent directories, and writes data using a write-then-rename
+// pattern so the target file is never left in a partially-written state.
 func (f *FSWriteTool) commitWrite(path string, data []byte) error {
 	if f.Undo != nil {
 		f.Undo.Push(path)
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+	dir := filepath.Dir(path)
+	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return err
 	}
-	return os.WriteFile(path, data, 0o644)
+	tmp, err := os.CreateTemp(dir, ".fswrite-*")
+	if err != nil {
+		return err
+	}
+	tmpName := tmp.Name()
+	if _, err := tmp.Write(data); err != nil {
+		tmp.Close()
+		os.Remove(tmpName)
+		return err
+	}
+	if err := tmp.Close(); err != nil {
+		os.Remove(tmpName)
+		return err
+	}
+	if err := os.Rename(tmpName, path); err != nil {
+		os.Remove(tmpName)
+		return err
+	}
+	return nil
 }
 
 func (f *FSWriteTool) confirm(ctx context.Context, prompt string) (bool, error) {

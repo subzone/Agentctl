@@ -259,9 +259,9 @@ func isSafeTool(name string, input json.RawMessage) bool {
 			cmd := args.Command
 			// Reject commands containing shell chaining operators or
 			// potentially dangerous keywords regardless of what comes before.
-			if strings.ContainsAny(cmd, ";|") ||
+			if strings.Contains(cmd, ";") ||
+				strings.Contains(cmd, "|") ||
 				strings.Contains(cmd, "&&") ||
-				strings.Contains(cmd, "||") ||
 				strings.Contains(cmd, "rm") ||
 				strings.Contains(cmd, "delete") ||
 				strings.Contains(cmd, "mv") ||
