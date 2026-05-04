@@ -175,6 +175,73 @@ func TestRunToolErrorPropagatesAsResult(t *testing.T) {
 	}
 }
 
+func TestRunToolErrorWithIntervention(t *testing.T) {
+	bad := &recordedTool{name: "shell", err: errors.New("file not found")}
+	reg := tools.NewRegistry(bad)
+
+	p := &scriptedProvider{turns: [][]llm.Event{
+		{
+			{Kind: llm.EventToolCall, ToolID: "tu_1", ToolName: "shell", ToolInput: json.RawMessage(`{"command":"cat missing.txt"}`)},
+			{Kind: llm.EventDone, StopReason: "tool_use"},
+		},
+		{
+			{Kind: llm.EventText, Text: "got it"},
+			{Kind: llm.EventDone, StopReason: "end_turn"},
+		},
+	}}
+	err := Run(context.Background(), Config{
+		Provider: p, Model: "x", Tools: reg,
+		ErrorIntervention: func(_ context.Context, toolName, errMsg string) string {
+			if toolName != "shell" {
+				t.Errorf("toolName = %q, want shell", toolName)
+			}
+			return "try /src directory instead"
+		},
+	}, "go")
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	tr := p.requests[1].Messages[2].Content[0]
+	if !tr.IsError {
+		t.Error("expected IsError=true")
+	}
+	if !strings.Contains(tr.Output, "file not found") {
+		t.Errorf("error not in tool result: %q", tr.Output)
+	}
+	if !strings.Contains(tr.Output, "User hint: try /src directory instead") {
+		t.Errorf("hint not in tool result: %q", tr.Output)
+	}
+}
+
+func TestRunToolErrorInterventionEmpty(t *testing.T) {
+	bad := &recordedTool{name: "shell", err: errors.New("boom")}
+	reg := tools.NewRegistry(bad)
+
+	p := &scriptedProvider{turns: [][]llm.Event{
+		{
+			{Kind: llm.EventToolCall, ToolID: "tu_1", ToolName: "shell", ToolInput: json.RawMessage(`{"command":"x"}`)},
+			{Kind: llm.EventDone, StopReason: "tool_use"},
+		},
+		{
+			{Kind: llm.EventText, Text: "ok"},
+			{Kind: llm.EventDone, StopReason: "end_turn"},
+		},
+	}}
+	err := Run(context.Background(), Config{
+		Provider: p, Model: "x", Tools: reg,
+		ErrorIntervention: func(_ context.Context, _, _ string) string {
+			return "" // user pressed Enter, no hint
+		},
+	}, "go")
+	if err != nil {
+		t.Fatalf("Run: %v", err)
+	}
+	tr := p.requests[1].Messages[2].Content[0]
+	if strings.Contains(tr.Output, "User hint") {
+		t.Errorf("empty hint should not appear in output: %q", tr.Output)
+	}
+}
+
 func TestRunStreamErrorAborts(t *testing.T) {
 	p := &scriptedProvider{turns: [][]llm.Event{{
 		{Kind: llm.EventText, Text: "partial "},

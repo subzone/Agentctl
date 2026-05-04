@@ -61,6 +61,13 @@ type Config struct {
 	// to continue for another MaxTurns rounds, false to stop.
 	// Nil means stop immediately.
 	ContinueConfirm func(ctx context.Context, turns int) (bool, error)
+
+	// ErrorIntervention is called when a tool execution fails. The callback
+	// receives the tool name and the error message. It may return a hint
+	// string that is appended to the error sent back to the LLM, helping
+	// steer the model away from repeated failures. Return "" to let the
+	// model retry on its own. Nil means no intervention (original behavior).
+	ErrorIntervention func(ctx context.Context, toolName string, errMsg string) string
 }
 
 // Run executes one task to completion in a fresh conversation. It is a
@@ -292,7 +299,7 @@ func (s *Session) Step(ctx context.Context, task string) error {
 				}
 				return nil
 			}
-			results, err := executeTools(ctx, s.cfg.Tools, s.cfg.ToolConfirm, s.status, assistant.Content)
+			results, err := executeTools(ctx, s.cfg.Tools, s.cfg.ToolConfirm, s.cfg.ErrorIntervention, s.status, assistant.Content)
 			if err != nil {
 				return err
 			}
@@ -454,7 +461,7 @@ func tokenCompact(msgs []llm.Message, targetTokens int, system string) []llm.Mes
 // executeTools runs each tool_use block in assistant. When multiple tools
 // are requested in the same turn, they run concurrently (each tool call
 // is independent). Results are collected in order.
-func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), status io.Writer, assistant []llm.ContentBlock) (llm.Message, error) {
+func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), errIntervene func(context.Context, string, string) string, status io.Writer, assistant []llm.ContentBlock) (llm.Message, error) {
 	var calls []llm.ContentBlock
 	for _, b := range assistant {
 		if b.Type == llm.BlockToolUse {
@@ -469,7 +476,7 @@ func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context
 	if len(calls) == 1 {
 		b := calls[0]
 		fmt.Fprintf(status, "→ %s %s\n", b.ToolName, summarizeInput(b.ToolInput))
-		result := runToolBlock(ctx, reg, confirm, status, b)
+		result := runToolBlock(ctx, reg, confirm, errIntervene, status, b)
 		return llm.Message{Role: llm.RoleUser, Content: []llm.ContentBlock{result}}, nil
 	}
 
@@ -482,7 +489,7 @@ func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context
 	for i, b := range calls {
 		fmt.Fprintf(status, "→ %s %s\n", b.ToolName, summarizeInput(b.ToolInput))
 		go func(i int, b llm.ContentBlock) {
-			ch <- indexed{idx: i, result: runToolBlock(ctx, reg, confirm, status, b)}
+			ch <- indexed{idx: i, result: runToolBlock(ctx, reg, confirm, errIntervene, status, b)}
 		}(i, b)
 	}
 
@@ -498,7 +505,7 @@ func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context
 // because they only read data without making any changes.
 var readOnlyTools = map[string]bool{"fs_read": true, "fs_list": true, "web_fetch": true}
 
-func runToolBlock(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), status io.Writer, b llm.ContentBlock) llm.ContentBlock {
+func runToolBlock(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), errIntervene func(context.Context, string, string) string, status io.Writer, b llm.ContentBlock) llm.ContentBlock {
 	// Read-only tools skip confirmation.
 	if confirm != nil && !readOnlyTools[b.ToolName] {
 		ok, err := confirm(ctx, b.ToolName, b.ToolInput)
@@ -526,6 +533,12 @@ func runToolBlock(ctx context.Context, reg *tools.Registry, confirm func(context
 			content = output + "\nERROR: " + err.Error()
 		}
 		fmt.Fprintf(status, "← error: %v\n", err)
+		// Let the user inject a hint before the error goes back to the LLM.
+		if errIntervene != nil {
+			if hint := errIntervene(ctx, b.ToolName, content); hint != "" {
+				content += "\nUser hint: " + hint
+			}
+		}
 	} else {
 		fmt.Fprintf(status, "← %d bytes\n", len(output))
 	}

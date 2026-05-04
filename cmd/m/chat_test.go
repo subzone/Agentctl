@@ -38,15 +38,21 @@ func newChatTestSession(p llm.Provider, out, status io.Writer) *engine.Session {
 	})
 }
 
+func newChatTestState(p llm.Provider, out, status io.Writer) *chatState {
+	return &chatState{
+		sess: newChatTestSession(p, out, status),
+	}
+}
+
 func TestChatLoopGreetsAndExits(t *testing.T) {
 	p := &chatScriptedProvider{turns: [][]llm.Event{
 		{{Kind: llm.EventText, Text: "hi back"}, {Kind: llm.EventDone, StopReason: "end_turn"}},
 	}}
 	var out, status bytes.Buffer
 	in := strings.NewReader("hello\n/exit\n")
-	sess := newChatTestSession(p, &out, &status)
+	state := newChatTestState(p, &out, &status)
 
-	if err := chatLoop(context.Background(), sess, nil, in, &out, &status, "tester"); err != nil {
+	if err := chatLoop(context.Background(), state, in, &out, &status, "tester"); err != nil {
 		t.Fatalf("chatLoop: %v", err)
 	}
 	got := out.String()
@@ -71,8 +77,8 @@ func TestChatLoopMultiTurn(t *testing.T) {
 	}}
 	var out, status bytes.Buffer
 	in := strings.NewReader("first\nsecond\n/exit\n")
-	sess := newChatTestSession(p, &out, &status)
-	if err := chatLoop(context.Background(), sess, nil, in, &out, &status, "agent"); err != nil {
+	state := newChatTestState(p, &out, &status)
+	if err := chatLoop(context.Background(), state, in, &out, &status, "agent"); err != nil {
 		t.Fatalf("chatLoop: %v", err)
 	}
 	if p.calls != 2 {
@@ -82,7 +88,7 @@ func TestChatLoopMultiTurn(t *testing.T) {
 		t.Errorf("missing replies: %q", out.String())
 	}
 	// Session should have all 4 messages (u/a/u/a).
-	if got := len(sess.Messages()); got != 4 {
+	if got := len(state.sess.Messages()); got != 4 {
 		t.Errorf("history len = %d, want 4", got)
 	}
 }
@@ -93,8 +99,8 @@ func TestChatLoopReset(t *testing.T) {
 	}}
 	var out, status bytes.Buffer
 	in := strings.NewReader("hello\n/reset\nagain\n/exit\n")
-	sess := newChatTestSession(p, &out, &status)
-	if err := chatLoop(context.Background(), sess, nil, in, &out, &status, "a"); err != nil {
+	state := newChatTestState(p, &out, &status)
+	if err := chatLoop(context.Background(), state, in, &out, &status, "a"); err != nil {
 		t.Fatalf("chatLoop: %v", err)
 	}
 	if !strings.Contains(status.String(), "history cleared") {
@@ -102,7 +108,7 @@ func TestChatLoopReset(t *testing.T) {
 	}
 	// After /reset and then "again", history should hold just the last
 	// exchange — 2 messages, not 4.
-	if got := len(sess.Messages()); got != 2 {
+	if got := len(state.sess.Messages()); got != 2 {
 		t.Errorf("post-reset history = %d, want 2", got)
 	}
 }
@@ -113,8 +119,8 @@ func TestChatLoopHelpAndUnknownSlash(t *testing.T) {
 	}}
 	var out, status bytes.Buffer
 	in := strings.NewReader("/help\n/whatever\n/exit\n")
-	sess := newChatTestSession(p, &out, &status)
-	if err := chatLoop(context.Background(), sess, nil, in, &out, &status, "a"); err != nil {
+	state := newChatTestState(p, &out, &status)
+	if err := chatLoop(context.Background(), state, in, &out, &status, "a"); err != nil {
 		t.Fatalf("chatLoop: %v", err)
 	}
 	if !strings.Contains(status.String(), "commands:") {
@@ -134,8 +140,8 @@ func TestChatLoopSkipsBlankLines(t *testing.T) {
 	}}
 	var out, status bytes.Buffer
 	in := strings.NewReader("\n   \nactual\n/exit\n")
-	sess := newChatTestSession(p, &out, &status)
-	if err := chatLoop(context.Background(), sess, nil, in, &out, &status, "a"); err != nil {
+	state := newChatTestState(p, &out, &status)
+	if err := chatLoop(context.Background(), state, in, &out, &status, "a"); err != nil {
 		t.Fatalf("chatLoop: %v", err)
 	}
 	if p.calls != 1 {
@@ -149,10 +155,10 @@ func TestChatLoopExitsOnEOF(t *testing.T) {
 	}}
 	var out, status bytes.Buffer
 	in := strings.NewReader("hi\n") // no /exit; EOF after this turn
-	sess := newChatTestSession(p, &out, &status)
+	state := newChatTestState(p, &out, &status)
 	done := make(chan error, 1)
 	go func() {
-		done <- chatLoop(context.Background(), sess, nil, in, &out, &status, "a")
+		done <- chatLoop(context.Background(), state, in, &out, &status, "a")
 	}()
 	select {
 	case err := <-done:
@@ -169,12 +175,12 @@ func TestChatLoopExitsOnContextCancel(t *testing.T) {
 	p := &hangingProvider{}
 	var out, status bytes.Buffer
 	in := strings.NewReader("trigger\n") // one user message, then EOF
-	sess := newChatTestSession(p, &out, &status)
+	state := newChatTestState(p, &out, &status)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	done := make(chan error, 1)
 	go func() {
-		done <- chatLoop(ctx, sess, nil, in, &out, &status, "a")
+		done <- chatLoop(ctx, state, in, &out, &status, "a")
 	}()
 	// Give the loop a moment to dispatch into Step.
 	time.Sleep(50 * time.Millisecond)
@@ -215,20 +221,20 @@ func TestChatLoopHistoryTruncatesAcrossManyTurns(t *testing.T) {
 		lines.WriteByte('\n')
 	}
 	lines.WriteString("/exit\n")
-	sess := newChatTestSession(p, &out, &status)
-	if err := chatLoop(context.Background(), sess, nil, strings.NewReader(lines.String()), &out, &status, "a"); err != nil {
+	state := newChatTestState(p, &out, &status)
+	if err := chatLoop(context.Background(), state, strings.NewReader(lines.String()), &out, &status, "a"); err != nil {
 		t.Fatalf("chatLoop: %v", err)
 	}
 	// History should contain at most chatMaxExchanges*2 messages (u/a per exchange).
-	if got := len(sess.Messages()); got > chatMaxExchanges*2 {
+	if got := len(state.sess.Messages()); got > chatMaxExchanges*2 {
 		t.Errorf("history len = %d, want <= %d", got, chatMaxExchanges*2)
 	}
 }
 
 func TestHandleSlashUnknown(t *testing.T) {
-	sess := newChatTestSession(&chatScriptedProvider{}, io.Discard, io.Discard)
+	state := newChatTestState(&chatScriptedProvider{}, io.Discard, io.Discard)
 	var status bytes.Buffer
-	handled, exit := handleSlash("/dunno", sess, nil, &status)
+	handled, exit := handleSlash("/dunno", state, &status)
 	if !handled || exit {
 		t.Errorf("expected handled=true exit=false, got %v %v", handled, exit)
 	}
@@ -238,8 +244,8 @@ func TestHandleSlashUnknown(t *testing.T) {
 }
 
 func TestHandleSlashNonCommandPassesThrough(t *testing.T) {
-	sess := newChatTestSession(&chatScriptedProvider{}, io.Discard, io.Discard)
-	handled, _ := handleSlash("hello world", sess, nil, io.Discard)
+	state := newChatTestState(&chatScriptedProvider{}, io.Discard, io.Discard)
+	handled, _ := handleSlash("hello world", state, io.Discard)
 	if handled {
 		t.Error("regular input should not be reported as handled")
 	}
@@ -256,15 +262,15 @@ func TestHandleSlashCompact(t *testing.T) {
 	}}
 	var out, status bytes.Buffer
 	in := strings.NewReader("a\nb\nc\nd\ne\nf\n/compact\n/exit\n")
-	sess := newChatTestSession(p, &out, &status)
-	if err := chatLoop(context.Background(), sess, nil, in, &out, &status, "a"); err != nil {
+	state := newChatTestState(p, &out, &status)
+	if err := chatLoop(context.Background(), state, in, &out, &status, "a"); err != nil {
 		t.Fatalf("chatLoop: %v", err)
 	}
 	if !strings.Contains(status.String(), "compacted") {
 		t.Errorf("missing compact notice: %q", status.String())
 	}
 	// After 6 exchanges + compact(4), should have at most 8 messages.
-	if got := len(sess.Messages()); got > 8 {
+	if got := len(state.sess.Messages()); got > 8 {
 		t.Errorf("post-compact messages = %d, want <= 8", got)
 	}
 }
@@ -276,24 +282,24 @@ func TestHandleSlashModelSwitch(t *testing.T) {
 			{{Kind: llm.EventDone}},
 		}}, nil
 	})
-	sess := newChatTestSession(&chatScriptedProvider{}, io.Discard, io.Discard)
+	state := newChatTestState(&chatScriptedProvider{}, io.Discard, io.Discard)
 	var status bytes.Buffer
-	handled, exit := handleSlash("/model testprov/new-model", sess, nil, &status)
+	handled, exit := handleSlash("/model testprov/new-model", state, &status)
 	if !handled || exit {
 		t.Errorf("handled=%v exit=%v", handled, exit)
 	}
 	if !strings.Contains(status.String(), "switched to testprov/new-model") {
 		t.Errorf("status = %q", status.String())
 	}
-	if sess.Model() != "new-model" {
-		t.Errorf("Model() = %q", sess.Model())
+	if state.sess.Model() != "new-model" {
+		t.Errorf("Model() = %q", state.sess.Model())
 	}
 }
 
 func TestHandleSlashModelInvalid(t *testing.T) {
-	sess := newChatTestSession(&chatScriptedProvider{}, io.Discard, io.Discard)
+	state := newChatTestState(&chatScriptedProvider{}, io.Discard, io.Discard)
 	var status bytes.Buffer
-	handled, _ := handleSlash("/model badformat", sess, nil, &status)
+	handled, _ := handleSlash("/model badformat", state, &status)
 	if !handled {
 		t.Error("should be handled")
 	}

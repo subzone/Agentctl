@@ -39,6 +39,15 @@ var readOnlyTUITools = map[string]bool{
 	"delegate":  true,
 }
 
+// chatState holds mutable session state that slash commands can modify.
+type chatState struct {
+	sess        *engine.Session
+	undo        *tools.UndoStack
+	autoApprove bool      // /trust mode - auto-approve all destructive tools
+	traceWriter io.Writer // /debug mode - stream raw LLM JSON here
+	traceFile   *os.File  // if traceWriter is a file, close on exit
+}
+
 func newChatCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "chat <agent.md>",
@@ -163,8 +172,12 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 	}
 	defer rt.close()
 
-	replToolConfirm := stdinToolConfirm(stderr, cmd.InOrStdin())
-	sess := engine.NewSession(engine.Config{
+	state := &chatState{
+		undo:        undoStack,
+		autoApprove: false,
+		traceWriter: nil,
+	}
+	state.sess = engine.NewSession(engine.Config{
 		Provider:         provider,
 		Model:            model,
 		System:           system,
@@ -172,7 +185,7 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 		Temperature:      agent.Temperature,
 		MaxTokens:        maxTokens,
 		MaxContextTokens: modelContextWindow[model],
-		ToolConfirm:      replToolConfirm,
+		ToolConfirm:      makeReplToolConfirm(stderr, cmd.InOrStdin(), state),
 		ContinueConfirm: func(_ context.Context, turns int) (bool, error) {
 			fmt.Fprintf(stderr, "Agent worked for %d turns. Continue? [Y/n]: ", turns)
 			sc := bufio.NewScanner(cmd.InOrStdin())
@@ -182,10 +195,50 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 			ans := strings.TrimSpace(strings.ToLower(sc.Text()))
 			return ans == "" || ans == "y" || ans == "yes", nil
 		},
-		Out:    out,
-		Status: stderr,
+		ErrorIntervention: makeReplErrorIntervention(stderr, cmd.InOrStdin()),
+		Out:               out,
+		Status:            stderr,
 	})
-	return chatLoop(ctx, sess, undoStack, cmd.InOrStdin(), out, stderr, agent.Name)
+	return chatLoop(ctx, state, cmd.InOrStdin(), out, stderr, agent.Name)
+}
+
+// makeReplToolConfirm returns a ToolConfirm callback that respects autoApprove.
+// When autoApprove is true, destructive tools are auto-approved with a log.
+// Otherwise, prompts the user for y/n confirmation.
+func makeReplToolConfirm(stderr io.Writer, in io.Reader, state *chatState) func(context.Context, string, json.RawMessage) (bool, error) {
+	return func(ctx context.Context, name string, input json.RawMessage) (bool, error) {
+		// Read-only tools are always auto-approved.
+		if readOnlyTUITools[name] {
+			return true, nil
+		}
+		// Trust mode: auto-approve with log.
+		if state.autoApprove {
+			fmt.Fprintf(stderr, "→ %s %s [auto-approved]\n", name, summarizeToolInput(input))
+			return true, nil
+		}
+		// Normal mode: prompt user.
+		fmt.Fprintf(stderr, "Allow %s %s? [y/N]: ", name, summarizeToolInput(input))
+		sc := bufio.NewScanner(in)
+		if !sc.Scan() {
+			return false, nil
+		}
+		ans := strings.TrimSpace(strings.ToLower(sc.Text()))
+		return ans == "y" || ans == "yes", nil
+	}
+}
+
+// makeReplErrorIntervention returns an ErrorIntervention callback for the
+// REPL. When a tool fails, the user sees the error and can press Enter to
+// let the agent retry, or type a hint to steer the next attempt.
+func makeReplErrorIntervention(stderr io.Writer, in io.Reader) func(context.Context, string, string) string {
+	return func(_ context.Context, toolName, errMsg string) string {
+		fmt.Fprintf(stderr, "[%s failed] Press Enter to retry, or type a hint: ", toolName)
+		sc := bufio.NewScanner(in)
+		if !sc.Scan() {
+			return ""
+		}
+		return strings.TrimSpace(sc.Text())
+	}
 }
 
 // isInteractiveChat reports whether all three IO streams are TTYs.
@@ -203,14 +256,14 @@ func isInteractiveChat(in io.Reader, out, status io.Writer) bool {
 	return true
 }
 
-// chatLoop drives an interactive REPL against sess. Extracted so it can be
+// chatLoop drives an interactive REPL against a chatState. Extracted so it can be
 // driven by scripted input in tests.
 //
 // Input arrives line-by-line on a reader goroutine so that ctx
 // cancellation (typically Ctrl-C) interrupts the prompt as well as any
 // in-flight Step. Slash commands (/exit, /reset, /help) are handled
 // locally; everything else is passed to sess.Step.
-func chatLoop(ctx context.Context, sess *engine.Session, undo *tools.UndoStack, in io.Reader, out, status io.Writer, name string) error {
+func chatLoop(ctx context.Context, state *chatState, in io.Reader, out, status io.Writer, name string) error {
 	fmt.Fprintf(status, "chat with %s — /exit to quit, /reset to clear history, /help for more\n", name)
 
 	lines := readLines(in)
@@ -231,21 +284,21 @@ func chatLoop(ctx context.Context, sess *engine.Session, undo *tools.UndoStack, 
 			if line == "" {
 				continue
 			}
-			if handled, exit := handleSlash(line, sess, undo, status); handled {
+			if handled, exit := handleSlash(line, state, status); handled {
 				if exit {
 					return nil
 				}
 				continue
 			}
-			if err := sess.Step(ctx, line); err != nil {
+			if err := state.sess.Step(ctx, line); err != nil {
 				if errors.Is(err, context.Canceled) {
 					return nil
 				}
 				fmt.Fprintln(status, "error:", err)
 				continue
 			}
-			sess.Truncate(chatMaxExchanges)
-			snap := exportSession(sess, "", sess.Model())
+			state.sess.Truncate(chatMaxExchanges)
+			snap := exportSession(state.sess, "", state.sess.Model())
 			go func() { autoSaveSnapshot(snap) }()
 		}
 	}
@@ -255,29 +308,49 @@ func chatLoop(ctx context.Context, sess *engine.Session, undo *tools.UndoStack, 
 // true if the line was a command (or at least started with `/`); exit is
 // true if the loop should terminate. Non-command input returns (false,
 // false) and the caller should pass it to the model.
-func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, status io.Writer) (handled, exit bool) {
+func handleSlash(line string, state *chatState, status io.Writer) (handled, exit bool) {
 	switch line {
 	case "/exit", "/quit":
 		return true, true
 	case "/reset":
-		sess.Reset()
+		state.sess.Reset()
 		fmt.Fprintln(status, "(history cleared)")
 		return true, false
 	case "/compact":
-		sess.Truncate(4)
+		state.sess.Truncate(4)
 		fmt.Fprintln(status, "(compacted to last 4 exchanges)")
 		return true, false
 	case "/undo":
-		if undo == nil {
+		if state.undo == nil {
 			fmt.Fprintln(status, "undo not available")
 			return true, false
 		}
-		msg, err := undo.Pop()
+		msg, err := state.undo.Pop()
 		if err != nil {
 			fmt.Fprintf(status, "undo: %v\n", err)
 		} else {
 			fmt.Fprintln(status, msg)
 		}
+		return true, false
+	case "/trust":
+		state.autoApprove = true
+		fmt.Fprintln(status, "trust mode ON — all tools auto-approved")
+		return true, false
+	case "/trust off":
+		state.autoApprove = false
+		fmt.Fprintln(status, "trust mode OFF — tools require confirmation")
+		return true, false
+	case "/debug":
+		state.traceWriter = os.Stderr
+		fmt.Fprintln(status, "debug mode ON — raw LLM JSON streaming to stderr")
+		return true, false
+	case "/debug off":
+		if state.traceFile != nil {
+			state.traceFile.Close()
+			state.traceFile = nil
+		}
+		state.traceWriter = nil
+		fmt.Fprintln(status, "debug mode OFF")
 		return true, false
 	case "/config":
 		fmt.Fprintln(status, "run `m config` from the shell to manage providers and models")
@@ -287,7 +360,7 @@ func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, statu
 		fmt.Fprintln(status, "or tell the current agent: 'follow the spec workflow for this task'")
 		return true, false
 	case "/help":
-		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /undo /model <provider/model> /models /theme [name] /themes /save /sessions /resume <id> /config /help")
+		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /undo /trust /debug /model <provider/model> /models /theme [name] /themes /save /sessions /resume <id> /config /help")
 		return true, false
 	}
 	if line == "/themes" || strings.HasPrefix(line, "/themes ") {
@@ -310,7 +383,7 @@ func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, statu
 		return true, false
 	}
 	if line == "/save" {
-		handleSessionSave(sess, status)
+		handleSessionSave(state.sess, status)
 		return true, false
 	}
 	if line == "/sessions" {
@@ -318,11 +391,11 @@ func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, statu
 		return true, false
 	}
 	if strings.HasPrefix(line, "/resume ") {
-		handleSessionResume(line, sess, status)
+		handleSessionResume(line, state.sess, status)
 		return true, false
 	}
 	if line == "/models" || strings.HasPrefix(line, "/models ") {
-		handleModelsCommand(line, sess, status)
+		handleModelsCommand(line, state.sess, status)
 		return true, false
 	}
 	if strings.HasPrefix(line, "/model ") {
@@ -332,7 +405,7 @@ func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, statu
 			fmt.Fprintf(status, "error: %v\n", err)
 			return true, false
 		}
-		sess.SetModel(p, model)
+		state.sess.SetModel(p, model)
 		fmt.Fprintf(status, "switched to %s\n", newModel)
 		return true, false
 	}
