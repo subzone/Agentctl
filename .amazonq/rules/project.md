@@ -141,7 +141,7 @@ make docker         # docker build
 3. `git commit && git tag v0.0.X && git push origin main --tags`
 4. If retag needed: delete GitHub release first, then retag
 
-## Current State (v0.0.24)
+## Current State (v0.0.25)
 
 - ~10,000 lines production + ~5,000 lines tests
 - 15 packages, 32 example agents, 8 MB binary

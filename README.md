@@ -7,11 +7,11 @@ against your choice of LLM. Aimed at developers and DevOps people who live in
 the terminal and want to script agentic work without IDE lock-in or SDK
 sprawl.
 
-**Current version:** v0.0.24 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
+**Current version:** v0.0.25 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
 
 **Status:** alpha. ~1 month of evenings of work. Works for the author's daily
 use, but expect breaking changes until v0.1.0. Tagged releases (`v0.0.1` →
-`v0.0.24`) ship as macOS `.pkg` and Linux `.deb`.
+`v0.0.25`) ship as macOS `.pkg` and Linux `.deb`.
 
 ```text
 $ m
@@ -34,7 +34,7 @@ Full docs site (EN + SR): **<https://subzone.github.io/Agentctl/>**
 ```bash
 # 1. Install (macOS — pick one)
 brew tap subzone/tap && brew install subzone/tap/m
-# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.24_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
+# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.25_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
 
 # 2. Run the setup wizard
 m
@@ -212,11 +212,13 @@ flag that disables OpenAI-specific stream options.
 
 ## MCP integrations
 
-Three MCP server definitions ship in [`examples/mcp/`](examples/mcp/):
+Five MCP server definitions ship in [`examples/mcp/`](examples/mcp/):
 
-- `github` — PR/issue/repo operations
-- `jira`   — search, read, create, update, transition issues
-- `confluence` — search, read, create, update pages
+- `github` — PR/issue/repo operations (stdio)
+- `jira`   — search, read, create, update, transition issues (stdio)
+- `confluence` — search, read, create, update pages (stdio)
+- `datadog` — monitoring, alerts, dashboards (HTTP)
+- `slack` — channels, messages, users (SSE)
 
 Reference one from an agent:
 
@@ -225,8 +227,13 @@ mcp: [jira, confluence]
 ```
 
 Tools are namespaced (`jira__get_issue`, `confluence__update_page`) and merged
-into the same registry as built-ins. Transport: stdio JSON-RPC. **HTTP/SSE
-transport is not yet implemented.**
+into the same registry as built-ins. Supported transports:
+
+| Transport | How it works |
+|-----------|-------------|
+| `stdio`   | Spawns a subprocess, JSON-RPC over stdin/stdout |
+| `http`    | POST JSON-RPC to a URL, get JSON-RPC response |
+| `sse`     | POST JSON-RPC, receive response via Server-Sent Events |
 
 ---
 
@@ -266,7 +273,7 @@ internal/config/      Frontmatter parsing, agent/MCP/skill schemas
 internal/ports/       ConfigSource, Secrets, StateStore interfaces
 internal/adapters/    Keychain (macOS/libsecret), file-backed stores
 examples/agents/      32 ready-to-use agents
-examples/mcp/         3 MCP server definitions
+examples/mcp/         5 MCP server definitions
 docs/                 Static product site (EN + SR), GitHub Pages
 ```
 
@@ -303,8 +310,6 @@ These are real, not roadmap-ware. They affect what AgentCTL can be used for toda
 - **No codebase RAG / embedding store.** The `code_search` tool provides
   grep + symbol index search, but there's no semantic/embedding-based
   retrieval. For most codebases, `code_search` + `fs_read` is sufficient.
-- **MCP HTTP/SSE transport not implemented.** Stdio only. Many real-world
-  MCP servers use HTTP — they don't work yet.
 - **No `/trust` for autonomous sessions.** Every `fs_write` and `shell`
   prompts. Fine for interactive use, blocks long-running headless runs.
 - **No team features.** No shared agent registry, no audit log, no RBAC,

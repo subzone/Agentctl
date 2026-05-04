@@ -45,14 +45,14 @@ func TestIsAllowedFor(t *testing.T) {
 	}
 }
 
-// TestManagerOpenSkipsUnsupportedTransport spawns no clients but checks
-// that an HTTP/SSE-only server is logged-and-skipped rather than fatal.
+// TestManagerOpenSkipsUnsupportedTransport checks that an unknown
+// transport type is logged-and-skipped rather than fatal.
 func TestManagerOpenSkipsUnsupportedTransport(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 	specs := []*config.MCPServerSpec{{
 		Meta:      config.Meta{Name: "remote", Type: config.TypeMCPServer},
-		Transport: config.TransportHTTP,
+		Transport: config.MCPTransport("grpc"), // unsupported transport
 		URL:       "https://example.invalid",
 	}}
 	var buf bytes.Buffer
@@ -64,7 +64,7 @@ func TestManagerOpenSkipsUnsupportedTransport(t *testing.T) {
 	if got := mgr.Registry().All(); len(got) != 0 {
 		t.Errorf("expected no tools, got %d", len(got))
 	}
-	if !bytes.Contains(buf.Bytes(), []byte("transport \"http\" not yet supported")) {
+	if !bytes.Contains(buf.Bytes(), []byte("unknown transport")) {
 		t.Errorf("missing skip log; got: %s", buf.String())
 	}
 }

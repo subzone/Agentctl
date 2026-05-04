@@ -16,7 +16,7 @@ const NamespaceSeparator = "__"
 // sees a namespaced name (e.g. "github__create_issue"); the adapter
 // strips the prefix when calling the upstream server.
 type ToolAdapter struct {
-	client     *Client
+	transport  Transport
 	upstream   Tool
 	namespaced string
 }
@@ -24,11 +24,16 @@ type ToolAdapter struct {
 // NewToolAdapter binds upstream to client and constructs the namespaced
 // name. If prefix is empty, the upstream name is used as-is.
 func NewToolAdapter(client *Client, upstream Tool, prefix string) *ToolAdapter {
+	return NewToolAdapterTransport(client, upstream, prefix)
+}
+
+// NewToolAdapterTransport binds upstream to any Transport implementation.
+func NewToolAdapterTransport(t Transport, upstream Tool, prefix string) *ToolAdapter {
 	name := sanitize(upstream.Name)
 	if prefix != "" {
 		name = sanitize(prefix) + NamespaceSeparator + name
 	}
-	return &ToolAdapter{client: client, upstream: upstream, namespaced: name}
+	return &ToolAdapter{transport: t, upstream: upstream, namespaced: name}
 }
 
 // Name implements tools.Tool.
@@ -50,7 +55,7 @@ func (a *ToolAdapter) InputSchema() json.RawMessage {
 // Go errors; an isError=true result is rendered as a non-nil error so the
 // engine flags it accordingly to the model.
 func (a *ToolAdapter) Run(ctx context.Context, input json.RawMessage) (string, error) {
-	out, isErr, err := a.client.CallTool(ctx, a.upstream.Name, input)
+	out, isErr, err := a.transport.CallTool(ctx, a.upstream.Name, input)
 	if err != nil {
 		return out, err
 	}

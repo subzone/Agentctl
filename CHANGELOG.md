@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.25] - 2026-05-04
+
+### Added
+- MCP HTTP transport: POST JSON-RPC to URL, get JSON-RPC response
+- MCP SSE transport: POST JSON-RPC, receive response via Server-Sent Events
+- `Transport` interface: stdio, HTTP, SSE all implement the same contract
+- Agent registry: `m install ./agent.md` copies to `~/.config/m/agents/`
+- Name-based run: `m run coder "task"` and `m chat coder` resolve by name
+- Example MCP servers: datadog (HTTP), slack (SSE)
+
+### Changed
+- Shell timeout: 30s → 120s (terraform, docker build friendly)
+- Undo stack capped at 20 entries (was unbounded)
+- MCP HTTP/SSE removed from known gaps
+
 ## [0.0.24] - 2026-05-04
 
 ### Added
@@ -146,6 +161,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Theme system (matrix, default, minimal)
 - System stats (CPU/RAM/GPU/Disk)
 
+[0.0.25]: https://github.com/subzone/Agentctl/compare/v0.0.24...v0.0.25
 [0.0.24]: https://github.com/subzone/Agentctl/compare/v0.0.23...v0.0.24
 [0.0.23]: https://github.com/subzone/Agentctl/compare/v0.0.22...v0.0.23
 [0.0.22]: https://github.com/subzone/Agentctl/compare/v0.0.21...v0.0.22

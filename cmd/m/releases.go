@@ -25,6 +25,17 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.25",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"MCP HTTP/SSE transport: all three transports now supported (stdio, http, sse).",
+			"Agent registry: m install + m run/chat by name (no path needed).",
+			"Shell timeout: 30s \u2192 120s (terraform/docker friendly).",
+			"Undo stack capped at 20 entries.",
+			"Example MCP servers: datadog (HTTP), slack (SSE).",
+		},
+	},
+	{
 		Version: "0.0.24",
 		Date:    "2026-05-04",
 		Highlights: []string{
