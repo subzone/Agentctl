@@ -206,9 +206,34 @@ func stdinIsPipe(r io.Reader) bool {
 
 // summarizeToolInput returns a short preview of tool input for confirmation prompts.
 func summarizeToolInput(input json.RawMessage) string {
-	s := string(input)
-	if len(s) > 80 {
-		return s[:80] + "..."
+	var m map[string]any
+	if err := json.Unmarshal(input, &m); err != nil {
+		s := string(input)
+		if len(s) > 60 {
+			return s[:60] + "..."
+		}
+		return s
 	}
-	return s
+	var parts []string
+	for _, key := range []string{"path", "command", "url", "query", "name", "file"} {
+		if v, ok := m[key]; ok {
+			s := fmt.Sprintf("%v", v)
+			if len(s) > 60 {
+				s = s[:60] + "..."
+			}
+			parts = append(parts, key+"="+s)
+		}
+	}
+	if len(parts) > 0 {
+		return strings.Join(parts, " ")
+	}
+	// Fallback: show first key=value
+	for k, v := range m {
+		s := fmt.Sprintf("%v", v)
+		if len(s) > 40 {
+			s = s[:40] + "..."
+		}
+		return k + "=" + s
+	}
+	return string(input)
 }

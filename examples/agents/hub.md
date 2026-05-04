@@ -4,6 +4,9 @@ type: agent
 description: Hub orchestrator — routes to specialist spokes, synthesizes with citations.
 version: 1
 model: anthropic/claude-sonnet-4-6
+fallback:
+  - anthropic/claude-haiku-4-5-20251001
+  - openai/gpt-4.1
 tools:
   - fs_read
   - fs_list

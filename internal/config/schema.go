@@ -24,6 +24,7 @@ type Meta struct {
 type AgentSpec struct {
 	Meta           `yaml:",inline"`
 	Model          string   `yaml:"model"`
+	FallbackModels []string `yaml:"fallback,omitempty"`
 	Tools          []string `yaml:"tools,omitempty"`
 	MCP            []string `yaml:"mcp,omitempty"`
 	Skills         []string `yaml:"skills,omitempty"`
@@ -31,6 +32,7 @@ type AgentSpec struct {
 	Powers         []string `yaml:"powers,omitempty"`
 	Temperature    *float64 `yaml:"temperature,omitempty"`
 	MaxTokens      *int     `yaml:"max_tokens,omitempty"`
+	ThinkingPhrases []string `yaml:"thinking_phrases,omitempty"`
 	ResponseSchema any      `yaml:"response_schema,omitempty"`
 }
 

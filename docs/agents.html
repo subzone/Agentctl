@@ -112,6 +112,30 @@
 </section>
 
 <!-- CTA -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Advanced</div>
+      <h2>Agent Features</h2>
+    </div>
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3>Fallback Models</h3>
+      <p>When the primary model returns 429 (rate limit), the agent automatically tries the next model in the list.</p>
+      <pre><code>fallback:
+  - anthropic/claude-haiku-4-5-20251001
+  - openai/gpt-4.1</code></pre>
+    </div>
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3>Thinking Phrases</h3>
+      <p>Customize the spinner text shown while the agent works. Useful for non-English agents.</p>
+      <pre><code>thinking_phrases:
+  - "razmišljam"
+  - "čekaj bre"
+  - "tražim bug"</code></pre>
+    </div>
+  </div>
+</section>
+
 <section class="cta">
   <h2>Build your own agent</h2>
   <p>Any Markdown file with YAML frontmatter works. Start from an example and customize.</p>

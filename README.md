@@ -7,11 +7,11 @@ against your choice of LLM. Aimed at developers and DevOps people who live in
 the terminal and want to script agentic work without IDE lock-in or SDK
 sprawl.
 
-**Current version:** v0.0.21 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
+**Current version:** v0.0.23 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
 
 **Status:** alpha. ~1 month of evenings of work. Works for the author's daily
 use, but expect breaking changes until v0.1.0. Tagged releases (`v0.0.1` →
-`v0.0.21`) ship as macOS `.pkg` and Linux `.deb`.
+`v0.0.23`) ship as macOS `.pkg` and Linux `.deb`.
 
 ```text
 $ m
@@ -34,7 +34,7 @@ Full docs site (EN + SR): **<https://subzone.github.io/Agentctl/>**
 ```bash
 # 1. Install (macOS — pick one)
 brew tap subzone/tap && brew install subzone/tap/m
-# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.21_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
+# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.23_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
 
 # 2. Run the setup wizard
 m
@@ -129,19 +129,34 @@ A complete agent is one Markdown file:
 name: devops
 type: agent
 model: anthropic/claude-sonnet-4-6
+fallback:
+  - anthropic/claude-haiku-4-5-20251001
+  - openai/gpt-4.1
 tools:
   - shell
   - fs_read
   - fs_write
   - git
   - test_run
+  - web_fetch
 temperature: 0.3
+thinking_phrases:
+  - "analyzing"
+  - "reading code"
+  - "checking config"
 ---
 You are a DevOps engineer.
 Explore the project with fs_list before editing.
 Make targeted changes with fs_write.
 Always consider security.
 ```
+
+**Fallback models:** when the primary model returns 429 (rate limit), the
+agent automatically tries the next model in the `fallback` list. The session
+switches to the first one that works.
+
+**Thinking phrases:** customize the spinner text shown while the agent works.
+Overrides theme defaults. Useful for non-English agents.
 
 Run it:
 

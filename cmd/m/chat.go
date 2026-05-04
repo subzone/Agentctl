@@ -154,6 +154,8 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 			Temperature:      agent.Temperature,
 			MaxTokens:        maxTokens,
 			MaxContextTokens: modelContextWindow[model],
+			FallbackModels:   agent.FallbackModels,
+			ResolveModel:     llm.Resolve,
 			ToolConfirm:      tuiToolConfirm,
 			ContinueConfirm: func(_ context.Context, turns int) (bool, error) {
 				streamCh <- streamMsg{chunk: fmt.Sprintf("→ Agent worked for %d turns. Continue? [y/n] ", turns)}
@@ -162,7 +164,7 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 			Out:    &streamWriter{ch: streamCh},
 			Status: &streamWriter{ch: streamCh},
 		})
-		return runTUI(ctx, sess, streamCh, agent.Name, providerName, model, undoStack, confirmCh)
+		return runTUI(ctx, sess, streamCh, agent.Name, providerName, model, undoStack, confirmCh, agent.ThinkingPhrases)
 	}
 
 	// REPL mode: stdin-based confirmation for fs_write.
@@ -185,6 +187,8 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 		Temperature:      agent.Temperature,
 		MaxTokens:        maxTokens,
 		MaxContextTokens: modelContextWindow[model],
+		FallbackModels:   agent.FallbackModels,
+		ResolveModel:     llm.Resolve,
 		ToolConfirm:      makeReplToolConfirm(stderr, cmd.InOrStdin(), state),
 		ContinueConfirm: func(_ context.Context, turns int) (bool, error) {
 			fmt.Fprintf(stderr, "Agent worked for %d turns. Continue? [Y/n]: ", turns)

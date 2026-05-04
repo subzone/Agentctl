@@ -90,13 +90,14 @@ type tuiModel struct {
 
 	width  int
 	height int
-	name   string
+	name           string
+	agentPhrases   []string // per-agent thinking phrases (highest priority)
 
 	// UI stability improvements
 	lastUpdateTime time.Time // timestamp of last viewport update to throttle
 }
 
-func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, name, provider, model string, undo *tools.UndoStack, confirmCh chan bool) tuiModel {
+func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, name, provider, model string, undo *tools.UndoStack, confirmCh chan bool, agentPhrases []string) tuiModel {
 	in := textinput.New()
 	in.Prompt = "» "
 	in.Placeholder = "type a message, /exit to quit"
@@ -129,6 +130,7 @@ func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, n
 		styles:         s,
 		undo:           undo,
 		confirmCh:      confirmCh,
+		agentPhrases:   agentPhrases,
 		lastUpdateTime: time.Now(),
 	}
 }
@@ -369,16 +371,22 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Detect tool confirmation prompts.
 		chunk := msg.chunk
-		if (strings.HasPrefix(chunk, "→ Allow ") || strings.HasPrefix(chunk, "→ Agent worked for")) && strings.HasSuffix(strings.TrimSpace(chunk), "[y/n]") {
+		if (strings.HasPrefix(chunk, "→ Allow ") || strings.HasPrefix(chunk, "→ Agent worked on")) && strings.HasSuffix(strings.TrimSpace(chunk), "[y/n]") {
 			m.confirming = true
 			m.appendHistoryImportant(m.styles.Confirm.Render(strings.TrimRight(chunk, "\n")) + "\n")
 			return m, nil // Don't listen for more — wait for y/n keypress
 		}
 		if strings.HasPrefix(chunk, "→ ") || strings.HasPrefix(chunk, "← ") {
+			// Add newline before tool lines if previous content didn't end with one
+			histStr := m.history.String()
+			if len(histStr) > 0 && histStr[len(histStr)-1] != '\n' {
+				chunk = "\n" + chunk
+			}
 			chunk = m.styles.Tool.Render(strings.TrimRight(chunk, "\n")) + "\n"
 		}
 		// Style diff lines from fs_write previews.
 		chunk = styleDiffLines(chunk, m.styles)
+		chunk = fixMarkdownSpacing(chunk)
 		m.appendHistory(chunk)
 		return m, listenStreamCmd(m.streamCh)
 
@@ -459,6 +467,91 @@ func (m *tuiModel) appendHistoryForce(s string, force bool) {
 // wordWrap breaks lines longer than width at word boundaries. Lines
 // already shorter than width pass through unchanged. Preserves existing
 // newlines.
+// fixMarkdownSpacing inserts newlines before numbered list items and
+// markdown headers when they're glued to previous text, and renders
+// basic markdown formatting as terminal styles.
+func fixMarkdownSpacing(s string) string {
+	if len(s) < 2 {
+		return s
+	}
+	var b strings.Builder
+	b.Grow(len(s) + 64)
+	prev := byte(0)
+	for i := 0; i < len(s); i++ {
+		c := s[i]
+		// Insert newline before a digit that starts a list item
+		if prev != 0 && prev != '\n' && prev != ' ' && c >= '1' && c <= '9' {
+			if i+1 < len(s) && s[i+1] == '.' {
+				b.WriteByte('\n')
+			}
+		}
+		// Render **bold** as terminal bold
+		if c == '*' && i+1 < len(s) && s[i+1] == '*' {
+			// Find closing **
+			end := strings.Index(s[i+2:], "**")
+			if end >= 0 {
+				b.WriteString("\033[1m") // bold on
+				b.WriteString(s[i+2 : i+2+end])
+				b.WriteString("\033[22m") // bold off
+				i += 2 + end + 1 // skip past closing **
+				if i < len(s) {
+					prev = s[i]
+				}
+				continue
+			}
+		}
+		// Render `code` as dim
+		if c == '`' && (i+2 >= len(s) || s[i+1] != '`' || s[i+2] != '`') {
+			end := strings.IndexByte(s[i+1:], '`')
+			if end >= 0 {
+				b.WriteString("\033[2m") // dim on
+				b.WriteString(s[i+1 : i+1+end])
+				b.WriteString("\033[22m") // dim off
+				i += 1 + end
+				prev = '`'
+				continue
+			}
+		}
+		// Convert ## headers to bold text with newline before
+		if c == '#' && (prev == '\n' || prev == 0) {
+			j := i
+			for j < len(s) && s[j] == '#' {
+				j++
+			}
+			if j < len(s) && s[j] == ' ' {
+				j++
+			}
+			// Find end of header line
+			nl := strings.IndexByte(s[j:], '\n')
+			var headerText string
+			if nl >= 0 {
+				headerText = s[j : j+nl]
+				i = j + nl - 1
+			} else {
+				headerText = s[j:]
+				i = len(s) - 1
+			}
+			if b.Len() > 0 {
+				b.WriteByte('\n')
+			}
+			b.WriteString("\033[1m") // bold on
+			b.WriteString(headerText)
+			b.WriteString("\033[22m") // bold off
+			prev = '\n'
+			continue
+		}
+		// Insert newline before ## headers glued to text
+		if prev != 0 && prev != '\n' && c == '#' {
+			if i+1 < len(s) && s[i+1] == '#' {
+				b.WriteByte('\n')
+			}
+		}
+		b.WriteByte(c)
+		prev = c
+	}
+	return b.String()
+}
+
 // styleDiffLines applies background colors to diff lines (+ and - prefixed).
 // Also styles --- and +++ headers.
 func styleDiffLines(chunk string, s Styles) string {
@@ -529,7 +622,7 @@ func wordWrap(s string, width int) string {
 func (m *tuiModel) layout() {
 	const inputHeight = 1
 	// Responsive header: hide elements on small terminals.
-	headerHeight := 9 // banner(6) + model label(1) + cmds bar(1) + gap(1)
+	headerHeight := 11 // banner(6) + version(1) + copyright(1) + model label(1) + cmds bar(1) + gap(1)
 	if m.width < 80 {
 		headerHeight = 3 // just cmds bar + minimal padding
 	} else if m.height < 20 {
@@ -549,11 +642,16 @@ func (m *tuiModel) layout() {
 // on the right; lipgloss handles the alignment so the box edges stay
 // flush regardless of terminal width.
 func (m tuiModel) View() string {
+	bannerText := m.styles.Banner.Render(strings.TrimLeft(banner, "\n"))
+	versionLine := m.styles.Dim.Render("AgentCTL " + Version)
+	copyLine := m.styles.Dim.Render("© 2026 @subzone")
 	bannerBox := lipgloss.NewStyle().Padding(0, 2).Render(
-		m.styles.Banner.Render(strings.TrimLeft(banner, "\n")),
+		lipgloss.JoinVertical(lipgloss.Left, bannerText, versionLine, copyLine),
 	)
 	tokenBox := renderTokenBox(m.usage, m.lastIn, m.provider, m.model, m.styles.Dim)
-	statsBox := renderStatsTable(m.stats)
+	statsRendered := renderStatsTable(m.stats)
+	tagline := m.styles.Dim.Render("made with ❤ for DevOps")
+	statsBox := lipgloss.JoinVertical(lipgloss.Center, statsRendered, tagline)
 
 	boxes := lipgloss.Width(bannerBox) + lipgloss.Width(tokenBox) + lipgloss.Width(statsBox)
 	gapTotal := m.width - boxes
@@ -576,7 +674,7 @@ func (m tuiModel) View() string {
 
 	body := m.viewport.View()
 	if m.thinking {
-		body += "\n" + m.styles.Dim.Render(m.spinner.View()+" "+thinkingPhrase(m.thinkTick, m.theme))
+		body += "\n" + m.styles.Dim.Render(m.spinner.View()+" "+thinkingPhrase(m.thinkTick, m.theme, m.agentPhrases))
 	}
 
 	inputLine := m.input.View()
@@ -766,10 +864,13 @@ var defaultThinkingPhrases = []string{
 	"working on it",
 }
 
-func thinkingPhrase(tick int, theme *Theme) string {
+func thinkingPhrase(tick int, theme *Theme, agentPhrases []string) string {
 	phrases := defaultThinkingPhrases
 	if theme != nil && len(theme.ThinkingPhrases) > 0 {
 		phrases = theme.ThinkingPhrases
+	}
+	if len(agentPhrases) > 0 {
+		phrases = agentPhrases
 	}
 	// Each phrase gets ~6 seconds (spinner ticks ~4x/sec, so 24 ticks).
 	// Within each phrase cycle, show typing dots for the first 8 ticks.
@@ -791,8 +892,8 @@ func thinkingPhrase(tick int, theme *Theme) string {
 // having wired sess.Out to a streamWriter pointing at streamCh — that
 // happens in runChatWithDoc so the engine starts streaming the moment
 // Step is called.
-func runTUI(ctx context.Context, sess *engine.Session, streamCh chan streamMsg, name, provider, model string, undo *tools.UndoStack, confirmCh chan bool) error {
-	m := newTUIModel(ctx, sess, streamCh, name, provider, model, undo, confirmCh)
+func runTUI(ctx context.Context, sess *engine.Session, streamCh chan streamMsg, name, provider, model string, undo *tools.UndoStack, confirmCh chan bool, agentPhrases []string) error {
+	m := newTUIModel(ctx, sess, streamCh, name, provider, model, undo, confirmCh, agentPhrases)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	_, err := p.Run()
 	return err

@@ -25,6 +25,31 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.23",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"Fallback models: auto-switch on 429 rate limit. Added to all 30 example agents.",
+			"Per-agent thinking phrases: customize spinner text per agent (e.g. Serbian for Steva \u0110ubre).",
+			"Markdown rendering in TUI: **bold** renders as terminal bold, `code` as dim, ## headers as bold with spacing.",
+			"Tool confirmation cleanup: shows key=value instead of raw JSON.",
+			"Tool output formatting: newlines before/after tool activity lines.",
+			"Removed (thinking) text marker \u2014 TUI spinner handles thinking status.",
+			"Continue prompt: 'Agent worked on this for a while' instead of technical turn count.",
+			"TUI: version + copyright below M banner, tagline below stats.",
+			"Docs: fallback and thinking_phrases documented in README and agents page.",
+		},
+	},
+	{
+		Version: "0.0.22",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"Error intervention: agent auto-retries on tool failures with context.",
+			"Anthropic prompt caching support.",
+			"TUI: version + copyright displayed below M banner.",
+			"All docs and GitHub Pages synced to v0.0.22.",
+		},
+	},
+	{
 		Version: "0.0.21",
 		Date:    "2026-07-04",
 		Highlights: []string{

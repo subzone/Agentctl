@@ -4,6 +4,9 @@ type: agent
 description: Security engineer — code review, secrets detection, hardening, CVE analysis.
 version: 1
 model: anthropic/claude-sonnet-4-6
+fallback:
+  - anthropic/claude-haiku-4-5-20251001
+  - openai/gpt-4.1
 tools:
   - shell
   - fs_read

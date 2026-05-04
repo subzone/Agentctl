@@ -15,6 +15,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/subzone/Agentctl/internal/llm"
 	"github.com/subzone/Agentctl/internal/tools"
@@ -38,6 +39,16 @@ type Config struct {
 	// input tokens exceed 80% of this, the session auto-compacts. Zero
 	// means use a conservative default (128K).
 	MaxContextTokens int
+
+	// FallbackModels is a list of "provider/model" strings to try when
+	// the primary model returns a rate-limit (429) or overload error.
+	// Tried in order; the session switches to the first one that works.
+	FallbackModels []string
+
+	// ResolveModel resolves a "provider/model" string into a Provider and
+	// bare model name. Required when FallbackModels is set. Typically
+	// wired to llm.Resolve.
+	ResolveModel func(model string) (llm.Provider, string, error)
 
 	// ResponseSchema constrains the model to produce valid JSON matching
 	// this schema. Nil means unconstrained text output.
@@ -220,6 +231,9 @@ func (s *Session) Step(ctx context.Context, task string) error {
 			MaxTokens:      s.cfg.MaxTokens,
 			ResponseSchema: s.cfg.ResponseSchema,
 		})
+		if err != nil && isRateLimitError(err) && len(s.cfg.FallbackModels) > 0 {
+			events, err = s.tryFallbacks(ctx)
+		}
 		if err != nil {
 			return err
 		}
@@ -335,6 +349,53 @@ func (s *Session) Step(ctx context.Context, task string) error {
 	}
 	fmt.Fprintf(s.out, "\n[reached %d tool turns, stopping]\n", s.maxTurns)
 	return nil
+}
+
+// isRateLimitError returns true if the error indicates a rate limit (429)
+// or overload (529) from the provider.
+func isRateLimitError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "429") ||
+		strings.Contains(msg, "rate limit") ||
+		strings.Contains(msg, "overloaded") ||
+		strings.Contains(msg, "529")
+}
+
+// tryFallbacks attempts each fallback model in order. On success, the
+// session switches to that model for subsequent turns.
+func (s *Session) tryFallbacks(ctx context.Context) (<-chan llm.Event, error) {
+	if s.cfg.ResolveModel == nil {
+		return nil, fmt.Errorf("no model resolver configured for fallbacks")
+	}
+	for _, fb := range s.cfg.FallbackModels {
+		p, model, err := s.cfg.ResolveModel(fb)
+		if err != nil {
+			fmt.Fprintf(s.status, "[fallback %s: resolve error: %v]\n", fb, err)
+			continue
+		}
+		events, err := p.Stream(ctx, llm.Request{
+			Model:          model,
+			System:         s.cfg.System,
+			Messages:       s.messages,
+			Tools:          s.schemas,
+			Temperature:    s.cfg.Temperature,
+			MaxTokens:      s.cfg.MaxTokens,
+			ResponseSchema: s.cfg.ResponseSchema,
+		})
+		if err != nil {
+			fmt.Fprintf(s.status, "[fallback %s: %v]\n", fb, err)
+			continue
+		}
+		// Success — switch to this model for the rest of the session.
+		s.cfg.Provider = p
+		s.cfg.Model = model
+		fmt.Fprintf(s.status, "[switched to fallback: %s]\n", fb)
+		return events, nil
+	}
+	return nil, fmt.Errorf("all fallback models failed")
 }
 
 func validateMessages(msgs []llm.Message) []llm.Message {

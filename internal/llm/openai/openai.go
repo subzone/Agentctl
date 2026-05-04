@@ -457,13 +457,10 @@ func parseSSE(ctx context.Context, r io.Reader, out chan<- llm.Event) error {
 		c := chunk.Choices[0]
 
 		// Reasoning models (MiniMax, DeepSeek-R1) send thinking tokens in
-		// reasoning_content before the actual response in content. Emit a
-		// one-time marker so the user knows the model is thinking.
-		if c.Delta.ReasoningContent != "" && !reasoningSeen {
+		// reasoning_content before the actual response in content. These
+		// are silently consumed — the TUI spinner shows thinking status.
+		if c.Delta.ReasoningContent != "" {
 			reasoningSeen = true
-			if err := send(llm.Event{Kind: llm.EventText, Text: "(thinking) "}); err != nil {
-				return err
-			}
 		}
 		if c.Delta.Content != "" {
 			if reasoningSeen && !reasoningDone {

@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.23] - 2026-05-04
+
+### Added
+- Fallback models: auto-switch on 429 rate limit. Added to all 30 example agents
+- Per-agent `thinking_phrases`: customize spinner text per agent
+- Markdown rendering in TUI: `**bold**` as terminal bold, `` `code` `` as dim, `##` headers as bold
+- Fallback and thinking_phrases documented in README and docs/agents.html
+
+### Changed
+- Tool confirmation shows `key=value` instead of raw JSON
+- Tool output lines get newlines before/after so they don't run inline with model text
+- Continue prompt: "Agent worked on this for a while" instead of technical turn count
+- Removed `(thinking)` text marker — TUI spinner handles thinking status
+- TUI: version + copyright below M banner, tagline below stats box
+
 ## [0.0.22] - 2026-05-04
 
 ### Added
@@ -20,6 +35,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `TraceWriter` field in engine Config literal.
 - Chat tests updated to use `chatState` instead of raw `*engine.Session`.
 - Removed unused `stdinToolConfirm` and `isSafeTool` functions (lint).
+- TUI: version + copyright displayed below M banner.
+- All docs and GitHub Pages synced to v0.0.22.
 
 ## [0.0.21] - 2026-07-04
 
@@ -112,6 +129,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Theme system (matrix, default, minimal)
 - System stats (CPU/RAM/GPU/Disk)
 
+[0.0.23]: https://github.com/subzone/Agentctl/compare/v0.0.22...v0.0.23
+[0.0.22]: https://github.com/subzone/Agentctl/compare/v0.0.21...v0.0.22
 [0.0.21]: https://github.com/subzone/Agentctl/compare/v0.0.20...v0.0.21
 [0.0.19]: https://github.com/subzone/Agentctl/compare/v0.0.18...v0.0.19
 [0.0.18]: https://github.com/subzone/Agentctl/compare/v0.0.17...v0.0.18
