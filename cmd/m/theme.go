@@ -94,16 +94,17 @@ func (t *Theme) Resolve() Styles {
 
 	// Confirmation prompt: ALWAYS use high contrast (foreground + background)
 	// This is critical for visibility - user MUST see y/n prompts clearly
-	if t.ConfirmFg != "" && t.ConfirmBg != "" {
+	switch {
+	case t.ConfirmFg != "" && t.ConfirmBg != "":
 		// Both specified - use them
 		s.Confirm = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(t.ConfirmFg)).Background(lipgloss.Color(t.ConfirmBg)).Padding(0, 1)
-	} else if t.ConfirmBg != "" {
+	case t.ConfirmBg != "":
 		// Only background - use bright white/yellow text for contrast
 		s.Confirm = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#ffffff")).Background(lipgloss.Color(t.ConfirmBg)).Padding(0, 1)
-	} else if t.ConfirmFg != "" {
+	case t.ConfirmFg != "":
 		// Only foreground - use it with underline for visibility
 		s.Confirm = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color(t.ConfirmFg)).Padding(0, 1)
-	} else {
+	default:
 		// Neither - use bright yellow on default background with underline
 		s.Confirm = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color("#fbbf24")).Padding(0, 1)
 	}
