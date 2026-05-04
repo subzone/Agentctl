@@ -25,6 +25,14 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.27",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"First-run wizard: visual completion summary with next steps.",
+			"TUI + REPL onboarding: tips line showing key commands on every session start.",
+		},
+	},
+	{
 		Version: "0.0.26",
 		Date:    "2026-05-04",
 		Highlights: []string{

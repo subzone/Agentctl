@@ -346,6 +346,7 @@ func isInteractiveChat(in io.Reader, out, status io.Writer) bool {
 // locally; everything else is passed to sess.Step.
 func chatLoop(ctx context.Context, state *chatState, in io.Reader, out, status io.Writer, name string) error {
 	fmt.Fprintf(status, "chat with %s — /exit to quit, /reset to clear history, /help for more\n", name)
+	fmt.Fprintln(status, "tips: /models (switch model) • /trust (auto-approve) • /save (keep session) • /debug (trace)")
 
 	lines := readLines(in)
 

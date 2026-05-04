@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.27] - 2026-05-04
+
+### Added
+- First-run wizard: visual completion summary with next steps box
+- TUI onboarding: tips line on session start (models, themes, trust, save)
+- REPL onboarding: tips line on session start (models, trust, save, debug)
+
 ## [0.0.26] - 2026-05-04
 
 ### Added
@@ -172,6 +179,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Theme system (matrix, default, minimal)
 - System stats (CPU/RAM/GPU/Disk)
 
+[0.0.27]: https://github.com/subzone/Agentctl/compare/v0.0.26...v0.0.27
 [0.0.26]: https://github.com/subzone/Agentctl/compare/v0.0.25...v0.0.26
 [0.0.25]: https://github.com/subzone/Agentctl/compare/v0.0.24...v0.0.25
 [0.0.24]: https://github.com/subzone/Agentctl/compare/v0.0.23...v0.0.24

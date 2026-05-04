@@ -113,7 +113,9 @@ func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, n
 	t := Load()
 	s := t.Resolve()
 
-	vp.SetContent(s.Dim.Render(fmt.Sprintf("chat with %s — /exit to quit, /reset to clear, /help for more", name)) + "\n\n")
+	welcome := s.Dim.Render(fmt.Sprintf("chat with %s — /exit to quit, /reset to clear, /help for more", name)) + "\n"
+	welcome += s.Dim.Render("tips: /models (switch model) • /themes (change look) • /trust (auto-approve) • /save (keep session)") + "\n\n"
+	vp.SetContent(welcome)
 
 	return tuiModel{
 		sess:           sess,
