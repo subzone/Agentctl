@@ -347,6 +347,7 @@ func isInteractiveChat(in io.Reader, out, status io.Writer) bool {
 func chatLoop(ctx context.Context, state *chatState, in io.Reader, out, status io.Writer, name string) error {
 	fmt.Fprintf(status, "chat with %s — /exit to quit, /reset to clear history, /help for more\n", name)
 	fmt.Fprintln(status, "tips: /models (switch model) • /trust (auto-approve) • /save (keep session) • /debug (trace)")
+	fmt.Fprintln(status, "shortcuts: /x=exit /r=reset /c=compact /u=undo /m=models /t=themes /s=save /h=help")
 
 	lines := readLines(in)
 
@@ -392,17 +393,17 @@ func chatLoop(ctx context.Context, state *chatState, in io.Reader, out, status i
 // false) and the caller should pass it to the model.
 func handleSlash(line string, state *chatState, status io.Writer) (handled, exit bool) {
 	switch line {
-	case "/exit", "/quit":
+	case "/exit", "/quit", "/x":
 		return true, true
-	case "/reset":
+	case "/reset", "/r":
 		state.sess.Reset()
 		fmt.Fprintln(status, "(history cleared)")
 		return true, false
-	case "/compact":
+	case "/compact", "/c":
 		state.sess.Truncate(4)
 		fmt.Fprintln(status, "(compacted to last 4 exchanges)")
 		return true, false
-	case "/undo":
+	case "/undo", "/u":
 		if state.undo == nil {
 			fmt.Fprintln(status, "undo not available")
 			return true, false
@@ -441,11 +442,12 @@ func handleSlash(line string, state *chatState, status io.Writer) (handled, exit
 		fmt.Fprintln(status, "spec-driven workflow: run `m chat examples/agents/spec.md` to use the spec agent")
 		fmt.Fprintln(status, "or tell the current agent: 'follow the spec workflow for this task'")
 		return true, false
-	case "/help":
+	case "/help", "/h":
 		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /undo /trust /debug /model <provider/model> /models /theme [name] /themes /save /sessions /resume <id> /config /help")
+		fmt.Fprintln(status, "aliases:  /x=exit /r=reset /c=compact /u=undo /m=models /t=themes /s=save /h=help")
 		return true, false
 	}
-	if line == "/themes" || strings.HasPrefix(line, "/themes ") {
+	if line == "/themes" || line == "/t" || strings.HasPrefix(line, "/themes ") {
 		themeDescriptions := []string{
 			"  default    - clean blue accents",
 			"  minimal    - no colors",
@@ -461,10 +463,18 @@ func handleSlash(line string, state *chatState, status io.Writer) (handled, exit
 		for _, d := range themeDescriptions {
 			fmt.Fprintln(status, d)
 		}
-		fmt.Fprintln(status, "use /theme <name> to switch")
+		fmt.Fprintln(status, "use /theme <name> or /t <name> to switch")
 		return true, false
 	}
-	if line == "/save" || strings.HasPrefix(line, "/save ") {
+	if strings.HasPrefix(line, "/t ") {
+		// /t <name> is a shortcut for /theme <name>
+		line = "/theme " + strings.TrimSpace(strings.TrimPrefix(line, "/t "))
+	}
+	if line == "/save" || line == "/s" || strings.HasPrefix(line, "/save ") || strings.HasPrefix(line, "/s ") {
+		// Handle /s as alias for /save
+		if strings.HasPrefix(line, "/s ") {
+			line = "/save " + strings.TrimSpace(strings.TrimPrefix(line, "/s "))
+		}
 		handleSessionSave(line, state.sess, status)
 		return true, false
 	}
@@ -476,7 +486,11 @@ func handleSlash(line string, state *chatState, status io.Writer) (handled, exit
 		handleSessionResume(line, state.sess, status)
 		return true, false
 	}
-	if line == "/models" || strings.HasPrefix(line, "/models ") {
+	if line == "/models" || line == "/m" || strings.HasPrefix(line, "/models ") || strings.HasPrefix(line, "/m ") {
+		// Handle /m as alias for /models
+		if strings.HasPrefix(line, "/m ") {
+			line = "/models " + strings.TrimSpace(strings.TrimPrefix(line, "/m "))
+		}
 		handleModelsCommand(line, state.sess, status)
 		return true, false
 	}
@@ -491,8 +505,12 @@ func handleSlash(line string, state *chatState, status io.Writer) (handled, exit
 		fmt.Fprintf(status, "switched to %s\n", newModel)
 		return true, false
 	}
-	if strings.HasPrefix(line, "/theme") {
+	if strings.HasPrefix(line, "/theme") || strings.HasPrefix(line, "/t ") {
+		// /theme <name> or /t <name>
 		arg := strings.TrimSpace(strings.TrimPrefix(line, "/theme"))
+		if strings.HasPrefix(line, "/t ") {
+			arg = strings.TrimSpace(strings.TrimPrefix(line, "/t "))
+		}
 		if arg == "" {
 			names := []string{}
 			for n := range Builtin {

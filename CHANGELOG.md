@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.28] - 2026-05-04
+
+### Added
+- Command shortcuts: `/x` `/r` `/c` `/u` `/m` `/t` `/s` `/h` for all slash commands
+- TUI command bar: underlined shortcut letters for discoverability
+- Welcome message: shortcuts listed on every session start
+- `/m 3` works as shortcut for `/models 3`
+- `/t dracula` works as shortcut for `/theme dracula`
+- `/s fixing-auth` works as shortcut for `/save fixing-auth`
+
 ## [0.0.27] - 2026-05-04
 
 ### Added
@@ -179,6 +189,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Theme system (matrix, default, minimal)
 - System stats (CPU/RAM/GPU/Disk)
 
+[0.0.28]: https://github.com/subzone/Agentctl/compare/v0.0.27...v0.0.28
 [0.0.27]: https://github.com/subzone/Agentctl/compare/v0.0.26...v0.0.27
 [0.0.26]: https://github.com/subzone/Agentctl/compare/v0.0.25...v0.0.26
 [0.0.25]: https://github.com/subzone/Agentctl/compare/v0.0.24...v0.0.25

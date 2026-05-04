@@ -101,7 +101,7 @@ type tuiModel struct {
 func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, name, provider, model string, undo *tools.UndoStack, confirmCh chan bool, agentPhrases []string, trust *bool) tuiModel {
 	in := textinput.New()
 	in.Prompt = "» "
-	in.Placeholder = "type a message, /exit to quit"
+	in.Placeholder = "type a message (/help for commands)"
 	in.Focus()
 	in.CharLimit = 4000
 
@@ -114,7 +114,8 @@ func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, n
 	s := t.Resolve()
 
 	welcome := s.Dim.Render(fmt.Sprintf("chat with %s — /exit to quit, /reset to clear, /help for more", name)) + "\n"
-	welcome += s.Dim.Render("tips: /models (switch model) • /themes (change look) • /trust (auto-approve) • /save (keep session)") + "\n\n"
+	welcome += s.Dim.Render("tips: /models (switch model) • /themes (change look) • /trust (auto-approve) • /save (keep session)") + "\n"
+	welcome += s.Dim.Render("shortcuts: /x=exit /r=reset /c=compact /u=undo /m=models /t=themes /s=save /h=help") + "\n\n"
 	vp.SetContent(welcome)
 
 	return tuiModel{
@@ -219,14 +220,15 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			switch line {
-			case "/exit", "/quit":
+			case "/exit", "/quit", "/x":
 				return m, tea.Quit
-			case "/reset":
+			case "/reset", "/r":
 				m.sess.Reset()
 				m.appendHistory("(history cleared)\n")
 				return m, nil
-			case "/help":
+			case "/help", "/h":
 				m.appendHistory("commands: /exit /quit /reset /compact /undo /trust /debug /model <provider/model> /models /theme [name] /themes /save /sessions /resume <id> /config /help\n")
+				m.appendHistory("aliases:  /x=exit /r=reset /c=compact /u=undo /m=models /t=themes /s=save /h=help\n")
 				return m, nil
 			case "/trust":
 				if m.trustMode != nil {
@@ -247,7 +249,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendHistory("run `m config` from the shell to manage providers and models\n")
 				return m, nil
 			}
-			if line == "/models" || strings.HasPrefix(line, "/models ") {
+			if line == "/models" || line == "/m" || strings.HasPrefix(line, "/models ") || strings.HasPrefix(line, "/m ") {
 				buf := &strings.Builder{}
 				handleModelsCommand(line, m.sess, buf)
 				result := buf.String()
@@ -275,12 +277,12 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendHistory(fmt.Sprintf("switched to %s\n", newModel))
 				return m, nil
 			}
-			if line == "/compact" {
+			if line == "/compact" || line == "/c" {
 				m.sess.Truncate(4)
 				m.appendHistory("(compacted to last 4 exchanges)\n")
 				return m, nil
 			}
-			if line == "/undo" {
+			if line == "/undo" || line == "/u" {
 				if m.undo == nil {
 					m.appendHistory("undo not available\n")
 				} else if msg, err := m.undo.Pop(); err != nil {
@@ -290,7 +292,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				return m, nil
 			}
-			if line == "/themes" || strings.HasPrefix(line, "/themes ") {
+			if line == "/themes" || line == "/t" || strings.HasPrefix(line, "/themes ") {
 				themeDescriptions := []string{
 					"  default  - clean blue accents, no diff backgrounds (best for light terminals)",
 					"  minimal  - no colors at all, pure terminal defaults",
@@ -306,8 +308,12 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendHistory("available themes:\n" + strings.Join(themeDescriptions, "\n") + "\n" + current + "\n")
 				return m, nil
 			}
-			if strings.HasPrefix(line, "/theme") {
+			if strings.HasPrefix(line, "/theme") || strings.HasPrefix(line, "/t ") {
+				// /theme <name> or /t <name>
 				arg := strings.TrimSpace(strings.TrimPrefix(line, "/theme"))
+				if strings.HasPrefix(line, "/t ") {
+					arg = strings.TrimSpace(strings.TrimPrefix(line, "/t "))
+				}
 				if arg == "" {
 					names := []string{}
 					for n := range Builtin {
@@ -331,7 +337,11 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendHistory(fmt.Sprintf("switched to %s theme\n", arg))
 				return m, nil
 			}
-			if line == "/save" || strings.HasPrefix(line, "/save ") {
+			if line == "/save" || line == "/s" || strings.HasPrefix(line, "/save ") || strings.HasPrefix(line, "/s ") {
+				// Handle /s as alias for /save
+				if strings.HasPrefix(line, "/s ") {
+					line = "/save " + strings.TrimSpace(strings.TrimPrefix(line, "/s "))
+				}
 				buf := &strings.Builder{}
 				handleSessionSave(line, m.sess, buf)
 				m.appendHistory(buf.String())
@@ -684,7 +694,18 @@ func (m tuiModel) View() string {
 
 	header := lipgloss.JoinHorizontal(lipgloss.Top, bannerBox, spacerL, tokenBox, spacerR, statsBox)
 
-	cmdsBar := m.styles.Dim.Padding(0, 2).Render("/exit /reset /compact /undo /model /models /config /theme /help")
+	// Command bar with underlined shortcuts: /exit /reset /compact /undo /model /themes /save /help
+	// The underlined letter is the shortcut: /x, /r, /c, /u, /m, /t, /s, /h
+	underline := m.styles.Dim.Underline(true)
+	cmdsBar := m.styles.Dim.Padding(0, 2).Render("/") +
+		"e" + underline.Render("x") + "it  /" +
+		underline.Render("r") + "eset  /" +
+		underline.Render("c") + "ompact  /" +
+		underline.Render("u") + "ndo  /" +
+		underline.Render("m") + "odel  /" +
+		underline.Render("t") + "hemes  /" +
+		underline.Render("s") + "ave  /" +
+		underline.Render("h") + "elp"
 
 	cwdLabel := ""
 	if cwd, err := os.Getwd(); err == nil {

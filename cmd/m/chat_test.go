@@ -126,12 +126,80 @@ func TestChatLoopHelpAndUnknownSlash(t *testing.T) {
 	if !strings.Contains(status.String(), "commands:") {
 		t.Errorf("help missing: %q", status.String())
 	}
+	if !strings.Contains(status.String(), "aliases:") {
+		t.Errorf("aliases missing: %q", status.String())
+	}
 	if !strings.Contains(status.String(), `unknown command "/whatever"`) {
 		t.Errorf("unknown-command notice missing: %q", status.String())
 	}
 	if p.calls != 0 {
 		t.Errorf("slash commands should not invoke provider; calls = %d", p.calls)
 	}
+}
+
+func TestChatLoopAliases(t *testing.T) {
+	p := &chatScriptedProvider{turns: [][]llm.Event{
+		{{Kind: llm.EventText, Text: "one"}, {Kind: llm.EventDone, StopReason: "end_turn"}},
+		{{Kind: llm.EventText, Text: "two"}, {Kind: llm.EventDone, StopReason: "end_turn"}},
+	}}
+	var out, status bytes.Buffer
+	// Test all aliases: /x, /r, /c, /u, /h
+	in := strings.NewReader("hello\n/x\n")  // /x should exit
+	state := newChatTestState(p, &out, &status)
+	if err := chatLoop(context.Background(), state, in, &out, &status, "a"); err != nil {
+		t.Fatalf("chatLoop: %v", err)
+	}
+	
+	// Test /r alias
+	var out2, status2 bytes.Buffer
+	in2 := strings.NewReader("hello\n/r\nagain\n/x\n")
+	state2 := newChatTestState(p, &out2, &status2)
+	if err := chatLoop(context.Background(), state2, in2, &out2, &status2, "a"); err != nil {
+		t.Fatalf("chatLoop: %v", err)
+	}
+	if !strings.Contains(status2.String(), "history cleared") {
+		t.Errorf("missing reset notice with /r alias: %q", status2.String())
+	}
+	
+	// Test /c alias
+	var out3, status3 bytes.Buffer
+	in3 := strings.NewReader("a\nb\nc\nd\ne\nf\n/c\n/x\n")
+	state3 := newChatTestState(p, &out3, &status3)
+	if err := chatLoop(context.Background(), state3, in3, &out3, &status3, "a"); err != nil {
+		t.Fatalf("chatLoop: %v", err)
+	}
+	if !strings.Contains(status3.String(), "compacted") {
+		t.Errorf("missing compact notice with /c alias: %q", status3.String())
+	}
+	
+	// Test /h alias shows aliases
+	var out4, status4 bytes.Buffer
+	in4 := strings.NewReader("/h\n/x\n")
+	state4 := newChatTestState(p, &out4, &status4)
+	if err := chatLoop(context.Background(), state4, in4, &out4, &status4, "a"); err != nil {
+		t.Fatalf("chatLoop: %v", err)
+	}
+	if !strings.Contains(status4.String(), "aliases:") {
+		t.Errorf("aliases not shown with /h alias: %q", status4.String())
+	}
+	
+	// Test aliases with parameters: /m (models), /t (themes), /s (save)
+	var out5, status5 bytes.Buffer
+	in5 := strings.NewReader("/m\n/x\n")
+	state5 := newChatTestState(p, &out5, &status5)
+	if err := chatLoop(context.Background(), state5, in5, &out5, &status5, "a"); err != nil {
+		t.Fatalf("chatLoop: %v", err)
+	}
+	// /m should show models list
+	
+	// Test theme alias
+	var out6, status6 bytes.Buffer
+	in6 := strings.NewReader("/t\n/x\n")
+	state6 := newChatTestState(p, &out6, &status6)
+	if err := chatLoop(context.Background(), state6, in6, &out6, &status6, "a"); err != nil {
+		t.Fatalf("chatLoop: %v", err)
+	}
+	// /t should show themes list
 }
 
 func TestChatLoopSkipsBlankLines(t *testing.T) {
@@ -272,6 +340,49 @@ func TestHandleSlashCompact(t *testing.T) {
 	// After 6 exchanges + compact(4), should have at most 8 messages.
 	if got := len(state.sess.Messages()); got > 8 {
 		t.Errorf("post-compact messages = %d, want <= 8", got)
+	}
+}
+
+func TestHandleSlashAliases(t *testing.T) {
+	// Test /c alias
+	state := newChatTestState(&chatScriptedProvider{}, io.Discard, io.Discard)
+	var status bytes.Buffer
+	handled, exit := handleSlash("/c", state, &status)
+	if !handled || exit {
+		t.Errorf("/c: handled=%v exit=%v", handled, exit)
+	}
+	if !strings.Contains(status.String(), "compacted") {
+		t.Errorf("/c missing compact notice: %q", status.String())
+	}
+	
+	// Test /r alias
+	var status2 bytes.Buffer
+	state2 := newChatTestState(&chatScriptedProvider{}, io.Discard, io.Discard)
+	handled, exit = handleSlash("/r", state2, &status2)
+	if !handled || exit {
+		t.Errorf("/r: handled=%v exit=%v", handled, exit)
+	}
+	if !strings.Contains(status2.String(), "history cleared") {
+		t.Errorf("/r missing reset notice: %q", status2.String())
+	}
+	
+	// Test /h alias
+	var status3 bytes.Buffer
+	state3 := newChatTestState(&chatScriptedProvider{}, io.Discard, io.Discard)
+	handled, exit = handleSlash("/h", state3, &status3)
+	if !handled || exit {
+		t.Errorf("/h: handled=%v exit=%v", handled, exit)
+	}
+	if !strings.Contains(status3.String(), "aliases:") {
+		t.Errorf("/h missing aliases: %q", status3.String())
+	}
+	
+	// Test /x alias
+	var status4 bytes.Buffer
+	state4 := newChatTestState(&chatScriptedProvider{}, io.Discard, io.Discard)
+	handled, exit = handleSlash("/x", state4, &status4)
+	if !handled || !exit {
+		t.Errorf("/x: handled=%v exit=%v", handled, exit)
 	}
 }
 
