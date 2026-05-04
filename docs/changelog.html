@@ -36,6 +36,15 @@
     <div class="timeline">
 
       <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-star"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.22</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>Error intervention</strong> — when a tool fails, the REPL lets you type a hint that gets sent back to the LLM, breaking retry loops</li>
+          <li><strong>Anthropic prompt caching</strong> — system prompt and tool schemas use <code>cache_control: ephemeral</code>, cutting input tokens on every turn</li>
+          <li><strong>Dead code cleanup</strong> — removed unused <code>stdinToolConfirm</code> / <code>isSafeTool</code>, fixed pre-existing compile issues in chat state init</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-star"></i></div><div class="timeline-body">
         <div class="timeline-version">v0.0.21</div><div class="timeline-date">July 2026</div>
         <ul>
           <li><strong>High-contrast confirmations</strong> — <code>ConfirmFg</code> theme field, all 9 themes updated. y/n prompts are now always readable regardless of terminal background</li>

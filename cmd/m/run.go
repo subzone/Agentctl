@@ -204,57 +204,6 @@ func stdinIsPipe(r io.Reader) bool {
 	return (info.Mode() & os.ModeCharDevice) == 0
 }
 
-// stdinToolConfirm returns a ToolConfirm func that prompts the user
-// before executing destructive tools in the REPL.
-func stdinToolConfirm(w io.Writer, r io.Reader) func(context.Context, string, json.RawMessage) (bool, error) {
-	sc := bufio.NewScanner(r)
-	return func(_ context.Context, name string, input json.RawMessage) (bool, error) {
-		// Auto-approve safe tools
-		if isSafeTool(name, input) {
-			fmt.Fprintf(w, "→ %s %s [auto-approved]\n", name, summarizeToolInput(input))
-			return true, nil
-		}
-
-		fmt.Fprintf(w, "Allow %s %s? [y/N]: ", name, summarizeToolInput(input))
-		if !sc.Scan() {
-			return false, nil
-		}
-		ans := strings.TrimSpace(strings.ToLower(sc.Text()))
-		return ans == "y" || ans == "yes", nil
-	}
-}
-
-// isSafeTool returns true if a tool call is safe to auto-approve
-func isSafeTool(name string, input json.RawMessage) bool {
-	// Read-only tools are always safe
-	if name == "fs_read" || name == "fs_list" || name == "test_run" {
-		return true
-	}
-
-	// Git read-only operations
-	if name == "git" {
-		var args struct {
-			Operation string `json:"operation"`
-			Args      string `json:"args"`
-		}
-		if err := json.Unmarshal(input, &args); err == nil {
-			safeOps := []string{"status", "diff", "log", "branch"}
-			for _, op := range safeOps {
-				if args.Operation == op {
-					return true
-				}
-			}
-		}
-	}
-
-	// Shell commands are never auto-approved: even simple-looking commands
-	// can exfiltrate data or modify the filesystem via redirections (>, >>),
-	// subshells ($(), backticks), backgrounding (&), or whitespace-hidden
-	// operators. All shell invocations require explicit user confirmation.
-
-	return false
-}
-
 // summarizeToolInput returns a short preview of tool input for confirmation prompts.
 func summarizeToolInput(input json.RawMessage) string {
 	s := string(input)
