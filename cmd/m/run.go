@@ -204,7 +204,6 @@ func stdinIsPipe(r io.Reader) bool {
 	return (info.Mode() & os.ModeCharDevice) == 0
 }
 
-
 // stdinToolConfirm returns a ToolConfirm func that prompts the user
 // before executing destructive tools in the REPL.
 func stdinToolConfirm(w io.Writer, r io.Reader) func(context.Context, string, json.RawMessage) (bool, error) {
@@ -215,7 +214,7 @@ func stdinToolConfirm(w io.Writer, r io.Reader) func(context.Context, string, js
 			fmt.Fprintf(w, "→ %s %s [auto-approved]\n", name, summarizeToolInput(input))
 			return true, nil
 		}
-		
+
 		fmt.Fprintf(w, "Allow %s %s? [y/N]: ", name, summarizeToolInput(input))
 		if !sc.Scan() {
 			return false, nil

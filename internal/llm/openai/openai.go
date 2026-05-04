@@ -36,12 +36,12 @@ func init() {
 
 // Provider is an OpenAI Chat Completions client.
 type Provider struct {
-	apiKey   string
-	baseURL  string
-	client   *http.Client
+	apiKey       string
+	baseURL      string
+	client       *http.Client
 	noStreamOpts bool
 	noJsonSchema bool
-	chatPath string // defaults to "/v1/chat/completions"
+	chatPath     string // defaults to "/v1/chat/completions"
 }
 
 // Option configures a Provider.
@@ -62,7 +62,9 @@ func WithChatPath(p string) Option { return func(pr *Provider) { pr.chatPath = p
 func WithCompat() Option { return func(p *Provider) { p.noJsonSchema = true } }
 
 // WithNoStreamOptions disables stream_options (for endpoints like Gemini that reject it).
-func WithNoStreamOptions() Option { return func(p *Provider) { p.noStreamOpts = true; p.noJsonSchema = true } }
+func WithNoStreamOptions() Option {
+	return func(p *Provider) { p.noStreamOpts = true; p.noJsonSchema = true }
+}
 
 // WithHTTPClient swaps the underlying http.Client.
 func WithHTTPClient(c *http.Client) Option { return func(p *Provider) { p.client = c } }
@@ -336,8 +338,8 @@ func buildTools(tools []llm.ToolSchema) []chatTool {
 
 // chunkChoice / chunkDelta / chunkToolCall mirror the streaming response.
 type chunkChoice struct {
-	Delta        chunkDelta      `json:"delta"`
-	FinishReason string          `json:"finish_reason"`
+	Delta        chunkDelta `json:"delta"`
+	FinishReason string     `json:"finish_reason"`
 }
 
 type chunkDelta struct {

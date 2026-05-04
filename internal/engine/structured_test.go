@@ -88,8 +88,8 @@ func TestExtractAnswer(t *testing.T) {
 		in, want string
 	}{
 		{`{"answer":"hello","confidence":"high"}`, "hello"},
-		{`{"confidence":"low"}`, `{"confidence":"low"}`},       // no answer field
-		{`not json`, `not json`},                                // invalid JSON
+		{`{"confidence":"low"}`, `{"confidence":"low"}`},                         // no answer field
+		{`not json`, `not json`},                                                 // invalid JSON
 		{`{"answer":"","confidence":"low"}`, `{"answer":"","confidence":"low"}`}, // empty answer
 	}
 	for _, tt := range tests {

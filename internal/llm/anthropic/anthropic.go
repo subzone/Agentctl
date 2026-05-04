@@ -66,13 +66,13 @@ func New(opts ...Option) (*Provider, error) {
 }
 
 type messagePayload struct {
-	Model       string         `json:"model"`
-	System      string         `json:"system,omitempty"`
-	Messages    []apiMessage   `json:"messages"`
-	Tools       []apiTool      `json:"tools,omitempty"`
-	MaxTokens   int            `json:"max_tokens"`
-	Temperature *float64       `json:"temperature,omitempty"`
-	Stream      bool           `json:"stream"`
+	Model       string       `json:"model"`
+	System      string       `json:"system,omitempty"`
+	Messages    []apiMessage `json:"messages"`
+	Tools       []apiTool    `json:"tools,omitempty"`
+	MaxTokens   int          `json:"max_tokens"`
+	Temperature *float64     `json:"temperature,omitempty"`
+	Stream      bool         `json:"stream"`
 }
 
 type apiMessage struct {
@@ -117,10 +117,10 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 	}
 
 	payloadMap := map[string]any{
-		"model":       req.Model,
-		"messages":    msgs,
-		"max_tokens":  maxTok,
-		"stream":      true,
+		"model":      req.Model,
+		"messages":   msgs,
+		"max_tokens": maxTok,
+		"stream":     true,
 	}
 	if req.System != "" {
 		payloadMap["system"] = req.System

@@ -73,25 +73,25 @@ type tuiModel struct {
 	input    textinput.Model
 	spinner  spinner.Model
 
-	history  *strings.Builder
-	stats    sysStats
-	usage    llm.Usage
-	lastIn   int
-	provider string
-	model    string
-	thinking    bool
-	thinkTick   int
-	theme    *Theme
-	styles   Styles
-	undo     *tools.UndoStack
-	stepCancel  context.CancelFunc
-	confirmCh   chan bool // channel for tool confirmation in TUI
-	confirming  bool     // true when waiting for y/n
+	history    *strings.Builder
+	stats      sysStats
+	usage      llm.Usage
+	lastIn     int
+	provider   string
+	model      string
+	thinking   bool
+	thinkTick  int
+	theme      *Theme
+	styles     Styles
+	undo       *tools.UndoStack
+	stepCancel context.CancelFunc
+	confirmCh  chan bool // channel for tool confirmation in TUI
+	confirming bool      // true when waiting for y/n
 
 	width  int
 	height int
 	name   string
-	
+
 	// UI stability improvements
 	lastUpdateTime time.Time // timestamp of last viewport update to throttle
 }
@@ -114,21 +114,21 @@ func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, n
 	vp.SetContent(s.Dim.Render(fmt.Sprintf("chat with %s — /exit to quit, /reset to clear, /help for more", name)) + "\n\n")
 
 	return tuiModel{
-		sess:     sess,
-		ctx:      ctx,
-		streamCh: ch,
-		viewport: vp,
-		input:    in,
-		spinner:  sp,
-		history:  &strings.Builder{},
-		stats:    blankStats(),
-		provider: provider,
-		model:    model,
-		name:     name,
-		theme:    t,
-		styles:   s,
-		undo:      undo,
-		confirmCh: confirmCh,
+		sess:           sess,
+		ctx:            ctx,
+		streamCh:       ch,
+		viewport:       vp,
+		input:          in,
+		spinner:        sp,
+		history:        &strings.Builder{},
+		stats:          blankStats(),
+		provider:       provider,
+		model:          model,
+		name:           name,
+		theme:          t,
+		styles:         s,
+		undo:           undo,
+		confirmCh:      confirmCh,
 		lastUpdateTime: time.Now(),
 	}
 }
@@ -173,7 +173,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.appendHistory("\n(cancelled)\n")
 			return m, listenStreamCmd(m.streamCh)
 		}
-		
+
 		// Handle tool confirmation y/n
 		if m.confirming {
 			switch msg.String() {
@@ -198,7 +198,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport, cmd = m.viewport.Update(msg)
 			return m, cmd
 		}
-		
+
 		// Block input while thinking (except navigation which we handled above)
 		if m.thinking {
 			// Block all other input while a turn is in flight, including
@@ -398,13 +398,13 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, cmd
 	}
 
-		var cmd tea.Cmd
+	var cmd tea.Cmd
 	var cmds []tea.Cmd
-	
+
 	// Always allow viewport updates (for navigation)
 	m.viewport, cmd = m.viewport.Update(msg)
 	cmds = append(cmds, cmd)
-	
+
 	// Only update input if we're not thinking (agent is streaming)
 	// This prevents input from "pulling" during streaming
 	if !m.thinking {
@@ -628,9 +628,9 @@ func renderTokenBox(u llm.Usage, lastIn int, provider, model string, dim lipglos
 		statsKey.Render("Total") + statsVal.Render(formatTokens(total)),
 	}
 	cost := estimateCost(u, model)
-	rows = append(rows, statsKey.Render("Cost") + statsVal.Render(formatCost(cost)))
+	rows = append(rows, statsKey.Render("Cost")+statsVal.Render(formatCost(cost)))
 	if pct := contextPercent(lastIn, model); pct >= 0 {
-		rows = append(rows, statsKey.Render("Ctx") + statsVal.Render(fmt.Sprintf("%d%%", pct)))
+		rows = append(rows, statsKey.Render("Ctx")+statsVal.Render(fmt.Sprintf("%d%%", pct)))
 	}
 	box := tokenBoxStyle.Render(strings.Join(rows, "\n"))
 	label := provider + "/" + model
@@ -660,79 +660,79 @@ func formatCost(dollars float64) string {
 type pricing struct{ input, output float64 }
 
 var modelPricing = map[string]pricing{
-	"claude-sonnet-4-6":        {3.0, 15.0},
-	"claude-sonnet-4-20250514": {3.0, 15.0},
-	"claude-haiku-3-5":           {0.80, 4.0},
-	"claude-haiku-4-5-20251001":  {1.0, 5.0},
-	"claude-opus-4":            {15.0, 75.0},
-	"gpt-4o":                   {2.50, 10.0},
-	"gpt-4o-mini":              {0.15, 0.60},
-	"gpt-4.1":                  {2.0, 8.0},
-	"gpt-4.1-mini":             {0.40, 1.60},
-	"gpt-4.1-nano":             {0.10, 0.40},
-	"o3":                       {2.0, 8.0},
-	"o3-mini":                  {1.10, 4.40},
-	"o4-mini":                  {1.10, 4.40},
-	"gemini-2.5-pro":           {1.25, 10.0},
-	"gemini-2.5-flash":         {0.15, 0.60},
-	"gemini-2.0-flash":         {0.10, 0.40},
-	"qwen-plus":               {0.80, 2.0},
-	"qwen-max":                {2.0, 6.0},
-	"qwen-turbo":              {0.30, 0.60},
-	"deepseek-v3":             {0.27, 1.10},
-	"deepseek-v3.2":           {0.27, 1.10},
-	"deepseek-chat":           {0.14, 0.28},
-	"deepseek-r1":             {0.55, 2.19},
-	"qwen3.6-plus":            {0.80, 2.0},
-	"qwen3.6-flash":           {0.15, 0.60},
-	"qwen3-coder-plus":        {0.80, 2.0},
-	"qwen3-coder-flash":       {0.15, 0.60},
-	"qwen3-max":               {2.0, 6.0},
-	"qwen3.5-plus":            {0.80, 2.0},
-	"qwen3.5-flash":           {0.15, 0.60},
-	"glm-5":                   {0.50, 0.50},
-	"glm-4-plus":              {0.35, 0.35},
-	"glm-4-flash":             {0.01, 0.01},
-	"MiniMax-M2.5":            {1.0, 4.0},
-	"MiniMax-Text-01":         {0.50, 2.0},
+	"claude-sonnet-4-6":         {3.0, 15.0},
+	"claude-sonnet-4-20250514":  {3.0, 15.0},
+	"claude-haiku-3-5":          {0.80, 4.0},
+	"claude-haiku-4-5-20251001": {1.0, 5.0},
+	"claude-opus-4":             {15.0, 75.0},
+	"gpt-4o":                    {2.50, 10.0},
+	"gpt-4o-mini":               {0.15, 0.60},
+	"gpt-4.1":                   {2.0, 8.0},
+	"gpt-4.1-mini":              {0.40, 1.60},
+	"gpt-4.1-nano":              {0.10, 0.40},
+	"o3":                        {2.0, 8.0},
+	"o3-mini":                   {1.10, 4.40},
+	"o4-mini":                   {1.10, 4.40},
+	"gemini-2.5-pro":            {1.25, 10.0},
+	"gemini-2.5-flash":          {0.15, 0.60},
+	"gemini-2.0-flash":          {0.10, 0.40},
+	"qwen-plus":                 {0.80, 2.0},
+	"qwen-max":                  {2.0, 6.0},
+	"qwen-turbo":                {0.30, 0.60},
+	"deepseek-v3":               {0.27, 1.10},
+	"deepseek-v3.2":             {0.27, 1.10},
+	"deepseek-chat":             {0.14, 0.28},
+	"deepseek-r1":               {0.55, 2.19},
+	"qwen3.6-plus":              {0.80, 2.0},
+	"qwen3.6-flash":             {0.15, 0.60},
+	"qwen3-coder-plus":          {0.80, 2.0},
+	"qwen3-coder-flash":         {0.15, 0.60},
+	"qwen3-max":                 {2.0, 6.0},
+	"qwen3.5-plus":              {0.80, 2.0},
+	"qwen3.5-flash":             {0.15, 0.60},
+	"glm-5":                     {0.50, 0.50},
+	"glm-4-plus":                {0.35, 0.35},
+	"glm-4-flash":               {0.01, 0.01},
+	"MiniMax-M2.5":              {1.0, 4.0},
+	"MiniMax-Text-01":           {0.50, 2.0},
 }
 
 var modelContextWindow = map[string]int{
-	"claude-sonnet-4-6":        200_000,
-	"claude-sonnet-4-20250514": 200_000,
-	"claude-haiku-3-5":           200_000,
-	"claude-haiku-4-5-20251001":  200_000,
-	"claude-opus-4":            200_000,
-	"gpt-4o":                   128_000,
-	"gpt-4o-mini":              128_000,
-	"gpt-4.1":                  1_000_000,
-	"gpt-4.1-mini":             1_000_000,
-	"gpt-4.1-nano":             1_000_000,
-	"o3":                       200_000,
-	"o3-mini":                  200_000,
-	"o4-mini":                  200_000,
-	"gemini-2.5-pro":           1_000_000,
-	"gemini-2.5-flash":         1_000_000,
-	"gemini-2.0-flash":         1_000_000,
-	"qwen-plus":               131_072,
-	"qwen-max":                32_768,
-	"qwen-turbo":              131_072,
-	"deepseek-v3":             64_000,
-	"deepseek-v3.2":           64_000,
-	"deepseek-chat":           64_000,
-	"deepseek-r1":             64_000,
-	"qwen3.6-plus":            131_072,
-	"qwen3.6-flash":           131_072,
-	"qwen3-coder-plus":        131_072,
-	"qwen3-coder-flash":       131_072,
-	"qwen3-max":               32_768,
-	"qwen3.5-plus":            131_072,
-	"qwen3.5-flash":           131_072,
-	"glm-5":                   128_000,
-	"glm-4-plus":              128_000,
-	"glm-4-flash":             128_000,
-	"MiniMax-M2.5":            1_000_000,
-	"MiniMax-Text-01":         1_000_000,
+	"claude-sonnet-4-6":         200_000,
+	"claude-sonnet-4-20250514":  200_000,
+	"claude-haiku-3-5":          200_000,
+	"claude-haiku-4-5-20251001": 200_000,
+	"claude-opus-4":             200_000,
+	"gpt-4o":                    128_000,
+	"gpt-4o-mini":               128_000,
+	"gpt-4.1":                   1_000_000,
+	"gpt-4.1-mini":              1_000_000,
+	"gpt-4.1-nano":              1_000_000,
+	"o3":                        200_000,
+	"o3-mini":                   200_000,
+	"o4-mini":                   200_000,
+	"gemini-2.5-pro":            1_000_000,
+	"gemini-2.5-flash":          1_000_000,
+	"gemini-2.0-flash":          1_000_000,
+	"qwen-plus":                 131_072,
+	"qwen-max":                  32_768,
+	"qwen-turbo":                131_072,
+	"deepseek-v3":               64_000,
+	"deepseek-v3.2":             64_000,
+	"deepseek-chat":             64_000,
+	"deepseek-r1":               64_000,
+	"qwen3.6-plus":              131_072,
+	"qwen3.6-flash":             131_072,
+	"qwen3-coder-plus":          131_072,
+	"qwen3-coder-flash":         131_072,
+	"qwen3-max":                 32_768,
+	"qwen3.5-plus":              131_072,
+	"qwen3.5-flash":             131_072,
+	"glm-5":                     128_000,
+	"glm-4-plus":                128_000,
+	"glm-4-flash":               128_000,
+	"MiniMax-M2.5":              1_000_000,
+	"MiniMax-Text-01":           1_000_000,
 }
 
 func contextPercent(lastInputTokens int, model string) int {

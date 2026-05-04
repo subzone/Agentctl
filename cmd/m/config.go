@@ -100,7 +100,6 @@ func setDefaultModel(w *wiz, cfg *userconfig.Config) (*userconfig.Config, error)
 	return cfg, nil
 }
 
-
 func setDefaultAgent(w *wiz, cfg *userconfig.Config) (*userconfig.Config, error) {
 	path, err := w.prompt("Path to agent .md file (or empty to clear): ")
 	if err != nil {
@@ -428,8 +427,8 @@ var dashScopeProbeModels = []string{
 func probeDashScopeModels(ctx context.Context, key, baseURL string) ([]string, error) {
 	chatURL := strings.TrimSuffix(baseURL, "/") + "/v1/chat/completions"
 	type probeResult struct {
-		model  string
-		ok     bool
+		model string
+		ok    bool
 	}
 	ch := make(chan probeResult, len(dashScopeProbeModels))
 	for _, m := range dashScopeProbeModels {

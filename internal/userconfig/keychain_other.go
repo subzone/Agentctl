@@ -9,6 +9,6 @@ import "errors"
 // vars manually.
 var errUnsupported = errors.New("keychain storage is supported on macOS and Linux only — set provider env vars manually")
 
-func saveKey(provider, key string) error    { return errUnsupported }
+func saveKey(provider, key string) error     { return errUnsupported }
 func getKey(provider string) (string, error) { return "", errUnsupported }
 func deleteKey(provider string) error        { return errUnsupported }

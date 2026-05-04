@@ -44,8 +44,6 @@ func TestWordWrapShort(t *testing.T) {
 	}
 }
 
-
-
 func TestFormatTokens(t *testing.T) {
 	tests := []struct {
 		n    int
@@ -112,7 +110,6 @@ func TestEstimateCost(t *testing.T) {
 		t.Errorf("unknown model cost = %f, want 0", got)
 	}
 }
-
 
 func TestContextPercent(t *testing.T) {
 	// Known model.

@@ -11,9 +11,9 @@ type fakeTool struct {
 	run  func(ctx context.Context, input json.RawMessage) (string, error)
 }
 
-func (f *fakeTool) Name() string                  { return f.name }
-func (f *fakeTool) Description() string           { return "fake" }
-func (f *fakeTool) InputSchema() json.RawMessage  { return json.RawMessage(`{"type":"object"}`) }
+func (f *fakeTool) Name() string                 { return f.name }
+func (f *fakeTool) Description() string          { return "fake" }
+func (f *fakeTool) InputSchema() json.RawMessage { return json.RawMessage(`{"type":"object"}`) }
 func (f *fakeTool) Run(ctx context.Context, in json.RawMessage) (string, error) {
 	return f.run(ctx, in)
 }

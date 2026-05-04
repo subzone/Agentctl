@@ -451,8 +451,6 @@ func tokenCompact(msgs []llm.Message, targetTokens int, system string) []llm.Mes
 	return result
 }
 
-
-
 // executeTools runs each tool_use block in assistant. When multiple tools
 // are requested in the same turn, they run concurrently (each tool call
 // is independent). Results are collected in order.

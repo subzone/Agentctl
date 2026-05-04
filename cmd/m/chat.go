@@ -150,8 +150,8 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 				streamCh <- streamMsg{chunk: fmt.Sprintf("→ Agent worked for %d turns. Continue? [y/n] ", turns)}
 				return <-confirmCh, nil
 			},
-			Out:         &streamWriter{ch: streamCh},
-			Status:      &streamWriter{ch: streamCh},
+			Out:    &streamWriter{ch: streamCh},
+			Status: &streamWriter{ch: streamCh},
 		})
 		return runTUI(ctx, sess, streamCh, agent.Name, providerName, model, undoStack, confirmCh)
 	}
@@ -182,8 +182,8 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 			ans := strings.TrimSpace(strings.ToLower(sc.Text()))
 			return ans == "" || ans == "y" || ans == "yes", nil
 		},
-		Out:         out,
-		Status:      stderr,
+		Out:    out,
+		Status: stderr,
 	})
 	return chatLoop(ctx, sess, undoStack, cmd.InOrStdin(), out, stderr, agent.Name)
 }

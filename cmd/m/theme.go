@@ -43,14 +43,14 @@ type Theme struct {
 
 // Styles holds the resolved lipgloss styles for a theme.
 type Styles struct {
-	Banner    lipgloss.Style
-	User      lipgloss.Style
-	Assistant lipgloss.Style
-	Tool      lipgloss.Style
-	Error     lipgloss.Style
-	Dim       lipgloss.Style
-	Prompt    lipgloss.Style
-	Border    lipgloss.Border
+	Banner     lipgloss.Style
+	User       lipgloss.Style
+	Assistant  lipgloss.Style
+	Tool       lipgloss.Style
+	Error      lipgloss.Style
+	Dim        lipgloss.Style
+	Prompt     lipgloss.Style
+	Border     lipgloss.Border
 	DiffAdd    lipgloss.Style
 	DiffRemove lipgloss.Style
 	DiffHeader lipgloss.Style
