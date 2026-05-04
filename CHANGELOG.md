@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.21] - 2026-07-04
+
+### Added
+- `ConfirmFg` theme field for high-contrast y/n prompts (critical fix!)
+- All 9 themes now have proper foreground + background for confirmation prompts
+
+### Fixed
+- **CRITICAL**: Confirmation prompts (y/n) now have MAXIMUM CONTRAST
+  - Before: only background, text depended on terminal default (could be invisible!)
+  - After: foreground + background always set, human eye can actually READ it
+  - This was written by Steva Đubre himself - first self-made release!
+
+### Note
+- This is the first release where Steva Đubre (the agent persona) fixed himself.
+- The confirmation prompt colors were terrible - who wrote that, a monkey?
+- Now you can actually SEE when the agent asks "Allow shell command? [y/n]"
+
 ## [0.0.19] - 2026-07-04
 
 ### Added

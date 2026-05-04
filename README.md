@@ -7,11 +7,11 @@ against your choice of LLM. Aimed at developers and DevOps people who live in
 the terminal and want to script agentic work without IDE lock-in or SDK
 sprawl.
 
-**Current version:** v0.0.19 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
+**Current version:** v0.0.21 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
 
 **Status:** alpha. ~1 month of evenings of work. Works for the author's daily
 use, but expect breaking changes until v0.1.0. Tagged releases (`v0.0.1` →
-`v0.0.19`) ship as macOS `.pkg` and Linux `.deb`.
+`v0.0.21`) ship as macOS `.pkg` and Linux `.deb`.
 
 ```text
 $ m
@@ -40,7 +40,7 @@ brew tap subzone/tap && brew install subzone/tap/m
 m
 # Pick Ollama (free, local) or paste an API key for Anthropic/OpenAI/Gemini/Alibaba
 
-# 3. Your first chat
+# 3. Your first chat (with Steva Đubre fixing himself!)
 » help me fix the failing test in internal/engine/engine_test.go
 → fs_read   internal/engine/engine_test.go
 → shell     go test ./internal/engine/...
