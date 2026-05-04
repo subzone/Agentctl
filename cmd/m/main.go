@@ -54,6 +54,11 @@ func main() {
 	root.AddCommand(newInstallCmd())
 	root.AddCommand(newChangelogCmd())
 	root.AddCommand(newTestCmd())
+	root.AddCommand(newNewCmd())
+	root.AddCommand(newDoctorCmd())
+
+	// Shell completions: m completion bash/zsh/fish/powershell
+	root.AddCommand(newCompletionCmd())
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)

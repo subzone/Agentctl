@@ -81,7 +81,7 @@ func New(opts ...Option) (*Provider, error) {
 		o(p)
 	}
 	if p.apiKey == "" {
-		return nil, errors.New("OPENAI_API_KEY is not set")
+		return nil, errors.New("openai API key not found — run `m config` to set it up, or export OPENAI_API_KEY")
 	}
 	return p, nil
 }

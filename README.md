@@ -7,11 +7,11 @@ against your choice of LLM. Aimed at developers and DevOps people who live in
 the terminal and want to script agentic work without IDE lock-in or SDK
 sprawl.
 
-**Current version:** v0.0.25 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
+**Current version:** v0.0.26 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
 
 **Status:** alpha. ~1 month of evenings of work. Works for the author's daily
 use, but expect breaking changes until v0.1.0. Tagged releases (`v0.0.1` →
-`v0.0.25`) ship as macOS `.pkg` and Linux `.deb`.
+`v0.0.26`) ship as macOS `.pkg` and Linux `.deb`.
 
 ```text
 $ m
@@ -34,7 +34,7 @@ Full docs site (EN + SR): **<https://subzone.github.io/Agentctl/>**
 ```bash
 # 1. Install (macOS — pick one)
 brew tap subzone/tap && brew install subzone/tap/m
-# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.25_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
+# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.26_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
 
 # 2. Run the setup wizard
 m
@@ -60,6 +60,16 @@ m
 # 5. Run a specific agent
 m run examples/agents/devops.md "review the Dockerfile"
 m chat examples/agents/coder.md
+
+# 6. Create your own agent
+m new my-agent
+# edit my-agent.md, then: m chat my-agent
+
+# 7. Check your setup
+m doctor
+
+# 8. Shell completions
+m completion zsh > "${fpath[1]}/_m"
 ```
 
 ---
@@ -97,6 +107,24 @@ m
 # Pick a provider (Ollama / Anthropic / OpenAI / Gemini / Alibaba / LiteLLM)
 # Paste an API key (or skip for Ollama)
 # Done — drops you into a chat with the default agent
+```
+
+Verify your setup:
+
+```bash
+m doctor
+# Checks config, API key, model reachability, tools (git, grep, rg)
+```
+
+### Shell completions
+
+```bash
+# bash
+m completion bash > /etc/bash_completion.d/m
+# zsh
+m completion zsh > "${fpath[1]}/_m"
+# fish
+m completion fish > ~/.config/fish/completions/m.fish
 ```
 
 API keys are stored in the OS keychain (macOS Keychain / Linux libsecret).
@@ -250,7 +278,7 @@ into the same registry as built-ins. Supported transports:
 | `/spec`     | Show the agent's resolved spec |
 | `/model`    | Switch provider/model mid-session |
 | `/models`   | List available models, pick by number |
-| `/save`     | Save session snapshot (timestamped) |
+| `/save [name]` | Save session snapshot — `/save` (timestamped) or `/save fixing-auth` (named) |
 | `/sessions` | List saved sessions |
 | `/resume`   | Resume a saved session by id or number |
 | `/themes`   | List available themes with descriptions |

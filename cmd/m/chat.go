@@ -463,8 +463,8 @@ func handleSlash(line string, state *chatState, status io.Writer) (handled, exit
 		fmt.Fprintln(status, "use /theme <name> to switch")
 		return true, false
 	}
-	if line == "/save" {
-		handleSessionSave(state.sess, status)
+	if line == "/save" || strings.HasPrefix(line, "/save ") {
+		handleSessionSave(line, state.sess, status)
 		return true, false
 	}
 	if line == "/sessions" {
@@ -586,7 +586,7 @@ func handleModelsCommand(line string, sess *engine.Session, status io.Writer) {
 	fmt.Fprintln(status, "\n  * = current | /models <number> to switch")
 }
 
-func handleSessionSave(sess *engine.Session, status io.Writer) {
+func handleSessionSave(line string, sess *engine.Session, status io.Writer) {
 	store, err := sessionStore()
 	if err != nil {
 		fmt.Fprintf(status, "error: %v\n", err)
@@ -597,7 +597,9 @@ func handleSessionSave(sess *engine.Session, status io.Writer) {
 	if cfg != nil {
 		provider = string(cfg.Provider)
 	}
-	id := sessionID("")
+	// Extract optional name from "/save my session name"
+	name := strings.TrimSpace(strings.TrimPrefix(line, "/save"))
+	id := sessionID(name)
 	data := exportSession(sess, provider, model)
 	if err := store.SaveSession(context.Background(), id, data); err != nil {
 		fmt.Fprintf(status, "error saving session: %v\n", err)

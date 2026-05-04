@@ -60,7 +60,7 @@ func New(opts ...Option) (*Provider, error) {
 		o(p)
 	}
 	if p.apiKey == "" {
-		return nil, errors.New("ANTHROPIC_API_KEY is not set")
+		return nil, errors.New("anthropic API key not found — run `m config` to set it up, or export ANTHROPIC_API_KEY")
 	}
 	return p, nil
 }

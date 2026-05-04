@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.26] - 2026-05-04
+
+### Added
+- `m new <name>`: scaffold a new agent .md file with boilerplate frontmatter
+- `m doctor`: health check — config, API key, model reachability, tools (git, rg, grep)
+- `m completion bash/zsh/fish/powershell`: shell completion scripts
+- Named sessions: `/save fixing-auth-bug` creates a named snapshot
+
+### Changed
+- Error messages: API key errors now include fix instructions (`run m config` or `export ...`)
+
 ## [0.0.25] - 2026-05-04
 
 ### Added
@@ -161,6 +172,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Theme system (matrix, default, minimal)
 - System stats (CPU/RAM/GPU/Disk)
 
+[0.0.26]: https://github.com/subzone/Agentctl/compare/v0.0.25...v0.0.26
 [0.0.25]: https://github.com/subzone/Agentctl/compare/v0.0.24...v0.0.25
 [0.0.24]: https://github.com/subzone/Agentctl/compare/v0.0.23...v0.0.24
 [0.0.23]: https://github.com/subzone/Agentctl/compare/v0.0.22...v0.0.23

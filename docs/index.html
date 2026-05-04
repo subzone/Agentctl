@@ -40,7 +40,7 @@
 <!-- HERO -->
 <section class="hero">
   <div class="hero-inner">
-    <div class="hero-badge"><span class="hero-badge-dot"></span> v0.0.25 — Free to use</div>
+    <div class="hero-badge"><span class="hero-badge-dot"></span> v0.0.26 — Free to use</div>
     <h1>One file.<br><span class="hero-gradient">One agent.</span></h1>
     <p>Drop a Markdown file into your repo and get a fully-equipped AI agent with tools, MCP integrations, and sub-agent delegation. 6 providers. 9 built-in tools. Zero boilerplate.</p>
     <div class="hero-buttons">
@@ -332,6 +332,18 @@ Always consider security.
           Can I use it for DevOps / infrastructure work? <span class="faq-arrow">+</span>
         </button>
         <div class="faq-a">Absolutely. The repo ships with purpose-built agents for Kubernetes debugging, Terraform plan review, Helm chart management, and Jira/Confluence ticket-driven development. Through the shell tool, agents have access to kubectl, terraform, helm, and any other CLI on your system.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          How do I create my own agent? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">Run <code>m new my-agent</code> to scaffold a new agent .md file with boilerplate. Edit the system prompt and tools list, then <code>m chat my-agent</code>. You can also install agents globally with <code>m install ./my-agent.md</code> and run them by name from anywhere.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          How do I check if everything is set up correctly? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">Run <code>m doctor</code>. It checks your config, API key, model reachability, required tools (git, grep), and session encryption. If anything is wrong, it tells you exactly how to fix it.</div>
       </div>
     </div>
   </div>

@@ -85,10 +85,13 @@ Linux: ~/.config/m/sessions/</code></pre>
     </div>
 
     <div class="docs-card" style="margin-bottom: 2rem;">
-      <h3><code>/save</code></h3>
-      <p>Create a named snapshot of the current session. The snapshot is timestamped and stored alongside the autosave.</p>
+      <h3><code>/save [name]</code></h3>
+      <p>Create a snapshot of the current session. Without a name, it's timestamped. With a name, it's easy to find later.</p>
       <pre><code>» /save
-session saved: 2025-07-04_12-30 (8 messages)</code></pre>
+session saved: 2025-07-04_12-30 (8 messages)
+
+» /save fixing-auth-bug
+session saved: 2025-07-04_12-30_fixing-auth-bug (8 messages)</code></pre>
     </div>
 
     <div class="docs-card" style="margin-bottom: 2rem;">

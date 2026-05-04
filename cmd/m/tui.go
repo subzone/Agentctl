@@ -329,9 +329,9 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendHistory(fmt.Sprintf("switched to %s theme\n", arg))
 				return m, nil
 			}
-			if line == "/save" {
+			if line == "/save" || strings.HasPrefix(line, "/save ") {
 				buf := &strings.Builder{}
-				handleSessionSave(m.sess, buf)
+				handleSessionSave(line, m.sess, buf)
 				m.appendHistory(buf.String())
 				return m, nil
 			}
