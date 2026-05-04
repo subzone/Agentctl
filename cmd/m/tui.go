@@ -224,7 +224,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendHistory("(history cleared)\n")
 				return m, nil
 			case "/help":
-				m.appendHistory("commands: /exit /quit /reset /compact /undo /trust /model <provider/model> /models /theme [name] /themes /save /sessions /resume <id> /config /help\n")
+				m.appendHistory("commands: /exit /quit /reset /compact /undo /trust /debug /model <provider/model> /models /theme [name] /themes /save /sessions /resume <id> /config /help\n")
 				return m, nil
 			case "/trust":
 				if m.trustMode != nil {
@@ -237,6 +237,9 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					*m.trustMode = false
 				}
 				m.appendHistory("trust mode OFF — destructive tools require confirmation\n")
+				return m, nil
+			case "/debug":
+				m.appendHistory("debug mode not available in TUI — use REPL mode (pipe input) for raw LLM trace\n")
 				return m, nil
 			case "/config":
 				m.appendHistory("run `m config` from the shell to manage providers and models\n")
