@@ -51,6 +51,7 @@ func main() {
 	root.AddCommand(newInitCmd())
 	root.AddCommand(newConfigCmd())
 	root.AddCommand(newListCmd())
+	root.AddCommand(newInstallCmd())
 	root.AddCommand(newChangelogCmd())
 	root.AddCommand(newTestCmd())
 

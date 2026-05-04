@@ -106,11 +106,12 @@ func newChatCmd() *cobra.Command {
 }
 
 func runChat(cmd *cobra.Command, args []string) error {
-	doc, err := config.ParseFile(args[0])
+	path := resolveAgentPath(args[0])
+	doc, err := config.ParseFile(path)
 	if err != nil {
 		return err
 	}
-	return runChatWithDoc(cmd, doc, loadCompanionDocs(args[0]))
+	return runChatWithDoc(cmd, doc, loadCompanionDocs(path))
 }
 
 // runChatWithDoc drives the chat REPL against a parsed agent document.

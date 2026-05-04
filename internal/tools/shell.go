@@ -20,7 +20,7 @@ type ShellTool struct {
 
 // NewShell returns a ShellTool with reasonable defaults.
 func NewShell() *ShellTool {
-	return &ShellTool{Timeout: 30 * time.Second, MaxOut: 16 * 1024, Shell: "/bin/sh"}
+	return &ShellTool{Timeout: 120 * time.Second, MaxOut: 16 * 1024, Shell: "/bin/sh"}
 }
 
 // Name implements Tool.

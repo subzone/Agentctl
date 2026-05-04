@@ -26,6 +26,8 @@ type undoEntry struct {
 	existed bool
 }
 
+const maxUndoEntries = 20
+
 // Push saves the current state of a file before modification.
 func (u *UndoStack) Push(path string) {
 	u.mu.Lock()
@@ -35,6 +37,10 @@ func (u *UndoStack) Push(path string) {
 		u.stack = append(u.stack, undoEntry{path: path, existed: false})
 	} else {
 		u.stack = append(u.stack, undoEntry{path: path, content: content, existed: true})
+	}
+	// Cap the stack to prevent unbounded growth.
+	if len(u.stack) > maxUndoEntries {
+		u.stack = u.stack[len(u.stack)-maxUndoEntries:]
 	}
 }
 
