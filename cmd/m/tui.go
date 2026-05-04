@@ -351,9 +351,10 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			if m.thinking {
 				m.thinking = false
 				if msg.err != nil && !errors.Is(msg.err, context.Canceled) {
-					m.appendHistory(m.styles.Error.Render(fmt.Sprintf("error: %v", msg.err)) + "\n")
+					m.appendHistoryImportant(m.styles.Error.Render(fmt.Sprintf("error: %v", msg.err)) + "\n")
 				} else {
-					m.appendHistory("\n")
+					// Force viewport update to flush any throttled content.
+					m.appendHistoryImportant("\n")
 				}
 			}
 			// If not thinking (already cancelled), just drain silently.
@@ -370,7 +371,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		chunk := msg.chunk
 		if (strings.HasPrefix(chunk, "→ Allow ") || strings.HasPrefix(chunk, "→ Agent worked for")) && strings.HasSuffix(strings.TrimSpace(chunk), "[y/n]") {
 			m.confirming = true
-			m.appendHistory(m.styles.Confirm.Render(strings.TrimRight(chunk, "\n")) + "\n")
+			m.appendHistoryImportant(m.styles.Confirm.Render(strings.TrimRight(chunk, "\n")) + "\n")
 			return m, nil // Don't listen for more — wait for y/n keypress
 		}
 		if strings.HasPrefix(chunk, "→ ") || strings.HasPrefix(chunk, "← ") {
@@ -417,6 +418,17 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 // During streaming (m.thinking == true), always auto-scrolls to bottom.
 // When idle, preserves the user's scroll position.
 func (m *tuiModel) appendHistory(s string) {
+	m.appendHistoryForce(s, false)
+}
+
+// appendHistoryImportant adds text and always updates the viewport,
+// bypassing the streaming throttle. Use for confirm prompts and other
+// state-change messages that the user must see immediately.
+func (m *tuiModel) appendHistoryImportant(s string) {
+	m.appendHistoryForce(s, true)
+}
+
+func (m *tuiModel) appendHistoryForce(s string, force bool) {
 	m.history.WriteString(s)
 
 	// Truncate if history is too large.
@@ -432,8 +444,9 @@ func (m *tuiModel) appendHistory(s string) {
 		m.history.WriteString(content)
 	}
 
-	// Throttle viewport updates to ~60fps during streaming.
-	if m.thinking && time.Since(m.lastUpdateTime) < 16*time.Millisecond {
+	// Throttle viewport updates to ~60fps during streaming, but never
+	// throttle important messages (confirm prompts, errors, etc.).
+	if !force && m.thinking && time.Since(m.lastUpdateTime) < 16*time.Millisecond {
 		return
 	}
 	m.lastUpdateTime = time.Now()
