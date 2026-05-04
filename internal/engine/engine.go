@@ -564,7 +564,7 @@ func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context
 
 // readOnlyTools is the set of tool names that never need user confirmation
 // because they only read data without making any changes.
-var readOnlyTools = map[string]bool{"fs_read": true, "fs_list": true, "web_fetch": true}
+var readOnlyTools = map[string]bool{"fs_read": true, "fs_list": true, "web_fetch": true, "code_search": true}
 
 func runToolBlock(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), errIntervene func(context.Context, string, string) string, status io.Writer, b llm.ContentBlock) llm.ContentBlock {
 	// Read-only tools skip confirmation.

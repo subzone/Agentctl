@@ -12,6 +12,7 @@ tools:
   - fs_read
   - fs_list
   - web_fetch
+  - code_search
   - git
 mcp:
   - jira

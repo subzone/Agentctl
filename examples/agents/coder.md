@@ -13,6 +13,7 @@ tools:
   - fs_write
   - fs_list
   - web_fetch
+  - code_search
 mcp:
   - github
 skills:

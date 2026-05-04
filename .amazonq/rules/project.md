@@ -141,15 +141,16 @@ make docker         # docker build
 3. `git commit && git tag v0.0.X && git push origin main --tags`
 4. If retag needed: delete GitHub release first, then retag
 
-## Current State (v0.0.23)
+## Current State (v0.0.24)
 
 - ~10,000 lines production + ~5,000 lines tests
 - 15 packages, 32 example agents, 8 MB binary
-- 9 themes, 6 providers, 8 tools
-- Session persistence (AES-256-GCM)
+- 9 themes, 6 providers, 9 tools
+- Session persistence (AES-256-GCM) with history rotation
 - Fallback models, per-agent thinking phrases
 - Token-based context compaction
 - Dangerous command double-confirmation
+- code_search: grep + symbol index (9 languages)
 - Homebrew tap, CI/CD, open source community files
 
 ### What's Next

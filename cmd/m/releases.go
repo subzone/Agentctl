@@ -25,6 +25,17 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.24",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"code_search tool: grep + in-memory symbol index (functions, types, classes, imports).",
+			"Languages: Go, Python, JS, TS, Java, Ruby, Rust, Terraform, Shell.",
+			"Session history: autosave rotates, keeps last 10 backups.",
+			"/trust command: auto-approve tools (dangerous commands still double-confirm).",
+			"Dangerous command protection: 34 patterns always require double y/n.",
+		},
+	},
+	{
 		Version: "0.0.23",
 		Date:    "2026-05-04",
 		Highlights: []string{

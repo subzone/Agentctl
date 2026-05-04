@@ -32,11 +32,12 @@ const (
 // readOnlyTUITools are auto-approved in TUI mode (no y/n prompt).
 // Destructive tools (shell, fs_write, git) still require confirmation.
 var readOnlyTUITools = map[string]bool{
-	"fs_read":   true,
-	"fs_list":   true,
-	"web_fetch": true,
-	"test_run":  true,
-	"delegate":  true,
+	"fs_read":     true,
+	"fs_list":     true,
+	"web_fetch":   true,
+	"test_run":    true,
+	"delegate":    true,
+	"code_search": true,
 }
 
 // dangerousPatterns are shell command patterns that ALWAYS require double

@@ -12,6 +12,7 @@ tools:
   - fs_write
   - fs_list
   - web_fetch
+  - code_search
 temperature: 0.6
 max_tokens: 4096
 ---

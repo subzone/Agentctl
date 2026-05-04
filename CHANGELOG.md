@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.24] - 2026-05-04
+
+### Added
+- `code_search` tool: codebase search with two modes
+  - `text`: grep/ripgrep for pattern matching across source files
+  - `symbol`: in-memory index of functions, types, classes, imports
+  - Languages: Go, Python, JavaScript, TypeScript, Java, Ruby, Rust, Terraform, Shell
+  - Index built lazily on first symbol search, cached for session
+- Session history rotation: autosave backs up before overwriting, keeps last 10
+- `/trust` command in TUI: auto-approve tools (dangerous commands still double-confirm)
+- Dangerous command protection: 34 patterns (`rm -rf`, `kubectl delete`, etc.) always require double confirmation even in trust mode
+- `code_search` added to all 31 example agents
+
+### Changed
+- Tool count: 8 → 9 built-in tools
+- Known gaps updated: codebase RAG partially addressed by code_search
+
 ## [0.0.23] - 2026-05-04
 
 ### Added
@@ -129,6 +146,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Theme system (matrix, default, minimal)
 - System stats (CPU/RAM/GPU/Disk)
 
+[0.0.24]: https://github.com/subzone/Agentctl/compare/v0.0.23...v0.0.24
 [0.0.23]: https://github.com/subzone/Agentctl/compare/v0.0.22...v0.0.23
 [0.0.22]: https://github.com/subzone/Agentctl/compare/v0.0.21...v0.0.22
 [0.0.21]: https://github.com/subzone/Agentctl/compare/v0.0.20...v0.0.21

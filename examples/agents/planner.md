@@ -11,6 +11,7 @@ tools:
   - fs_read
   - fs_list
   - web_fetch
+  - code_search
 temperature: 0.2
 max_tokens: 2048
 ---

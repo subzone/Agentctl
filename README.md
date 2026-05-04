@@ -7,11 +7,11 @@ against your choice of LLM. Aimed at developers and DevOps people who live in
 the terminal and want to script agentic work without IDE lock-in or SDK
 sprawl.
 
-**Current version:** v0.0.23 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
+**Current version:** v0.0.24 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
 
 **Status:** alpha. ~1 month of evenings of work. Works for the author's daily
 use, but expect breaking changes until v0.1.0. Tagged releases (`v0.0.1` →
-`v0.0.23`) ship as macOS `.pkg` and Linux `.deb`.
+`v0.0.24`) ship as macOS `.pkg` and Linux `.deb`.
 
 ```text
 $ m
@@ -34,7 +34,7 @@ Full docs site (EN + SR): **<https://subzone.github.io/Agentctl/>**
 ```bash
 # 1. Install (macOS — pick one)
 brew tap subzone/tap && brew install subzone/tap/m
-# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.23_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
+# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.24_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
 
 # 2. Run the setup wizard
 m
@@ -139,6 +139,7 @@ tools:
   - git
   - test_run
   - web_fetch
+  - code_search
 temperature: 0.3
 thinking_phrases:
   - "analyzing"
@@ -183,6 +184,7 @@ including `coder`, `reviewer`, `planner`, `k8s-debug`, `terraform-plan`,
 | `git`       | Common git operations                    | yes for writes    |
 | `test_run`  | Run the project's test command           | no                |
 | `web_fetch` | Fetch a URL and extract readable text    | no                |
+| `code_search`| Search codebase: text (grep) + symbol index | no             |
 | `delegate`  | Call a sub-agent                         | no                |
 
 `fs_write` writes are reversible via `/undo`.
@@ -283,7 +285,7 @@ structured output mechanics), see the
 
 - Single-binary install on macOS / Linux (amd64 + arm64)
 - 6 LLM providers, switchable mid-session
-- 8 built-in tools with user confirmation on writes + undo
+- 9 built-in tools with user confirmation on writes + undo
 - MCP stdio transport with auto-discovery and namespacing
 - Hub-and-spoke sub-agent delegation
 - Provider-native structured output enforcement (`response_schema`)
@@ -298,9 +300,9 @@ structured output mechanics), see the
 
 These are real, not roadmap-ware. They affect what AgentCTL can be used for today:
 
-- **No codebase RAG / context retrieval.** Agents see what they explicitly
-  read with `fs_read` / `fs_list` / `web_fetch`. There's no embedding store, no
-  similarity search. See [Codebase context (RAG)](#codebase-context-rag) below.
+- **No codebase RAG / embedding store.** The `code_search` tool provides
+  grep + symbol index search, but there's no semantic/embedding-based
+  retrieval. For most codebases, `code_search` + `fs_read` is sufficient.
 - **MCP HTTP/SSE transport not implemented.** Stdio only. Many real-world
   MCP servers use HTTP — they don't work yet.
 - **No `/trust` for autonomous sessions.** Every `fs_write` and `shell`
