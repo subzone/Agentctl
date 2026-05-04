@@ -35,4 +35,4 @@ jobs:
         run: CGO_ENABLED=0 go build -trimpath -o m ./cmd/m
 
       - name: Validate example agents
-        run: ./m validate examples/agents/*.md
+        run: ./m validate examples/
