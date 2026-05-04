@@ -34,7 +34,7 @@ Full docs site (EN + SR): **<https://subzone.github.io/Agentctl/>**
 ```bash
 # 1. Install (macOS — pick one)
 brew tap subzone/tap && brew install subzone/tap/m
-# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.19_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
+# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.21_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
 
 # 2. Run the setup wizard
 m

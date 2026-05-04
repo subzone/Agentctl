@@ -25,6 +25,17 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.21",
+		Date:    "2026-07-04",
+		Highlights: []string{
+			"High-contrast y/n confirmation prompts — ConfirmFg theme field, all 9 themes updated.",
+			"TUI: bypass throttle for important messages (tool output, confirmations).",
+			"Lint fixes: gocritic if-else chain rewritten to switch, go fmt formatting.",
+			"CI: validate all examples/ so cross-references resolve.",
+			"First self-made release by Steva Đubre!",
+		},
+	},
+	{
 		Version: "0.0.19",
 		Date:    "2026-07-04",
 		Highlights: []string{
