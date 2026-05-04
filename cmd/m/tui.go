@@ -92,12 +92,13 @@ type tuiModel struct {
 	height int
 	name           string
 	agentPhrases   []string // per-agent thinking phrases (highest priority)
+	trustMode      *bool    // shared with tool confirm closure
 
 	// UI stability improvements
 	lastUpdateTime time.Time // timestamp of last viewport update to throttle
 }
 
-func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, name, provider, model string, undo *tools.UndoStack, confirmCh chan bool, agentPhrases []string) tuiModel {
+func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, name, provider, model string, undo *tools.UndoStack, confirmCh chan bool, agentPhrases []string, trust *bool) tuiModel {
 	in := textinput.New()
 	in.Prompt = "» "
 	in.Placeholder = "type a message, /exit to quit"
@@ -131,6 +132,7 @@ func newTUIModel(ctx context.Context, sess *engine.Session, ch chan streamMsg, n
 		undo:           undo,
 		confirmCh:      confirmCh,
 		agentPhrases:   agentPhrases,
+		trustMode:      trust,
 		lastUpdateTime: time.Now(),
 	}
 }
@@ -222,7 +224,19 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.appendHistory("(history cleared)\n")
 				return m, nil
 			case "/help":
-				m.appendHistory("commands: /exit /quit /reset /compact /undo /model <provider/model> /models /theme [name] /themes /save /sessions /resume <id> /config /help\n")
+				m.appendHistory("commands: /exit /quit /reset /compact /undo /trust /model <provider/model> /models /theme [name] /themes /save /sessions /resume <id> /config /help\n")
+				return m, nil
+			case "/trust":
+				if m.trustMode != nil {
+					*m.trustMode = true
+				}
+				m.appendHistory("trust mode ON — all tools auto-approved\n")
+				return m, nil
+			case "/trust off":
+				if m.trustMode != nil {
+					*m.trustMode = false
+				}
+				m.appendHistory("trust mode OFF — destructive tools require confirmation\n")
 				return m, nil
 			case "/config":
 				m.appendHistory("run `m config` from the shell to manage providers and models\n")
@@ -371,7 +385,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Detect tool confirmation prompts.
 		chunk := msg.chunk
-		if (strings.HasPrefix(chunk, "→ Allow ") || strings.HasPrefix(chunk, "→ Agent worked on")) && strings.HasSuffix(strings.TrimSpace(chunk), "[y/n]") {
+		if strings.HasSuffix(strings.TrimSpace(chunk), "[y/n]") {
 			m.confirming = true
 			m.appendHistoryImportant(m.styles.Confirm.Render(strings.TrimRight(chunk, "\n")) + "\n")
 			return m, nil // Don't listen for more — wait for y/n keypress
@@ -892,8 +906,8 @@ func thinkingPhrase(tick int, theme *Theme, agentPhrases []string) string {
 // having wired sess.Out to a streamWriter pointing at streamCh — that
 // happens in runChatWithDoc so the engine starts streaming the moment
 // Step is called.
-func runTUI(ctx context.Context, sess *engine.Session, streamCh chan streamMsg, name, provider, model string, undo *tools.UndoStack, confirmCh chan bool, agentPhrases []string) error {
-	m := newTUIModel(ctx, sess, streamCh, name, provider, model, undo, confirmCh, agentPhrases)
+func runTUI(ctx context.Context, sess *engine.Session, streamCh chan streamMsg, name, provider, model string, undo *tools.UndoStack, confirmCh chan bool, agentPhrases []string, trust *bool) error {
+	m := newTUIModel(ctx, sess, streamCh, name, provider, model, undo, confirmCh, agentPhrases, trust)
 	p := tea.NewProgram(m, tea.WithAltScreen())
 	_, err := p.Run()
 	return err

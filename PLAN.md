@@ -266,10 +266,25 @@ Each milestone is small and demoable. We mark them done as we ship.
             server with credentials; both are larger than M8's packaging
             scope.
 
-After M8 the CLI is production-shaped. *Then* revisit operator / helm /
-worker subcommand with the engine already battle-tested.
+After M8 the CLI is production-shaped.
 
-## Decided
+- [x] **Post-M8 — UX & Polish** (v0.0.14–v0.0.23):
+      Full-screen TUI (bubbletea), 9 themes, token/cost/context tracking,
+      system stats, `/trust` + `/debug` toggles, `m list` agent discovery,
+      session persistence (AES-256-GCM), `web_fetch` tool, `/models` picker,
+      fallback models, per-agent thinking phrases, markdown rendering in TUI,
+      dangerous command double-confirmation, token-based context compaction,
+      reasoning model support (MiniMax, DeepSeek-R1), Alibaba token plan,
+      Homebrew tap, CI/CD, open source community files.
+
+## Deferred (do not build yet)
+
+- Operator, CRDs, helm chart
+- `agent worker` subcommand and task queue
+- HTTP/SSE MCP transports (port exists, only stdio implemented)
+- Codebase RAG / embedding store
+- Native plugins (Go plugin, WASM) — MCP covers this
+- Web UI, telemetry backends
 
 - **Language**: Go 1.26+. Static build, `CGO_ENABLED=0`.
 - **CLI framework**: `spf13/cobra`.

@@ -39,6 +39,52 @@ var readOnlyTUITools = map[string]bool{
 	"delegate":  true,
 }
 
+// dangerousPatterns are shell command patterns that ALWAYS require double
+// confirmation, even in /trust mode. These can cause irreversible damage.
+var dangerousPatterns = []string{
+	"rm -rf",
+	"rm -fr",
+	"rmdir",
+	"mkfs",
+	"dd if=",
+	"> /dev/",
+	"chmod -R 777",
+	"chmod 777",
+	":(){:|:&};:",
+	"fork bomb",
+	"kubectl delete",
+	"kubectl drain",
+	"terraform destroy",
+	"drop database",
+	"drop table",
+	"truncate table",
+	"format c:",
+	"shutdown",
+	"reboot",
+	"init 0",
+	"init 6",
+	"systemctl stop",
+	"git push --force",
+	"git push -f",
+	"git reset --hard",
+	"git clean -fd",
+}
+
+// isDangerousCommand checks if a tool call contains a dangerous pattern.
+// Returns the matched pattern or empty string.
+func isDangerousCommand(name string, input json.RawMessage) string {
+	if name != "shell" && name != "git" {
+		return ""
+	}
+	cmd := strings.ToLower(string(input))
+	for _, p := range dangerousPatterns {
+		if strings.Contains(cmd, strings.ToLower(p)) {
+			return p
+		}
+	}
+	return ""
+}
+
 // chatState holds mutable session state that slash commands can modify.
 type chatState struct {
 	sess        *engine.Session
@@ -137,9 +183,19 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 		defer rt.close()
 		confirmCh := make(chan bool, 1)
 		// TUI tool confirmation: auto-approve read-only tools, prompt for
-		// destructive ones via the confirm channel.
+		// destructive ones via the confirm channel. Trust mode bypasses all.
+		tuiTrust := new(bool) // shared with tuiModel via pointer
 		tuiToolConfirm := func(_ context.Context, name string, input json.RawMessage) (bool, error) {
-			if readOnlyTUITools[name] {
+			// Dangerous commands ALWAYS require double confirmation, even in trust mode.
+			if pattern := isDangerousCommand(name, input); pattern != "" {
+				streamCh <- streamMsg{chunk: fmt.Sprintf("⚠️  DANGEROUS: \"%s\" detected in %s %s\n→ Are you REALLY sure? [y/n] ", pattern, name, summarizeToolInput(input))}
+				if !(<-confirmCh) {
+					return false, nil
+				}
+				streamCh <- streamMsg{chunk: "→ This is irreversible. Confirm again? [y/n] "}
+				return <-confirmCh, nil
+			}
+			if readOnlyTUITools[name] || *tuiTrust {
 				streamCh <- streamMsg{chunk: fmt.Sprintf("→ %s %s\n", name, summarizeToolInput(input))}
 				return true, nil
 			}
@@ -164,7 +220,7 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 			Out:    &streamWriter{ch: streamCh},
 			Status: &streamWriter{ch: streamCh},
 		})
-		return runTUI(ctx, sess, streamCh, agent.Name, providerName, model, undoStack, confirmCh, agent.ThinkingPhrases)
+		return runTUI(ctx, sess, streamCh, agent.Name, providerName, model, undoStack, confirmCh, agent.ThinkingPhrases, tuiTrust)
 	}
 
 	// REPL mode: stdin-based confirmation for fs_write.
@@ -214,6 +270,25 @@ func makeReplToolConfirm(stderr io.Writer, in io.Reader, state *chatState) func(
 		// Read-only tools are always auto-approved.
 		if readOnlyTUITools[name] {
 			return true, nil
+		}
+		// Dangerous commands ALWAYS require double confirmation, even in trust mode.
+		if pattern := isDangerousCommand(name, input); pattern != "" {
+			fmt.Fprintf(stderr, "\n⚠️  DANGEROUS: \"%s\" detected in %s %s\n", pattern, name, summarizeToolInput(input))
+			fmt.Fprintf(stderr, "Are you REALLY sure? [y/N]: ")
+			sc := bufio.NewScanner(in)
+			if !sc.Scan() {
+				return false, nil
+			}
+			ans := strings.TrimSpace(strings.ToLower(sc.Text()))
+			if ans != "y" && ans != "yes" {
+				return false, nil
+			}
+			fmt.Fprintf(stderr, "This is irreversible. Confirm again? [y/N]: ")
+			if !sc.Scan() {
+				return false, nil
+			}
+			ans = strings.TrimSpace(strings.ToLower(sc.Text()))
+			return ans == "y" || ans == "yes", nil
 		}
 		// Trust mode: auto-approve with log.
 		if state.autoApprove {
