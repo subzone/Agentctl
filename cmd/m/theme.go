@@ -33,6 +33,7 @@ type Theme struct {
 	DiffAdd    string `yaml:"diff_add,omitempty"`    // added lines background
 	DiffRemove string `yaml:"diff_remove,omitempty"` // removed lines background
 	DiffHeader string `yaml:"diff_header,omitempty"` // diff header (--- +++ lines)
+	ConfirmFg  string `yaml:"confirm_fg,omitempty"`  // confirmation prompt foreground (text)
 	ConfirmBg  string `yaml:"confirm_bg,omitempty"`  // confirmation prompt background
 
 	// Thinking phrases shown while the agent works.
@@ -91,11 +92,20 @@ func (t *Theme) Resolve() Styles {
 		s.DiffHeader = lipgloss.NewStyle().Faint(true).Foreground(lipgloss.Color("#6b7280"))
 	}
 
-	if t.ConfirmBg != "" {
-		s.Confirm = lipgloss.NewStyle().Bold(true).Background(lipgloss.Color(t.ConfirmBg)).Padding(0, 1)
+	// Confirmation prompt: ALWAYS use high contrast (foreground + background)
+	// This is critical for visibility - user MUST see y/n prompts clearly
+	if t.ConfirmFg != "" && t.ConfirmBg != "" {
+		// Both specified - use them
+		s.Confirm = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color(t.ConfirmFg)).Background(lipgloss.Color(t.ConfirmBg)).Padding(0, 1)
+	} else if t.ConfirmBg != "" {
+		// Only background - use bright white/yellow text for contrast
+		s.Confirm = lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#ffffff")).Background(lipgloss.Color(t.ConfirmBg)).Padding(0, 1)
+	} else if t.ConfirmFg != "" {
+		// Only foreground - use it with underline for visibility
+		s.Confirm = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color(t.ConfirmFg)).Padding(0, 1)
 	} else {
-		// No background - just bold and underline for visibility
-		s.Confirm = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color("#fbbf24"))
+		// Neither - use bright yellow on default background with underline
+		s.Confirm = lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color("#fbbf24")).Padding(0, 1)
 	}
 
 	return s
@@ -124,7 +134,8 @@ var (
 		DiffAdd:    "#002200",
 		DiffRemove: "#220000",
 		DiffHeader: "#001100",
-		ConfirmBg:  "#001a00",
+		ConfirmFg:  "#00ff00",
+		ConfirmBg:  "#003300",
 	}
 
 	// Default - clean blue accents, no backgrounds
@@ -141,7 +152,8 @@ var (
 		DiffAdd:    "",
 		DiffRemove: "",
 		DiffHeader: "#4e4e4e",
-		ConfirmBg:  "",
+		ConfirmFg:  "#ffffff",
+		ConfirmBg:  "#1e3a5f",
 	}
 
 	// Minimal - no colors at all
@@ -158,6 +170,7 @@ var (
 		DiffAdd:    "",
 		DiffRemove: "",
 		DiffHeader: "",
+		ConfirmFg:  "",
 		ConfirmBg:  "",
 	}
 
@@ -175,7 +188,8 @@ var (
 		DiffAdd:    "#2e443a",
 		DiffRemove: "#423842",
 		DiffHeader: "#3b4252",
-		ConfirmBg:  "#3b4252",
+		ConfirmFg:  "#eceff4",
+		ConfirmBg:  "#5e81ac",
 	}
 
 	// Dracula - dark theme with high contrast
@@ -192,7 +206,8 @@ var (
 		DiffAdd:    "#1e3a2f",
 		DiffRemove: "#3a1e2f",
 		DiffHeader: "#44475a",
-		ConfirmBg:  "#44475a",
+		ConfirmFg:  "#f8f8f2",
+		ConfirmBg:  "#6272a4",
 	}
 
 	// Gruvbox - retro groove colors, warm and cozy
@@ -209,7 +224,8 @@ var (
 		DiffAdd:    "#323529",
 		DiffRemove: "#3c2a2a",
 		DiffHeader: "#3c3836",
-		ConfirmBg:  "#3c3836",
+		ConfirmFg:  "#ebdbb2",
+		ConfirmBg:  "#665c54",
 	}
 
 	// TokyoNight - clean dark theme inspired by Tokyo Night
@@ -226,7 +242,8 @@ var (
 		DiffAdd:    "#1e3a3a",
 		DiffRemove: "#3a1e2e",
 		DiffHeader: "#292e42",
-		ConfirmBg:  "#292e42",
+		ConfirmFg:  "#c0caf5",
+		ConfirmBg:  "#565f89",
 	}
 
 	// Catppuccin - soothing pastel theme
@@ -243,7 +260,8 @@ var (
 		DiffAdd:    "#243032",
 		DiffRemove: "#302430",
 		DiffHeader: "#313244",
-		ConfirmBg:  "#313244",
+		ConfirmFg:  "#cdd6f4",
+		ConfirmBg:  "#45475a",
 	}
 
 	// Solarized - precision colors for terminals
@@ -260,7 +278,8 @@ var (
 		DiffAdd:    "#073630",
 		DiffRemove: "#360707",
 		DiffHeader: "#073642",
-		ConfirmBg:  "#073642",
+		ConfirmFg:  "#fdf6e3",
+		ConfirmBg:  "#657b83",
 	}
 
 	Builtin = map[string]*Theme{
