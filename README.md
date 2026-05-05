@@ -7,11 +7,11 @@ against your choice of LLM. Aimed at developers and DevOps people who live in
 the terminal and want to script agentic work without IDE lock-in or SDK
 sprawl.
 
-**Current version:** v0.0.31 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
+**Current version:** v0.0.32 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
 
 **Status:** alpha. ~1 month of evenings of work. Works for the author's daily
 use, but expect breaking changes until v0.1.0. Tagged releases (`v0.0.1` →
-`v0.0.31`) ship as macOS `.pkg` and Linux `.deb`.
+`v0.0.32`) ship as macOS `.pkg` and Linux `.deb`.
 
 ```text
 $ m
@@ -34,7 +34,7 @@ Full docs site (EN + SR): **<https://subzone.github.io/Agentctl/>**
 ```bash
 # 1. Install (macOS — pick one)
 brew tap subzone/tap && brew install subzone/tap/m
-# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.31_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
+# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.32_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
 
 # 2. Run the setup wizard
 m
@@ -136,7 +136,7 @@ AgentCTL checks GitHub for new releases once per day. If a newer version
 exists, you'll see a dim notice on startup:
 
 ```
-↑ update available: v0.0.29 → v0.0.31 (brew upgrade subzone/tap/m)
+↑ update available: v0.0.29 → v0.0.32 (brew upgrade subzone/tap/m)
 ```
 
 This is non-blocking, cached, and silent on errors. No data is sent — it
@@ -339,7 +339,7 @@ structured output mechanics), see the
 - Provider-native structured output enforcement (`response_schema`)
 - Full-screen TUI with token/cost/context indicators, falls back to line REPL in pipes
 - 9 built-in themes (matrix, nord, dracula, gruvbox, tokyonight, catppuccin, solarized, default, minimal)
-- Session persistence with AES-256-GCM encryption and autosave
+- Session persistence with AES-256-GCM encryption, autosave, and graceful shutdown (Ctrl+C saves)
 - Token-based context compaction (per-model context window awareness)
 - Agent discovery (`m list`), registry (`m install`), scaffold (`m new`)
 - Fallback models (auto-switch on 429 rate limit)

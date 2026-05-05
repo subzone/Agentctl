@@ -19,6 +19,7 @@ import (
 
 	"github.com/subzone/Agentctl/internal/config"
 	"github.com/subzone/Agentctl/internal/engine"
+	"github.com/subzone/Agentctl/internal/logging"
 	"github.com/subzone/Agentctl/internal/llm"
 	"github.com/subzone/Agentctl/internal/tools"
 	"github.com/subzone/Agentctl/internal/userconfig"
@@ -351,6 +352,15 @@ func isInteractiveChat(in io.Reader, out, status io.Writer) bool {
 // in-flight Step. Slash commands (/exit, /reset, /help) are handled
 // locally; everything else is passed to sess.Step.
 func chatLoop(ctx context.Context, state *chatState, in io.Reader, out, status io.Writer, name string) error {
+	// Save session on exit (graceful shutdown).
+	defer func() {
+		if state.sess != nil {
+			snap := exportSession(state.sess, "", state.sess.Model())
+			autoSaveSnapshot(snap)
+			logging.Info("session saved on exit", "messages", len(snap.Messages))
+		}
+	}()
+
 	fmt.Fprintf(status, "\033[1mchat with %s\033[0m \033[2m— /exit to quit, /reset to clear history, /help for more\033[0m\n", name)
 	fmt.Fprintln(status, "\033[2mtips: /models (switch model) • /trust (auto-approve) • /save (keep session) • /debug (trace)\033[0m")
 	fmt.Fprintln(status, "\033[2mshortcuts: /x=exit /r=reset /c=compact /u=undo /m=models /t=themes /s=save /h=help\033[0m")

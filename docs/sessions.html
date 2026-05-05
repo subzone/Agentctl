@@ -123,12 +123,17 @@ resumed session _autosave (12 messages, alibaba/deepseek-v3.2)
   <div class="section-inner">
     <div class="section-header">
       <div class="section-label">Recovery</div>
-      <h2>What happens on crash?</h2>
+      <h2>Graceful shutdown &amp; crash recovery</h2>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><i class="fa-solid fa-power-off"></i> Graceful shutdown</h3>
+      <p>When you press Ctrl+C or the process receives SIGTERM, the session is automatically saved before exit. No data is lost.</p>
     </div>
 
     <div class="docs-card" style="margin-bottom: 2rem;">
       <h3><i class="fa-solid fa-triangle-exclamation"></i> Crash recovery</h3>
-      <p>If the app crashes or you <code>/exit</code>, your session is already saved. On next launch:</p>
+      <p>If the app crashes, your session is already saved (autosave runs after every step). On next launch:</p>
       <pre><code>» /sessions
 saved sessions (1):
   1) _autosave

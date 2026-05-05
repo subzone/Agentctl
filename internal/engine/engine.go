@@ -20,6 +20,7 @@ import (
 
 	"github.com/subzone/Agentctl/internal/llm"
 	"github.com/subzone/Agentctl/internal/tools"
+	"github.com/subzone/Agentctl/internal/logging"
 )
 
 // Default configuration values. These can be overridden via Config fields.
@@ -438,6 +439,7 @@ func (s *Session) tryFallbacks(ctx context.Context) (<-chan llm.Event, error) {
 		s.cfg.Provider = p
 		s.cfg.Model = model
 		fmt.Fprintf(s.status, "[switched to fallback: %s]\n", fb)
+		logging.Info("model.fallback", "to", fb)
 		return events, nil
 	}
 	return nil, fmt.Errorf("all fallback models failed")
@@ -631,6 +633,7 @@ var readOnlyTools = map[string]bool{"fs_read": true, "fs_list": true, "web_fetch
 
 func runToolBlock(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), errIntervene func(context.Context, string, string) string, status io.Writer, b llm.ContentBlock) llm.ContentBlock {
 	// Read-only tools skip confirmation.
+	logging.Debug("tool.call", "tool", b.ToolName, "input_size", len(b.ToolInput))
 	if confirm != nil && !readOnlyTools[b.ToolName] {
 		ok, err := confirm(ctx, b.ToolName, b.ToolInput)
 		if err != nil {
