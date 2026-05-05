@@ -16,14 +16,35 @@ import (
 	"fmt"
 	"io"
 	"strings"
+	"sync"
 
 	"github.com/subzone/Agentctl/internal/llm"
 	"github.com/subzone/Agentctl/internal/tools"
 )
 
-// defaultMaxTurns caps tool-use loops. A productive agent rarely needs more
-// than a handful; this exists to stop runaway loops eating tokens forever.
-const defaultMaxTurns = 15
+// Default configuration values. These can be overridden via Config fields.
+const (
+	// DefaultMaxTurns caps tool-use loops. A productive agent rarely needs more
+	// than a handful; this exists to stop runaway loops eating tokens forever.
+	DefaultMaxTurns = 15
+
+	// DefaultContextBudget is the default context window size when not specified.
+	// 128K is a conservative default that works for most models.
+	DefaultContextBudget = 128_000
+
+	// DefaultCompactionThreshold is the percentage of context budget at which
+	// auto-compaction triggers. 80% leaves room for the response.
+	DefaultCompactionThreshold = 80
+
+	// DefaultCompactionTarget is the percentage of context budget to compact to.
+	// 50% provides headroom for continued conversation.
+	DefaultCompactionTarget = 50
+
+	// DefaultMaxConcurrentTools limits how many tools can run simultaneously.
+	// This prevents resource exhaustion when a model requests many tool calls.
+	// 10 is a reasonable balance between parallelism and resource usage.
+	DefaultMaxConcurrentTools = 10
+)
 
 // Config configures a Run or Session. The zero value is not usable:
 // Provider and Model must be set.
@@ -83,6 +104,11 @@ type Config struct {
 	// steer the model away from repeated failures. Return "" to let the
 	// model retry on its own. Nil means no intervention (original behavior).
 	ErrorIntervention func(ctx context.Context, toolName string, errMsg string) string
+
+	// MaxConcurrentTools limits how many tools can run simultaneously.
+	// Zero uses DefaultMaxConcurrentTools. This prevents resource exhaustion
+	// when a model requests many tool calls in a single turn.
+	MaxConcurrentTools int
 }
 
 // Run executes one task to completion in a fresh conversation. It is a
@@ -96,15 +122,16 @@ func Run(ctx context.Context, cfg Config, task string) error {
 // user turn and runs the engine loop; the resulting message history is
 // retained on the Session and reused on subsequent Steps.
 type Session struct {
-	cfg           Config
-	out           io.Writer
-	status        io.Writer
-	maxTurns      int
-	contextBudget int // max input tokens before compaction (80% of model window)
-	schemas       []llm.ToolSchema
-	messages      []llm.Message
-	usage         llm.Usage // cumulative across all Steps
-	lastIn        int       // input_tokens from the most recent provider call
+	cfg              Config
+	out              io.Writer
+	status           io.Writer
+	maxTurns         int
+	maxConcurrent    int // max tools running at once
+	contextBudget    int // max input tokens before compaction (80% of model window)
+	schemas          []llm.ToolSchema
+	messages         []llm.Message
+	usage            llm.Usage // cumulative across all Steps
+	lastIn           int       // input_tokens from the most recent provider call
 }
 
 // Usage returns the cumulative token counts across all Steps in this session.
@@ -138,17 +165,22 @@ func NewSession(cfg Config) *Session {
 	}
 	maxTurns := cfg.MaxTurns
 	if maxTurns <= 0 {
-		maxTurns = defaultMaxTurns
+		maxTurns = DefaultMaxTurns
 	}
 	contextBudget := cfg.MaxContextTokens
 	if contextBudget <= 0 {
-		contextBudget = 128_000 // conservative default
+		contextBudget = DefaultContextBudget
+	}
+	maxConcurrent := cfg.MaxConcurrentTools
+	if maxConcurrent <= 0 {
+		maxConcurrent = DefaultMaxConcurrentTools
 	}
 	return &Session{
 		cfg:           cfg,
 		out:           out,
 		status:        status,
 		maxTurns:      maxTurns,
+		maxConcurrent: maxConcurrent,
 		schemas:       buildSchemas(cfg.Tools),
 		contextBudget: contextBudget,
 	}
@@ -226,9 +258,9 @@ func (s *Session) Step(ctx context.Context, task string) error {
 		}
 	}
 	s.messages = append(s.messages, llm.TextMessage(llm.RoleUser, task))
-	// Auto-compact when estimated tokens exceed 80% of context budget.
+	// Auto-compact when estimated tokens exceed threshold.
 	if s.shouldCompact() {
-		target := s.contextBudget / 2 // compact to 50% to leave room
+		target := s.contextBudget * DefaultCompactionTarget / 100
 		s.messages = validateMessages(tokenCompact(s.messages, target, s.cfg.System))
 		fmt.Fprintf(s.status, "[auto-compacted to ~%dk tokens]\n", target/1000)
 	}
@@ -326,13 +358,13 @@ func (s *Session) Step(ctx context.Context, task string) error {
 				}
 				return nil
 			}
-			results, err := executeTools(ctx, s.cfg.Tools, s.cfg.ToolConfirm, s.cfg.ErrorIntervention, s.status, assistant.Content)
+			results, err := executeTools(ctx, s.cfg.Tools, s.cfg.ToolConfirm, s.cfg.ErrorIntervention, s.status, s.maxConcurrent, assistant.Content)
 			if err != nil {
 				return err
 			}
 			s.messages = append(s.messages, results)
 			if s.shouldCompact() {
-				target := s.contextBudget / 2
+				target := s.contextBudget * DefaultCompactionTarget / 100
 				s.messages = validateMessages(tokenCompact(s.messages, target, s.cfg.System))
 				fmt.Fprintf(s.status, "[auto-compacted to ~%dk tokens]\n", target/1000)
 			}
@@ -453,12 +485,12 @@ func estimateTokens(msgs []llm.Message) int {
 	return total / 4
 }
 
-// shouldCompact returns true when estimated tokens exceed 80% of the context budget.
+// shouldCompact returns true when estimated tokens exceed the compaction threshold.
 func (s *Session) shouldCompact() bool {
 	est := estimateTokens(s.messages)
 	// Also count system prompt.
 	est += len(s.cfg.System) / 4
-	return est > (s.contextBudget * 80 / 100)
+	return est > (s.contextBudget * DefaultCompactionThreshold / 100)
 }
 
 // tokenCompact removes the oldest messages until estimated tokens are under
@@ -534,8 +566,9 @@ func tokenCompact(msgs []llm.Message, targetTokens int, system string) []llm.Mes
 
 // executeTools runs each tool_use block in assistant. When multiple tools
 // are requested in the same turn, they run concurrently (each tool call
-// is independent). Results are collected in order.
-func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), errIntervene func(context.Context, string, string) string, status io.Writer, assistant []llm.ContentBlock) (llm.Message, error) {
+// is independent) but limited by maxConcurrent to prevent resource exhaustion.
+// Results are collected in order.
+func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), errIntervene func(context.Context, string, string) string, status io.Writer, maxConcurrent int, assistant []llm.ContentBlock) (llm.Message, error) {
 	var calls []llm.ContentBlock
 	for _, b := range assistant {
 		if b.Type == llm.BlockToolUse {
@@ -554,22 +587,39 @@ func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context
 		return llm.Message{Role: llm.RoleUser, Content: []llm.ContentBlock{result}}, nil
 	}
 
-	// Multiple tool calls — run concurrently.
+	// Multiple tool calls — run concurrently with semaphore to limit parallelism.
+	// This prevents resource exhaustion when model requests many tool calls.
 	type indexed struct {
 		idx    int
 		result llm.ContentBlock
 	}
 	ch := make(chan indexed, len(calls))
+	
+	// Semaphore to limit concurrent tool executions
+	sem := make(chan struct{}, maxConcurrent)
+	var wg sync.WaitGroup
+	
 	for i, b := range calls {
+		wg.Add(1)
 		fmt.Fprintf(status, "→ %s %s\n", b.ToolName, summarizeInput(b.ToolInput))
 		go func(i int, b llm.ContentBlock) {
+			defer wg.Done()
+			// Acquire semaphore
+			sem <- struct{}{}
+			defer func() { <-sem }() // Release semaphore
+			
 			ch <- indexed{idx: i, result: runToolBlock(ctx, reg, confirm, errIntervene, status, b)}
 		}(i, b)
 	}
 
+	// Close channel when all goroutines complete
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
 	results := make([]llm.ContentBlock, len(calls))
-	for range calls {
-		r := <-ch
+	for r := range ch {
 		results[r.idx] = r.result
 	}
 	return llm.Message{Role: llm.RoleUser, Content: results}, nil
