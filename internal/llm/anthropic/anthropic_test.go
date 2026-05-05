@@ -192,8 +192,16 @@ func TestStreamEndToEnd(t *testing.T) {
 		if got.MaxTokens != 256 {
 			t.Errorf("payload.MaxTokens = %d", got.MaxTokens)
 		}
-		if got.System != "be brief" {
-			t.Errorf("payload.System = %q", got.System)
+		if got.System == nil {
+			t.Error("payload.System is nil")
+		} else {
+			var sysBlocks []map[string]any
+			if err := json.Unmarshal(got.System, &sysBlocks); err != nil {
+				t.Fatalf("decode system blocks: %v", err)
+			}
+			if len(sysBlocks) != 1 || sysBlocks[0]["text"] != "be brief" {
+				t.Errorf("payload.System = %s", got.System)
+			}
 		}
 		if len(got.Messages) != 1 {
 			t.Fatalf("messages = %+v", got.Messages)

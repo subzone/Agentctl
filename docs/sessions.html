@@ -85,10 +85,13 @@ Linux: ~/.config/m/sessions/</code></pre>
     </div>
 
     <div class="docs-card" style="margin-bottom: 2rem;">
-      <h3><code>/save</code></h3>
-      <p>Create a named snapshot of the current session. The snapshot is timestamped and stored alongside the autosave.</p>
+      <h3><code>/save [name]</code></h3>
+      <p>Create a snapshot of the current session. Without a name, it's timestamped. With a name, it's easy to find later.</p>
       <pre><code>» /save
-session saved: 2025-07-04_12-30 (8 messages)</code></pre>
+session saved: 2025-07-04_12-30 (8 messages)
+
+» /save fixing-auth-bug
+session saved: 2025-07-04_12-30_fixing-auth-bug (8 messages)</code></pre>
     </div>
 
     <div class="docs-card" style="margin-bottom: 2rem;">
@@ -120,12 +123,17 @@ resumed session _autosave (12 messages, alibaba/deepseek-v3.2)
   <div class="section-inner">
     <div class="section-header">
       <div class="section-label">Recovery</div>
-      <h2>What happens on crash?</h2>
+      <h2>Graceful shutdown &amp; crash recovery</h2>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3><i class="fa-solid fa-power-off"></i> Graceful shutdown</h3>
+      <p>When you press Ctrl+C or the process receives SIGTERM, the session is automatically saved before exit. No data is lost.</p>
     </div>
 
     <div class="docs-card" style="margin-bottom: 2rem;">
       <h3><i class="fa-solid fa-triangle-exclamation"></i> Crash recovery</h3>
-      <p>If the app crashes or you <code>/exit</code>, your session is already saved. On next launch:</p>
+      <p>If the app crashes, your session is already saved (autosave runs after every step). On next launch:</p>
       <pre><code>» /sessions
 saved sessions (1):
   1) _autosave

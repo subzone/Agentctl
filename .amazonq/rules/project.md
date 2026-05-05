@@ -141,16 +141,20 @@ make docker         # docker build
 3. `git commit && git tag v0.0.X && git push origin main --tags`
 4. If retag needed: delete GitHub release first, then retag
 
-## Current State (v0.0.14)
+## Current State (v0.0.25)
 
-- 11,936 lines production + 4,299 lines tests
-- 15 packages, 17 example agents, 7.8 MB binary
-- Engine 90.5%, adapters 100%, providers 79-100%, tools 59%
-- 25 commits, 14 tags
+- ~10,000 lines production + ~5,000 lines tests
+- 15 packages, 32 example agents, 8 MB binary
+- 9 themes, 6 providers, 9 tools
+- Session persistence (AES-256-GCM) with history rotation
+- Fallback models, per-agent thinking phrases
+- Token-based context compaction
+- Dangerous command double-confirmation
+- code_search: grep + symbol index (9 languages)
+- Homebrew tap, CI/CD, open source community files
 
 ### What's Next
-- Spec-driven workflow (requirement → design → tasks → code → verify)
-- Filesystem StateStore adapter (conversation persistence)
-- Stabilization pass (test all 6 providers against live APIs)
 - HTTP/SSE MCP transport
+- Codebase RAG / context retrieval
+- `m search` for fuzzy agent discovery
 - Multi-file atomic edits

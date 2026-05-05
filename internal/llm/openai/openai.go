@@ -36,12 +36,12 @@ func init() {
 
 // Provider is an OpenAI Chat Completions client.
 type Provider struct {
-	apiKey   string
-	baseURL  string
-	client   *http.Client
+	apiKey       string
+	baseURL      string
+	client       *http.Client
 	noStreamOpts bool
 	noJsonSchema bool
-	chatPath string // defaults to "/v1/chat/completions"
+	chatPath     string // defaults to "/v1/chat/completions"
 }
 
 // Option configures a Provider.
@@ -62,7 +62,9 @@ func WithChatPath(p string) Option { return func(pr *Provider) { pr.chatPath = p
 func WithCompat() Option { return func(p *Provider) { p.noJsonSchema = true } }
 
 // WithNoStreamOptions disables stream_options (for endpoints like Gemini that reject it).
-func WithNoStreamOptions() Option { return func(p *Provider) { p.noStreamOpts = true; p.noJsonSchema = true } }
+func WithNoStreamOptions() Option {
+	return func(p *Provider) { p.noStreamOpts = true; p.noJsonSchema = true }
+}
 
 // WithHTTPClient swaps the underlying http.Client.
 func WithHTTPClient(c *http.Client) Option { return func(p *Provider) { p.client = c } }
@@ -79,7 +81,7 @@ func New(opts ...Option) (*Provider, error) {
 		o(p)
 	}
 	if p.apiKey == "" {
-		return nil, errors.New("OPENAI_API_KEY is not set")
+		return nil, errors.New("openai API key not found — run `m config` to set it up, or export OPENAI_API_KEY")
 	}
 	return p, nil
 }
@@ -336,8 +338,8 @@ func buildTools(tools []llm.ToolSchema) []chatTool {
 
 // chunkChoice / chunkDelta / chunkToolCall mirror the streaming response.
 type chunkChoice struct {
-	Delta        chunkDelta      `json:"delta"`
-	FinishReason string          `json:"finish_reason"`
+	Delta        chunkDelta `json:"delta"`
+	FinishReason string     `json:"finish_reason"`
 }
 
 type chunkDelta struct {
@@ -455,13 +457,10 @@ func parseSSE(ctx context.Context, r io.Reader, out chan<- llm.Event) error {
 		c := chunk.Choices[0]
 
 		// Reasoning models (MiniMax, DeepSeek-R1) send thinking tokens in
-		// reasoning_content before the actual response in content. Emit a
-		// one-time marker so the user knows the model is thinking.
-		if c.Delta.ReasoningContent != "" && !reasoningSeen {
+		// reasoning_content before the actual response in content. These
+		// are silently consumed — the TUI spinner shows thinking status.
+		if c.Delta.ReasoningContent != "" {
 			reasoningSeen = true
-			if err := send(llm.Event{Kind: llm.EventText, Text: "(thinking) "}); err != nil {
-				return err
-			}
 		}
 		if c.Delta.Content != "" {
 			if reasoningSeen && !reasoningDone {

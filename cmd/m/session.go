@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/subzone/Agentctl/internal/adapters"
@@ -62,11 +64,12 @@ func sessionID(name string) string {
 	return ts
 }
 
-// autoSaveID is the fixed session ID used for autosave. Overwritten each step.
+// autoSaveID is the fixed session ID used for autosave.
 const autoSaveID = "_autosave"
+const maxAutoSaves = 10
 
-// autoSaveSnapshot persists a pre-built snapshot. Use this from goroutines
-// to avoid racing with the session's message slice.
+// autoSaveSnapshot persists a pre-built snapshot. Rotates old autosaves
+// so the last N sessions are preserved.
 func autoSaveSnapshot(data *ports.SessionData) {
 	if len(data.Messages) == 0 {
 		return
@@ -75,7 +78,36 @@ func autoSaveSnapshot(data *ports.SessionData) {
 	if err != nil {
 		return
 	}
-	_ = store.SaveSession(context.Background(), autoSaveID, data)
+	// Rotate: rename current _autosave to timestamped backup before overwriting.
+	ctx := context.Background()
+	if existing, lerr := store.LoadSession(ctx, autoSaveID); lerr == nil && len(existing.Messages) > 0 {
+		backupID := "_auto_" + time.Now().Format("2006-01-02_15-04-05")
+		_ = store.SaveSession(ctx, backupID, existing)
+		pruneOldAutoSaves(store)
+	}
+	_ = store.SaveSession(ctx, autoSaveID, data)
+}
+
+// pruneOldAutoSaves keeps only the most recent maxAutoSaves auto-backups.
+func pruneOldAutoSaves(store *adapters.EncryptedFileStore) {
+	ids, err := store.ListSessions(context.Background())
+	if err != nil {
+		return
+	}
+	var autos []string
+	for _, id := range ids {
+		if strings.HasPrefix(id, "_auto_") {
+			autos = append(autos, id)
+		}
+	}
+	if len(autos) <= maxAutoSaves {
+		return
+	}
+	// Sort ascending (oldest first) — filenames are timestamped so lexical sort works.
+	sort.Strings(autos)
+	for _, id := range autos[:len(autos)-maxAutoSaves] {
+		_ = store.DeleteSession(context.Background(), id)
+	}
 }
 
 // exportSession converts engine state to a persistable SessionData.

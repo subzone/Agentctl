@@ -19,42 +19,106 @@ import (
 
 	"github.com/subzone/Agentctl/internal/config"
 	"github.com/subzone/Agentctl/internal/engine"
+	"github.com/subzone/Agentctl/internal/logging"
 	"github.com/subzone/Agentctl/internal/llm"
 	"github.com/subzone/Agentctl/internal/tools"
 	"github.com/subzone/Agentctl/internal/userconfig"
 )
 
 const (
-	chatPrompt       = "» "
+	chatPrompt       = "\033[1;34m» \033[0m"
 	chatMaxExchanges = 8
 )
 
 // readOnlyTUITools are auto-approved in TUI mode (no y/n prompt).
 // Destructive tools (shell, fs_write, git) still require confirmation.
 var readOnlyTUITools = map[string]bool{
-	"fs_read":   true,
-	"fs_list":   true,
-	"web_fetch": true,
-	"test_run":  true,
-	"delegate":  true,
+	"fs_read":     true,
+	"fs_list":     true,
+	"web_fetch":   true,
+	"test_run":    true,
+	"delegate":    true,
+	"code_search": true,
+}
+
+// dangerousPatterns are shell command patterns that ALWAYS require double
+// confirmation, even in /trust mode. These can cause irreversible damage.
+var dangerousPatterns = []string{
+	"rm -rf",
+	"rm -fr",
+	"rmdir",
+	"mkfs",
+	"dd if=",
+	"> /dev/",
+	"chmod -R 777",
+	"chmod 777",
+	":(){:|:&};:",
+	"fork bomb",
+	"kubectl delete",
+	"kubectl drain",
+	"terraform destroy",
+	"drop database",
+	"drop table",
+	"truncate table",
+	"format c:",
+	"shutdown",
+	"reboot",
+	"init 0",
+	"init 6",
+	"systemctl stop",
+	"git push --force",
+	"git push -f",
+	"git reset --hard",
+	"git clean -fd",
+}
+
+// isDangerousCommand checks if a tool call contains a dangerous pattern.
+// Returns the matched pattern or empty string.
+func isDangerousCommand(name string, input json.RawMessage) string {
+	if name != "shell" && name != "git" {
+		return ""
+	}
+	cmd := strings.ToLower(string(input))
+	for _, p := range dangerousPatterns {
+		if strings.Contains(cmd, strings.ToLower(p)) {
+			return p
+		}
+	}
+	return ""
+}
+
+// chatState holds mutable session state that slash commands can modify.
+type chatState struct {
+	sess        *engine.Session
+	undo        *tools.UndoStack
+	autoApprove bool      // /trust mode - auto-approve all destructive tools
+	traceWriter io.Writer // /debug mode - stream raw LLM JSON here
+	traceFile   *os.File  // if traceWriter is a file, close on exit
 }
 
 func newChatCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "chat <agent.md>",
 		Short: "Interactive REPL with an agent",
-		Args:  cobra.ExactArgs(1),
-		RunE:  runChat,
+		Long: `Start an interactive chat session with an agent.
+
+Examples:
+  m chat examples/agents/coder.md
+  m chat devops                    # by name (if installed)
+  m chat coder                     # resolves from examples/agents/`,
+		Args: cobra.ExactArgs(1),
+		RunE: runChat,
 	}
 	return cmd
 }
 
 func runChat(cmd *cobra.Command, args []string) error {
-	doc, err := config.ParseFile(args[0])
+	path := resolveAgentPath(args[0])
+	doc, err := config.ParseFile(path)
 	if err != nil {
 		return err
 	}
-	return runChatWithDoc(cmd, doc, loadCompanionDocs(args[0]))
+	return runChatWithDoc(cmd, doc, loadCompanionDocs(path))
 }
 
 // runChatWithDoc drives the chat REPL against a parsed agent document.
@@ -128,9 +192,19 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 		defer rt.close()
 		confirmCh := make(chan bool, 1)
 		// TUI tool confirmation: auto-approve read-only tools, prompt for
-		// destructive ones via the confirm channel.
+		// destructive ones via the confirm channel. Trust mode bypasses all.
+		tuiTrust := new(bool) // shared with tuiModel via pointer
 		tuiToolConfirm := func(_ context.Context, name string, input json.RawMessage) (bool, error) {
-			if readOnlyTUITools[name] {
+			// Dangerous commands ALWAYS require double confirmation, even in trust mode.
+			if pattern := isDangerousCommand(name, input); pattern != "" {
+				streamCh <- streamMsg{chunk: fmt.Sprintf("⚠️  DANGEROUS: \"%s\" detected in %s %s\n→ Are you REALLY sure? [y/n] ", pattern, name, summarizeToolInput(input))}
+				if !(<-confirmCh) {
+					return false, nil
+				}
+				streamCh <- streamMsg{chunk: "→ This is irreversible. Confirm again? [y/n] "}
+				return <-confirmCh, nil
+			}
+			if readOnlyTUITools[name] || *tuiTrust {
 				streamCh <- streamMsg{chunk: fmt.Sprintf("→ %s %s\n", name, summarizeToolInput(input))}
 				return true, nil
 			}
@@ -145,15 +219,17 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 			Temperature:      agent.Temperature,
 			MaxTokens:        maxTokens,
 			MaxContextTokens: modelContextWindow[model],
+			FallbackModels:   agent.FallbackModels,
+			ResolveModel:     llm.Resolve,
 			ToolConfirm:      tuiToolConfirm,
 			ContinueConfirm: func(_ context.Context, turns int) (bool, error) {
 				streamCh <- streamMsg{chunk: fmt.Sprintf("→ Agent worked for %d turns. Continue? [y/n] ", turns)}
 				return <-confirmCh, nil
 			},
-			Out:         &streamWriter{ch: streamCh},
-			Status:      &streamWriter{ch: streamCh},
+			Out:    &streamWriter{ch: streamCh},
+			Status: &streamWriter{ch: streamCh},
 		})
-		return runTUI(ctx, sess, streamCh, agent.Name, providerName, model, undoStack, confirmCh)
+		return runTUI(ctx, sess, streamCh, agent.Name, providerName, model, undoStack, confirmCh, agent.ThinkingPhrases, tuiTrust)
 	}
 
 	// REPL mode: stdin-based confirmation for fs_write.
@@ -163,8 +239,12 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 	}
 	defer rt.close()
 
-	replToolConfirm := stdinToolConfirm(stderr, cmd.InOrStdin())
-	sess := engine.NewSession(engine.Config{
+	state := &chatState{
+		undo:        undoStack,
+		autoApprove: false,
+		traceWriter: nil,
+	}
+	state.sess = engine.NewSession(engine.Config{
 		Provider:         provider,
 		Model:            model,
 		System:           system,
@@ -172,7 +252,9 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 		Temperature:      agent.Temperature,
 		MaxTokens:        maxTokens,
 		MaxContextTokens: modelContextWindow[model],
-		ToolConfirm:      replToolConfirm,
+		FallbackModels:   agent.FallbackModels,
+		ResolveModel:     llm.Resolve,
+		ToolConfirm:      makeReplToolConfirm(stderr, cmd.InOrStdin(), state),
 		ContinueConfirm: func(_ context.Context, turns int) (bool, error) {
 			fmt.Fprintf(stderr, "Agent worked for %d turns. Continue? [Y/n]: ", turns)
 			sc := bufio.NewScanner(cmd.InOrStdin())
@@ -182,10 +264,69 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 			ans := strings.TrimSpace(strings.ToLower(sc.Text()))
 			return ans == "" || ans == "y" || ans == "yes", nil
 		},
-		Out:         out,
-		Status:      stderr,
+		ErrorIntervention: makeReplErrorIntervention(stderr, cmd.InOrStdin()),
+		Out:               out,
+		Status:            stderr,
 	})
-	return chatLoop(ctx, sess, undoStack, cmd.InOrStdin(), out, stderr, agent.Name)
+	return chatLoop(ctx, state, cmd.InOrStdin(), out, stderr, agent.Name)
+}
+
+// makeReplToolConfirm returns a ToolConfirm callback that respects autoApprove.
+// When autoApprove is true, destructive tools are auto-approved with a log.
+// Otherwise, prompts the user for y/n confirmation.
+func makeReplToolConfirm(stderr io.Writer, in io.Reader, state *chatState) func(context.Context, string, json.RawMessage) (bool, error) {
+	return func(ctx context.Context, name string, input json.RawMessage) (bool, error) {
+		// Read-only tools are always auto-approved.
+		if readOnlyTUITools[name] {
+			return true, nil
+		}
+		// Dangerous commands ALWAYS require double confirmation, even in trust mode.
+		if pattern := isDangerousCommand(name, input); pattern != "" {
+			fmt.Fprintf(stderr, "\n⚠️  DANGEROUS: \"%s\" detected in %s %s\n", pattern, name, summarizeToolInput(input))
+			fmt.Fprintf(stderr, "Are you REALLY sure? [y/N]: ")
+			sc := bufio.NewScanner(in)
+			if !sc.Scan() {
+				return false, nil
+			}
+			ans := strings.TrimSpace(strings.ToLower(sc.Text()))
+			if ans != "y" && ans != "yes" {
+				return false, nil
+			}
+			fmt.Fprintf(stderr, "This is irreversible. Confirm again? [y/N]: ")
+			if !sc.Scan() {
+				return false, nil
+			}
+			ans = strings.TrimSpace(strings.ToLower(sc.Text()))
+			return ans == "y" || ans == "yes", nil
+		}
+		// Trust mode: auto-approve with log.
+		if state.autoApprove {
+			fmt.Fprintf(stderr, "→ %s %s [auto-approved]\n", name, summarizeToolInput(input))
+			return true, nil
+		}
+		// Normal mode: prompt user.
+		fmt.Fprintf(stderr, "Allow %s %s? [y/N]: ", name, summarizeToolInput(input))
+		sc := bufio.NewScanner(in)
+		if !sc.Scan() {
+			return false, nil
+		}
+		ans := strings.TrimSpace(strings.ToLower(sc.Text()))
+		return ans == "y" || ans == "yes", nil
+	}
+}
+
+// makeReplErrorIntervention returns an ErrorIntervention callback for the
+// REPL. When a tool fails, the user sees the error and can press Enter to
+// let the agent retry, or type a hint to steer the next attempt.
+func makeReplErrorIntervention(stderr io.Writer, in io.Reader) func(context.Context, string, string) string {
+	return func(_ context.Context, toolName, errMsg string) string {
+		fmt.Fprintf(stderr, "[%s failed] Press Enter to retry, or type a hint: ", toolName)
+		sc := bufio.NewScanner(in)
+		if !sc.Scan() {
+			return ""
+		}
+		return strings.TrimSpace(sc.Text())
+	}
 }
 
 // isInteractiveChat reports whether all three IO streams are TTYs.
@@ -203,15 +344,26 @@ func isInteractiveChat(in io.Reader, out, status io.Writer) bool {
 	return true
 }
 
-// chatLoop drives an interactive REPL against sess. Extracted so it can be
+// chatLoop drives an interactive REPL against a chatState. Extracted so it can be
 // driven by scripted input in tests.
 //
 // Input arrives line-by-line on a reader goroutine so that ctx
 // cancellation (typically Ctrl-C) interrupts the prompt as well as any
 // in-flight Step. Slash commands (/exit, /reset, /help) are handled
 // locally; everything else is passed to sess.Step.
-func chatLoop(ctx context.Context, sess *engine.Session, undo *tools.UndoStack, in io.Reader, out, status io.Writer, name string) error {
-	fmt.Fprintf(status, "chat with %s — /exit to quit, /reset to clear history, /help for more\n", name)
+func chatLoop(ctx context.Context, state *chatState, in io.Reader, out, status io.Writer, name string) error {
+	// Save session on exit (graceful shutdown).
+	defer func() {
+		if state.sess != nil {
+			snap := exportSession(state.sess, "", state.sess.Model())
+			autoSaveSnapshot(snap)
+			logging.Info("session saved on exit", "messages", len(snap.Messages))
+		}
+	}()
+
+	fmt.Fprintf(status, "\033[1mchat with %s\033[0m \033[2m— /exit to quit, /reset to clear history, /help for more\033[0m\n", name)
+	fmt.Fprintln(status, "\033[2mtips: /models (switch model) • /trust (auto-approve) • /save (keep session) • /debug (trace)\033[0m")
+	fmt.Fprintln(status, "\033[2mshortcuts: /x=exit /r=reset /c=compact /u=undo /m=models /t=themes /s=save /h=help\033[0m")
 
 	lines := readLines(in)
 
@@ -231,21 +383,21 @@ func chatLoop(ctx context.Context, sess *engine.Session, undo *tools.UndoStack, 
 			if line == "" {
 				continue
 			}
-			if handled, exit := handleSlash(line, sess, undo, status); handled {
+			if handled, exit := handleSlash(line, state, status); handled {
 				if exit {
 					return nil
 				}
 				continue
 			}
-			if err := sess.Step(ctx, line); err != nil {
+			if err := state.sess.Step(ctx, line); err != nil {
 				if errors.Is(err, context.Canceled) {
 					return nil
 				}
 				fmt.Fprintln(status, "error:", err)
 				continue
 			}
-			sess.Truncate(chatMaxExchanges)
-			snap := exportSession(sess, "", sess.Model())
+			state.sess.Truncate(chatMaxExchanges)
+			snap := exportSession(state.sess, "", state.sess.Model())
 			go func() { autoSaveSnapshot(snap) }()
 		}
 	}
@@ -255,29 +407,55 @@ func chatLoop(ctx context.Context, sess *engine.Session, undo *tools.UndoStack, 
 // true if the line was a command (or at least started with `/`); exit is
 // true if the loop should terminate. Non-command input returns (false,
 // false) and the caller should pass it to the model.
-func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, status io.Writer) (handled, exit bool) {
+func handleSlash(line string, state *chatState, status io.Writer) (handled, exit bool) {
 	switch line {
-	case "/exit", "/quit":
+	case "/exit", "/quit", "/x":
 		return true, true
-	case "/reset":
-		sess.Reset()
+	case "/reset", "/r":
+		state.sess.Reset()
 		fmt.Fprintln(status, "(history cleared)")
 		return true, false
-	case "/compact":
-		sess.Truncate(4)
+	case "/compact", "/c":
+		state.sess.Truncate(4)
 		fmt.Fprintln(status, "(compacted to last 4 exchanges)")
 		return true, false
-	case "/undo":
-		if undo == nil {
+	case "/undo", "/u":
+		if state.undo == nil {
 			fmt.Fprintln(status, "undo not available")
 			return true, false
 		}
-		msg, err := undo.Pop()
+		msg, err := state.undo.Pop()
 		if err != nil {
 			fmt.Fprintf(status, "undo: %v\n", err)
 		} else {
 			fmt.Fprintln(status, msg)
 		}
+		return true, false
+	case "/trust":
+		state.autoApprove = true
+		fmt.Fprintln(status, "trust mode ON — all tools auto-approved")
+		return true, false
+	case "/trust off":
+		state.autoApprove = false
+		fmt.Fprintln(status, "trust mode OFF — tools require confirmation")
+		return true, false
+	case "/debug":
+		state.traceWriter = os.Stderr
+		fmt.Fprintln(status, "debug mode ON — raw LLM JSON streaming to stderr")
+		return true, false
+	case "/debug off":
+		if state.traceFile != nil {
+			state.traceFile.Close()
+			state.traceFile = nil
+		}
+		state.traceWriter = nil
+		fmt.Fprintln(status, "debug mode OFF")
+		return true, false
+	case "/pii":
+		fmt.Fprintln(status, "PII guard ON — sensitive data will be redacted before sending to LLM")
+		return true, false
+	case "/pii off":
+		fmt.Fprintln(status, "PII guard OFF")
 		return true, false
 	case "/config":
 		fmt.Fprintln(status, "run `m config` from the shell to manage providers and models")
@@ -286,11 +464,12 @@ func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, statu
 		fmt.Fprintln(status, "spec-driven workflow: run `m chat examples/agents/spec.md` to use the spec agent")
 		fmt.Fprintln(status, "or tell the current agent: 'follow the spec workflow for this task'")
 		return true, false
-	case "/help":
-		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /undo /model <provider/model> /models /theme [name] /themes /save /sessions /resume <id> /config /help")
+	case "/help", "/h":
+		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /undo /trust /debug /model <provider/model> /models /theme [name] /themes /save /sessions /resume <id> /config /help")
+		fmt.Fprintln(status, "aliases:  /x=exit /r=reset /c=compact /u=undo /m=models /t=themes /s=save /h=help")
 		return true, false
 	}
-	if line == "/themes" || strings.HasPrefix(line, "/themes ") {
+	if line == "/themes" || line == "/t" || strings.HasPrefix(line, "/themes ") {
 		themeDescriptions := []string{
 			"  default    - clean blue accents",
 			"  minimal    - no colors",
@@ -306,11 +485,19 @@ func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, statu
 		for _, d := range themeDescriptions {
 			fmt.Fprintln(status, d)
 		}
-		fmt.Fprintln(status, "use /theme <name> to switch")
+		fmt.Fprintln(status, "use /theme <name> or /t <name> to switch")
 		return true, false
 	}
-	if line == "/save" {
-		handleSessionSave(sess, status)
+	if strings.HasPrefix(line, "/t ") {
+		// /t <name> is a shortcut for /theme <name>
+		line = "/theme " + strings.TrimSpace(strings.TrimPrefix(line, "/t "))
+	}
+	if line == "/save" || line == "/s" || strings.HasPrefix(line, "/save ") || strings.HasPrefix(line, "/s ") {
+		// Handle /s as alias for /save
+		if strings.HasPrefix(line, "/s ") {
+			line = "/save " + strings.TrimSpace(strings.TrimPrefix(line, "/s "))
+		}
+		handleSessionSave(line, state.sess, status)
 		return true, false
 	}
 	if line == "/sessions" {
@@ -318,11 +505,15 @@ func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, statu
 		return true, false
 	}
 	if strings.HasPrefix(line, "/resume ") {
-		handleSessionResume(line, sess, status)
+		handleSessionResume(line, state.sess, status)
 		return true, false
 	}
-	if line == "/models" || strings.HasPrefix(line, "/models ") {
-		handleModelsCommand(line, sess, status)
+	if line == "/models" || line == "/m" || strings.HasPrefix(line, "/models ") || strings.HasPrefix(line, "/m ") {
+		// Handle /m as alias for /models
+		if strings.HasPrefix(line, "/m ") {
+			line = "/models " + strings.TrimSpace(strings.TrimPrefix(line, "/m "))
+		}
+		handleModelsCommand(line, state.sess, status)
 		return true, false
 	}
 	if strings.HasPrefix(line, "/model ") {
@@ -332,12 +523,16 @@ func handleSlash(line string, sess *engine.Session, undo *tools.UndoStack, statu
 			fmt.Fprintf(status, "error: %v\n", err)
 			return true, false
 		}
-		sess.SetModel(p, model)
+		state.sess.SetModel(p, model)
 		fmt.Fprintf(status, "switched to %s\n", newModel)
 		return true, false
 	}
-	if strings.HasPrefix(line, "/theme") {
+	if strings.HasPrefix(line, "/theme") || strings.HasPrefix(line, "/t ") {
+		// /theme <name> or /t <name>
 		arg := strings.TrimSpace(strings.TrimPrefix(line, "/theme"))
+		if strings.HasPrefix(line, "/t ") {
+			arg = strings.TrimSpace(strings.TrimPrefix(line, "/t "))
+		}
 		if arg == "" {
 			names := []string{}
 			for n := range Builtin {
@@ -432,7 +627,7 @@ func handleModelsCommand(line string, sess *engine.Session, status io.Writer) {
 	fmt.Fprintln(status, "\n  * = current | /models <number> to switch")
 }
 
-func handleSessionSave(sess *engine.Session, status io.Writer) {
+func handleSessionSave(line string, sess *engine.Session, status io.Writer) {
 	store, err := sessionStore()
 	if err != nil {
 		fmt.Fprintf(status, "error: %v\n", err)
@@ -443,7 +638,9 @@ func handleSessionSave(sess *engine.Session, status io.Writer) {
 	if cfg != nil {
 		provider = string(cfg.Provider)
 	}
-	id := sessionID("")
+	// Extract optional name from "/save my session name"
+	name := strings.TrimSpace(strings.TrimPrefix(line, "/save"))
+	id := sessionID(name)
 	data := exportSession(sess, provider, model)
 	if err := store.SaveSession(context.Background(), id, data); err != nil {
 		fmt.Fprintf(status, "error saving session: %v\n", err)
@@ -469,7 +666,21 @@ func handleSessionList(status io.Writer) {
 	}
 	fmt.Fprintf(status, "saved sessions (%d):\n", len(ids))
 	for i, id := range ids {
-		fmt.Fprintf(status, "  %d) %s\n", i+1, id)
+		// Try to load and show first user message as summary.
+		summary := ""
+		if data, lerr := store.LoadSession(context.Background(), id); lerr == nil {
+			for _, msg := range data.Messages {
+				if msg.Role == "user" && len(msg.Content) > 0 && msg.Content[0].Text != "" {
+					s := msg.Content[0].Text
+					if len(s) > 50 {
+						s = s[:50] + "..."
+					}
+					summary = " \u2014 " + s
+					break
+				}
+			}
+		}
+		fmt.Fprintf(status, "  %d) %s%s\n", i+1, id, summary)
 	}
 	fmt.Fprintln(status, "use /resume <id or number> to restore")
 }

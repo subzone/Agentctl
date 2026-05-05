@@ -36,6 +36,138 @@
     <div class="timeline">
 
       <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-star"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.32</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>Windows support</strong> — shell uses cmd.exe, Windows Credential Manager, .exe in releases</li>
+          <li><strong>Structured logging</strong> — slog JSON output, debug/warn levels</li>
+          <li><strong>Graceful shutdown</strong> — session saved on Ctrl+C / SIGTERM</li>
+          <li><strong>Integration tests</strong> — 10 black-box CLI tests, CI on Windows + Linux</li>
+          <li><strong>TUI fix</strong> — ANSI-aware word wrap</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.31</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>PII guardrails</strong> — redact emails, phones, SSNs, credit cards, API keys before sending to LLM</li>
+          <li><strong>Mermaid diagram skill</strong> — teaches agents to produce architecture diagrams</li>
+          <li><strong>SAST + SCA</strong> — gosec and govulncheck in CI pipeline</li>
+          <li><strong>Secret scanning</strong> — push protection enabled</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.30</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>Update notifier</strong> — checks GitHub once/day, shows notice if newer version available</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.29</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>REPL color</strong> — bold blue prompt, dim tips</li>
+          <li><strong>Help examples</strong> — real usage in m chat/run --help</li>
+          <li><strong>Session summary</strong> — /sessions shows first user message</li>
+          <li><strong>Tool output</strong> — line count instead of raw bytes</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.28</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>Command shortcuts</strong> — /x /r /c /u /m /t /s /h for all slash commands</li>
+          <li><strong>TUI command bar</strong> — underlined shortcut letters</li>
+          <li><strong>Welcome shortcuts</strong> — listed on every session start</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.27</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>First-run wizard</strong> — visual completion summary with next steps</li>
+          <li><strong>Onboarding tips</strong> — key commands shown on every session start (TUI + REPL)</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.26</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>m new</strong> — scaffold a new agent .md file with boilerplate</li>
+          <li><strong>m doctor</strong> — health check: config, API key, model reachability, tools</li>
+          <li><strong>m completion</strong> — shell completions for bash/zsh/fish/powershell</li>
+          <li><strong>Named sessions</strong> — <code>/save fixing-auth-bug</code> creates a named snapshot</li>
+          <li><strong>Better errors</strong> — API key errors now tell you how to fix them</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.25</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>MCP HTTP/SSE transport</strong> — all three transports now supported: stdio, HTTP, SSE</li>
+          <li><strong>Agent registry</strong> — <code>m install</code> + run/chat by name without path</li>
+          <li><strong>Shell timeout</strong> — 30s → 120s for terraform/docker</li>
+          <li><strong>Undo stack</strong> capped at 20 entries</li>
+          <li><strong>Example MCP servers</strong> — datadog (HTTP), slack (SSE)</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.24</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>code_search tool</strong> — codebase RAG: grep + in-memory symbol index (functions, types, classes, imports)</li>
+          <li><strong>9 languages indexed</strong> — Go, Python, JS, TS, Java, Ruby, Rust, Terraform, Shell</li>
+          <li><strong>Session history rotation</strong> — autosave keeps last 10 backups</li>
+          <li><strong>/trust command</strong> — auto-approve tools in TUI (dangerous commands still double-confirm)</li>
+          <li><strong>Dangerous command protection</strong> — 34 patterns always require double y/n</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.23</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>Fallback models</strong> — auto-switch on 429 rate limit. All 30 example agents updated</li>
+          <li><strong>Per-agent thinking phrases</strong> — customize spinner text (e.g. Serbian for Steva Đubre)</li>
+          <li><strong>Markdown rendering</strong> — bold, code, headers rendered as terminal styles</li>
+          <li><strong>Tool confirmation</strong> — clean key=value format instead of raw JSON</li>
+          <li><strong>Tool output formatting</strong> — proper line breaks between model text and tool activity</li>
+          <li><strong>TUI banner</strong> — version + copyright + tagline</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.22</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>Error intervention</strong> — when a tool fails, the REPL lets you type a hint that gets sent back to the LLM, breaking retry loops</li>
+          <li><strong>Anthropic prompt caching</strong> — system prompt and tool schemas use <code>cache_control: ephemeral</code>, cutting input tokens on every turn</li>
+          <li><strong>Dead code cleanup</strong> — removed unused <code>stdinToolConfirm</code> / <code>isSafeTool</code>, fixed pre-existing compile issues in chat state init</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-star"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.21</div><div class="timeline-date">July 2026</div>
+        <ul>
+          <li><strong>High-contrast confirmations</strong> — <code>ConfirmFg</code> theme field, all 9 themes updated. y/n prompts are now always readable regardless of terminal background</li>
+          <li><strong>TUI throttle bypass</strong> — important messages (tool output, confirmations) skip the 60fps throttle for instant display</li>
+          <li><strong>Lint fixes</strong> — gocritic if-else chain rewritten to switch, go fmt formatting</li>
+          <li><strong>CI validation</strong> — validate all examples/ so MCP/skill cross-references resolve</li>
+          <li><strong>First self-made release</strong> by Steva Đubre (the agent fixed himself!)</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.19</div><div class="timeline-date">July 2026</div>
+        <ul>
+          <li><strong>Homebrew install</strong> — <code>brew tap subzone/tap && brew install subzone/tap/m</code></li>
+          <li><strong>Auto-update formula</strong> on every release via CI</li>
+          <li><strong>Open source community files</strong> — SECURITY.md, CODE_OF_CONDUCT.md, CODEOWNERS, issue/PR templates</li>
+          <li><strong>CI on every push/PR</strong> — vet, lint, race tests, build, validate agents</li>
+          <li><strong>Dependabot</strong> for Go modules and GitHub Actions</li>
+          <li><strong>Branch &amp; tag protection</strong>, repo topics for discoverability</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
         <div class="timeline-version">v0.0.18</div><div class="timeline-date">July 2026</div>
         <ul>
           <li><strong>Session persistence</strong> — autosave after every step, <code>/save</code> <code>/sessions</code> <code>/resume</code>. AES-256-GCM encrypted, key in OS keychain</li>

@@ -93,7 +93,7 @@
 <!-- Community / compatible -->
 <section class="section">
   <div class="section-inner">
-    <div class="section-header"><div class="section-label">Compatible</div><h2>Community MCP servers that work with AgentCTL</h2><p>Any stdio-based MCP server works. Here are some that pair well with agent workflows.</p></div>
+    <div class="section-header"><div class="section-label">Compatible</div><h2>Community MCP servers that work with AgentCTL</h2><p>Stdio, HTTP, and SSE transports are all supported. Any MCP-compliant server works.</p></div>
     <div class="mcp-grid">
       <div class="mcp-card">
         <div class="mcp-card-header"><div class="mcp-card-icon fi-cyan"><i class="fa-solid fa-dharmachakra"></i></div><div class="mcp-card-name">kubectl</div></div>
@@ -137,8 +137,8 @@
       </div>
       <div class="mcp-card">
         <div class="mcp-card-header"><div class="mcp-card-icon fi-pink"><i class="fa-solid fa-globe"></i></div><div class="mcp-card-name">HTTP/SSE Transport</div></div>
-        <div class="mcp-card-desc">Many MCP servers use HTTP instead of stdio. Support planned for a future release.</div>
-        <span class="mcp-card-status status-planned"><i class="fa-solid fa-clock"></i> Planned</span>
+        <div class="mcp-card-desc">HTTP and SSE transports are fully supported. Use <code>transport: http</code> or <code>transport: sse</code> in your MCP server definition.</div>
+        <span class="mcp-card-status status-ready"><i class="fa-solid fa-check"></i> Supported</span>
       </div>
     </div>
   </div>

@@ -43,6 +43,9 @@ func main() {
 		SilenceErrors: true,
 		Args:          cobra.NoArgs,
 		RunE:          runDefaultChat,
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+			checkForUpdate(cmd.ErrOrStderr(), Version)
+		},
 	}
 
 	root.AddCommand(newValidateCmd())
@@ -51,8 +54,14 @@ func main() {
 	root.AddCommand(newInitCmd())
 	root.AddCommand(newConfigCmd())
 	root.AddCommand(newListCmd())
+	root.AddCommand(newInstallCmd())
 	root.AddCommand(newChangelogCmd())
 	root.AddCommand(newTestCmd())
+	root.AddCommand(newNewCmd())
+	root.AddCommand(newDoctorCmd())
+
+	// Shell completions: m completion bash/zsh/fish/powershell
+	root.AddCommand(newCompletionCmd())
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)

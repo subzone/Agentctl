@@ -7,11 +7,11 @@ against your choice of LLM. Aimed at developers and DevOps people who live in
 the terminal and want to script agentic work without IDE lock-in or SDK
 sprawl.
 
-**Current version:** v0.0.18 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
+**Current version:** v0.0.32 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
 
 **Status:** alpha. ~1 month of evenings of work. Works for the author's daily
 use, but expect breaking changes until v0.1.0. Tagged releases (`v0.0.1` →
-`v0.0.18`) ship as macOS `.pkg` and Linux `.deb`.
+`v0.0.32`) ship as macOS `.pkg` and Linux `.deb`.
 
 ```text
 $ m
@@ -32,15 +32,15 @@ Full docs site (EN + SR): **<https://subzone.github.io/Agentctl/>**
 ## Quick Start (5 minutes)
 
 ```bash
-# 1. Install (macOS)
-curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.18_macos.pkg -o m.pkg
-sudo installer -pkg m.pkg -target /
+# 1. Install (macOS — pick one)
+brew tap subzone/tap && brew install subzone/tap/m
+# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.32_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
 
 # 2. Run the setup wizard
 m
 # Pick Ollama (free, local) or paste an API key for Anthropic/OpenAI/Gemini/Alibaba
 
-# 3. Your first chat
+# 3. Your first chat (with Steva Đubre fixing himself!)
 » help me fix the failing test in internal/engine/engine_test.go
 → fs_read   internal/engine/engine_test.go
 → shell     go test ./internal/engine/...
@@ -60,6 +60,16 @@ m
 # 5. Run a specific agent
 m run examples/agents/devops.md "review the Dockerfile"
 m chat examples/agents/coder.md
+
+# 6. Create your own agent
+m new my-agent
+# edit my-agent.md, then: m chat my-agent
+
+# 7. Check your setup
+m doctor
+
+# 8. Shell completions
+m completion zsh > "${fpath[1]}/_m"
 ```
 
 ---
@@ -84,7 +94,9 @@ m chat examples/agents/coder.md
 
 | Platform | How |
 |----------|-----|
-| macOS    | Download `.pkg` from [latest release][releases] → double-click. Installs to `/usr/local/bin/m`. |
+| macOS (Homebrew) | `brew tap subzone/tap && brew install subzone/tap/m` |
+| macOS (pkg) | Download `.pkg` from [latest release][releases] → double-click. Installs to `/usr/local/bin/m`. |
+| Windows | Download `.zip` from [latest release][releases] → extract `m.exe` to a folder on your PATH. |
 | Linux (Debian/Ubuntu) | `sudo dpkg -i m_*_linux_amd64.deb` |
 | Linux (other) | Tarball: `tar -xzf m_*_linux_amd64.tar.gz && sudo mv m /usr/local/bin/` |
 | From source | `go install github.com/subzone/Agentctl/cmd/m@latest` (requires Go 1.26+) |
@@ -98,8 +110,38 @@ m
 # Done — drops you into a chat with the default agent
 ```
 
+Verify your setup:
+
+```bash
+m doctor
+# Checks config, API key, model reachability, tools (git, grep, rg)
+```
+
+### Shell completions
+
+```bash
+# bash
+m completion bash > /etc/bash_completion.d/m
+# zsh
+m completion zsh > "${fpath[1]}/_m"
+# fish
+m completion fish > ~/.config/fish/completions/m.fish
+```
+
 API keys are stored in the OS keychain (macOS Keychain / Linux libsecret).
 Never in config files, never in plaintext.
+
+### Auto-update notifications
+
+AgentCTL checks GitHub for new releases once per day. If a newer version
+exists, you'll see a dim notice on startup:
+
+```
+↑ update available: v0.0.29 → v0.0.32 (brew upgrade subzone/tap/m)
+```
+
+This is non-blocking, cached, and silent on errors. No data is sent — it
+only reads the public releases API.
 
 ### API key fallback
 
@@ -128,19 +170,36 @@ A complete agent is one Markdown file:
 name: devops
 type: agent
 model: anthropic/claude-sonnet-4-6
+fallback:
+  - anthropic/claude-haiku-4-5-20251001
+  - openai/gpt-4.1
 tools:
   - shell
   - fs_read
   - fs_write
   - git
   - test_run
+  - web_fetch
+  - code_search
 temperature: 0.3
+pii_guard: redact
+thinking_phrases:
+  - "analyzing"
+  - "reading code"
+  - "checking config"
 ---
 You are a DevOps engineer.
 Explore the project with fs_list before editing.
 Make targeted changes with fs_write.
 Always consider security.
 ```
+
+**Fallback models:** when the primary model returns 429 (rate limit), the
+agent automatically tries the next model in the `fallback` list. The session
+switches to the first one that works.
+
+**Thinking phrases:** customize the spinner text shown while the agent works.
+Overrides theme defaults. Useful for non-English agents.
 
 Run it:
 
@@ -167,6 +226,7 @@ including `coder`, `reviewer`, `planner`, `k8s-debug`, `terraform-plan`,
 | `git`       | Common git operations                    | yes for writes    |
 | `test_run`  | Run the project's test command           | no                |
 | `web_fetch` | Fetch a URL and extract readable text    | no                |
+| `code_search`| Search codebase: text (grep) + symbol index | no             |
 | `delegate`  | Call a sub-agent                         | no                |
 
 `fs_write` writes are reversible via `/undo`.
@@ -194,11 +254,13 @@ flag that disables OpenAI-specific stream options.
 
 ## MCP integrations
 
-Three MCP server definitions ship in [`examples/mcp/`](examples/mcp/):
+Five MCP server definitions ship in [`examples/mcp/`](examples/mcp/):
 
-- `github` — PR/issue/repo operations
-- `jira`   — search, read, create, update, transition issues
-- `confluence` — search, read, create, update pages
+- `github` — PR/issue/repo operations (stdio)
+- `jira`   — search, read, create, update, transition issues (stdio)
+- `confluence` — search, read, create, update pages (stdio)
+- `datadog` — monitoring, alerts, dashboards (HTTP)
+- `slack` — channels, messages, users (SSE)
 
 Reference one from an agent:
 
@@ -207,8 +269,13 @@ mcp: [jira, confluence]
 ```
 
 Tools are namespaced (`jira__get_issue`, `confluence__update_page`) and merged
-into the same registry as built-ins. Transport: stdio JSON-RPC. **HTTP/SSE
-transport is not yet implemented.**
+into the same registry as built-ins. Supported transports:
+
+| Transport | How it works |
+|-----------|-------------|
+| `stdio`   | Spawns a subprocess, JSON-RPC over stdin/stdout |
+| `http`    | POST JSON-RPC to a URL, get JSON-RPC response |
+| `sse`     | POST JSON-RPC, receive response via Server-Sent Events |
 
 ---
 
@@ -225,7 +292,7 @@ transport is not yet implemented.**
 | `/spec`     | Show the agent's resolved spec |
 | `/model`    | Switch provider/model mid-session |
 | `/models`   | List available models, pick by number |
-| `/save`     | Save session snapshot (timestamped) |
+| `/save [name]` | Save session snapshot — `/save` (timestamped) or `/save fixing-auth` (named) |
 | `/sessions` | List saved sessions |
 | `/resume`   | Resume a saved session by id or number |
 | `/themes`   | List available themes with descriptions |
@@ -247,8 +314,8 @@ internal/mcp/         JSON-RPC stdio client, tool adapter
 internal/config/      Frontmatter parsing, agent/MCP/skill schemas
 internal/ports/       ConfigSource, Secrets, StateStore interfaces
 internal/adapters/    Keychain (macOS/libsecret), file-backed stores
-examples/agents/      27 ready-to-use agents
-examples/mcp/         3 MCP server definitions
+examples/agents/      32 ready-to-use agents
+examples/mcp/         5 MCP server definitions
 docs/                 Static product site (EN + SR), GitHub Pages
 ```
 
@@ -265,28 +332,33 @@ structured output mechanics), see the
 
 ## What works today
 
-- Single-binary install on macOS / Linux (amd64 + arm64)
+- Single-binary install on macOS / Linux / Windows (amd64 + arm64)
 - 6 LLM providers, switchable mid-session
-- 8 built-in tools with user confirmation on writes + undo
-- MCP stdio transport with auto-discovery and namespacing
+- 9 built-in tools with user confirmation on writes + undo
+- MCP stdio + HTTP + SSE transports with auto-discovery and namespacing
 - Hub-and-spoke sub-agent delegation
 - Provider-native structured output enforcement (`response_schema`)
 - Full-screen TUI with token/cost/context indicators, falls back to line REPL in pipes
 - 9 built-in themes (matrix, nord, dracula, gruvbox, tokyonight, catppuccin, solarized, default, minimal)
-- Session persistence with AES-256-GCM encryption and autosave
+- Session persistence with AES-256-GCM encryption, autosave, and graceful shutdown (Ctrl+C saves)
 - Token-based context compaction (per-model context window awareness)
-- Agent discovery (`m list`)
+- Agent discovery (`m list`), registry (`m install`), scaffold (`m new`)
+- Fallback models (auto-switch on 429 rate limit)
+- Dangerous command double-confirmation (34 patterns)
+- PII guardrails (redact emails, phones, SSNs, credit cards, API keys before sending to LLM)
+- Command shortcuts (/x /r /c /u /m /t /s /h)
+- Auto-update notifications (checks GitHub once/day)
+- Shell completions (bash/zsh/fish/powershell)
+- Homebrew tap with auto-update on release
 - Tagged release pipeline producing `.pkg` and `.deb`
 
 ## Known gaps
 
 These are real, not roadmap-ware. They affect what AgentCTL can be used for today:
 
-- **No codebase RAG / context retrieval.** Agents see what they explicitly
-  read with `fs_read` / `fs_list` / `web_fetch`. There's no embedding store, no
-  similarity search. See [Codebase context (RAG)](#codebase-context-rag) below.
-- **MCP HTTP/SSE transport not implemented.** Stdio only. Many real-world
-  MCP servers use HTTP — they don't work yet.
+- **No codebase RAG / embedding store.** The `code_search` tool provides
+  grep + symbol index search, but there's no semantic/embedding-based
+  retrieval. For most codebases, `code_search` + `fs_read` is sufficient.
 - **No `/trust` for autonomous sessions.** Every `fs_write` and `shell`
   prompts. Fine for interactive use, blocks long-running headless runs.
 - **No team features.** No shared agent registry, no audit log, no RBAC,

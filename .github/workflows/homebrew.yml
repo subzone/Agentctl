@@ -1,0 +1,19 @@
+name: Update Homebrew Formula
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  homebrew:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Update formula
+        uses: mislav/bump-homebrew-formula-action@v3
+        with:
+          formula-name: m
+          homebrew-tap: subzone/homebrew-tap
+          tag-name: ${{ github.event.release.tag_name }}
+          download-url: https://github.com/subzone/Agentctl/archive/refs/tags/${{ github.event.release.tag_name }}.tar.gz
+        env:
+          COMMITTER_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}

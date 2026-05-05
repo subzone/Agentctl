@@ -8,8 +8,8 @@ import (
 
 func TestSaveAndLoadConfig(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir)       // Linux
-	t.Setenv("HOME", dir)                  // fallback
+	t.Setenv("XDG_CONFIG_HOME", dir) // Linux
+	t.Setenv("HOME", dir)            // fallback
 	os.MkdirAll(filepath.Join(dir, "m"), 0o700)
 
 	cfg := &Config{Provider: ProviderOllama, Model: "qwen3-coder"}

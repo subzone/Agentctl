@@ -13,6 +13,19 @@ linters:
     - gocritic
     - misspell
     - bodyclose
+    - gosec
+  settings:
+    gosec:
+      excludes:
+        - G204  # subprocess with variable — intentional (shell tool, git, mcp)
+        - G304  # file inclusion via variable — intentional (fs_read, config)
+        - G301  # directory permissions 0755 — standard for CLI
+        - G306  # file permissions 0644 — standard for user files
+        - G115  # integer overflow uintptr->int — term.IsTerminal pattern
+        - G104  # unhandled errors in cleanup paths
+        - G704  # SSRF — intentional (provider clients, MCP HTTP)
+        - G118  # context cancel not called — bubbletea pattern
+        - G122  # filepath.Walk TOCTOU — acceptable for local CLI indexer
 
 issues:
   exclude-dirs:

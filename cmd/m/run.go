@@ -29,14 +29,21 @@ func newRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run <agent.md> [task...]",
 		Short: "Run an agent once and stream the reply to stdout",
-		Args:  cobra.MinimumNArgs(1),
-		RunE:  runAgent,
+		Long: `Execute a one-shot task with an agent. Output streams to stdout.
+
+Examples:
+  m run devops "review the Dockerfile"
+  m run coder "fix the failing test in api/handler.go"
+  m run examples/agents/summarize.md`,
+		Args: cobra.MinimumNArgs(1),
+		RunE: runAgent,
 	}
 	return cmd
 }
 
 func runAgent(cmd *cobra.Command, args []string) error {
-	doc, err := config.ParseFile(args[0])
+	path := resolveAgentPath(args[0])
+	doc, err := config.ParseFile(path)
 	if err != nil {
 		return err
 	}
@@ -67,7 +74,7 @@ func runAgent(cmd *cobra.Command, args []string) error {
 	out := cmd.OutOrStdout()
 	stderr := cmd.ErrOrStderr()
 
-	docs := loadCompanionDocs(args[0])
+	docs := loadCompanionDocs(path)
 
 	hubSpawner := &spawner{
 		docs:       docs,
@@ -204,63 +211,36 @@ func stdinIsPipe(r io.Reader) bool {
 	return (info.Mode() & os.ModeCharDevice) == 0
 }
 
-
-// stdinToolConfirm returns a ToolConfirm func that prompts the user
-// before executing destructive tools in the REPL.
-func stdinToolConfirm(w io.Writer, r io.Reader) func(context.Context, string, json.RawMessage) (bool, error) {
-	sc := bufio.NewScanner(r)
-	return func(_ context.Context, name string, input json.RawMessage) (bool, error) {
-		// Auto-approve safe tools
-		if isSafeTool(name, input) {
-			fmt.Fprintf(w, "→ %s %s [auto-approved]\n", name, summarizeToolInput(input))
-			return true, nil
-		}
-		
-		fmt.Fprintf(w, "Allow %s %s? [y/N]: ", name, summarizeToolInput(input))
-		if !sc.Scan() {
-			return false, nil
-		}
-		ans := strings.TrimSpace(strings.ToLower(sc.Text()))
-		return ans == "y" || ans == "yes", nil
-	}
-}
-
-// isSafeTool returns true if a tool call is safe to auto-approve
-func isSafeTool(name string, input json.RawMessage) bool {
-	// Read-only tools are always safe
-	if name == "fs_read" || name == "fs_list" || name == "test_run" {
-		return true
-	}
-
-	// Git read-only operations
-	if name == "git" {
-		var args struct {
-			Operation string `json:"operation"`
-			Args      string `json:"args"`
-		}
-		if err := json.Unmarshal(input, &args); err == nil {
-			safeOps := []string{"status", "diff", "log", "branch"}
-			for _, op := range safeOps {
-				if args.Operation == op {
-					return true
-				}
-			}
-		}
-	}
-
-	// Shell commands are never auto-approved: even simple-looking commands
-	// can exfiltrate data or modify the filesystem via redirections (>, >>),
-	// subshells ($(), backticks), backgrounding (&), or whitespace-hidden
-	// operators. All shell invocations require explicit user confirmation.
-
-	return false
-}
-
 // summarizeToolInput returns a short preview of tool input for confirmation prompts.
 func summarizeToolInput(input json.RawMessage) string {
-	s := string(input)
-	if len(s) > 80 {
-		return s[:80] + "..."
+	var m map[string]any
+	if err := json.Unmarshal(input, &m); err != nil {
+		s := string(input)
+		if len(s) > 60 {
+			return s[:60] + "..."
+		}
+		return s
 	}
-	return s
+	var parts []string
+	for _, key := range []string{"path", "command", "url", "query", "name", "file"} {
+		if v, ok := m[key]; ok {
+			s := fmt.Sprintf("%v", v)
+			if len(s) > 60 {
+				s = s[:60] + "..."
+			}
+			parts = append(parts, key+"="+s)
+		}
+	}
+	if len(parts) > 0 {
+		return strings.Join(parts, " ")
+	}
+	// Fallback: show first key=value
+	for k, v := range m {
+		s := fmt.Sprintf("%v", v)
+		if len(s) > 40 {
+			s = s[:40] + "..."
+		}
+		return k + "=" + s
+	}
+	return string(input)
 }

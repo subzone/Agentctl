@@ -14,9 +14,9 @@ jobs:
     name: Vet + Lint + Test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      - uses: actions/setup-go@v5
+      - uses: actions/setup-go@v6
         with:
           go-version-file: go.mod
 
@@ -35,4 +35,4 @@ jobs:
         run: CGO_ENABLED=0 go build -trimpath -o m ./cmd/m
 
       - name: Validate example agents
-        run: ./m validate examples/agents/*.md
+        run: ./m validate examples/

@@ -60,19 +60,19 @@ func New(opts ...Option) (*Provider, error) {
 		o(p)
 	}
 	if p.apiKey == "" {
-		return nil, errors.New("ANTHROPIC_API_KEY is not set")
+		return nil, errors.New("anthropic API key not found — run `m config` to set it up, or export ANTHROPIC_API_KEY")
 	}
 	return p, nil
 }
 
 type messagePayload struct {
-	Model       string         `json:"model"`
-	System      string         `json:"system,omitempty"`
-	Messages    []apiMessage   `json:"messages"`
-	Tools       []apiTool      `json:"tools,omitempty"`
-	MaxTokens   int            `json:"max_tokens"`
-	Temperature *float64       `json:"temperature,omitempty"`
-	Stream      bool           `json:"stream"`
+	Model       string       `json:"model"`
+	System      json.RawMessage `json:"system,omitempty"`
+	Messages    []apiMessage `json:"messages"`
+	Tools       []apiTool    `json:"tools,omitempty"`
+	MaxTokens   int          `json:"max_tokens"`
+	Temperature *float64     `json:"temperature,omitempty"`
+	Stream      bool         `json:"stream"`
 }
 
 type apiMessage struct {
@@ -81,9 +81,18 @@ type apiMessage struct {
 }
 
 type apiTool struct {
-	Name        string          `json:"name"`
-	Description string          `json:"description,omitempty"`
-	InputSchema json.RawMessage `json:"input_schema"`
+	Name         string          `json:"name"`
+	Description  string          `json:"description,omitempty"`
+	InputSchema  json.RawMessage `json:"input_schema"`
+	CacheControl *cacheControl   `json:"cache_control,omitempty"`
+}
+
+// cacheControl tells the Anthropic API to cache everything up to and
+// including this block. Placing it on the last tool means the entire
+// tools array is cached across turns, saving input tokens on every
+// subsequent request in the same session.
+type cacheControl struct {
+	Type string `json:"type"`
 }
 
 // Stream sends req to /v1/messages with stream=true and forwards SSE events
@@ -117,13 +126,19 @@ func (p *Provider) Stream(ctx context.Context, req llm.Request) (<-chan llm.Even
 	}
 
 	payloadMap := map[string]any{
-		"model":       req.Model,
-		"messages":    msgs,
-		"max_tokens":  maxTok,
-		"stream":      true,
+		"model":      req.Model,
+		"messages":   msgs,
+		"max_tokens": maxTok,
+		"stream":     true,
 	}
 	if req.System != "" {
-		payloadMap["system"] = req.System
+		// Send system as a content-block array with cache_control so the
+		// Anthropic API caches the (often large) agent system prompt.
+		payloadMap["system"] = []map[string]any{{
+			"type":          "text",
+			"text":          req.System,
+			"cache_control": map[string]string{"type": "ephemeral"},
+		}}
 	}
 	if req.Temperature != nil {
 		payloadMap["temperature"] = req.Temperature
@@ -285,6 +300,10 @@ func buildTools(tools []llm.ToolSchema) []apiTool {
 			InputSchema: t.InputSchema,
 		})
 	}
+	// Mark the last tool with cache_control so the Anthropic API caches
+	// the entire tools array. This avoids re-tokenizing large MCP schemas
+	// on every turn, significantly reducing input tokens and TTFT.
+	out[len(out)-1].CacheControl = &cacheControl{Type: "ephemeral"}
 	return out
 }
 

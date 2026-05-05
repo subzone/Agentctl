@@ -4,10 +4,14 @@ type: agent
 description: Breaks a task into a numbered, ordered checklist. No execution.
 version: 1
 model: anthropic/claude-haiku-4-5-20251001
+fallback:
+  - anthropic/claude-sonnet-4-6
+  - openai/gpt-4.1-mini
 tools:
   - fs_read
   - fs_list
   - web_fetch
+  - code_search
 temperature: 0.2
 max_tokens: 2048
 ---

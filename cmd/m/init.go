@@ -97,7 +97,18 @@ func runWizard(in io.Reader, out, status io.Writer) (*userconfig.Config, error) 
 		return nil, err
 	}
 	p, _ := userconfig.Path()
-	fmt.Fprintf(out, "\nSaved %s\n", p)
+	fmt.Fprintf(out, "\n✓ Config saved to %s\n", p)
+	fmt.Fprintln(out)
+	fmt.Fprintln(out, "┌────────────────────────────────────────────────┐")
+	fmt.Fprintln(out, "│  You're all set! Here's what you can do:    │")
+	fmt.Fprintln(out, "│                                                │")
+	fmt.Fprintf(out,  "│  • Just type below to start chatting          │\n")
+	fmt.Fprintln(out, "│  • m doctor     — verify your setup            │")
+	fmt.Fprintln(out, "│  • m new <name> — create your own agent        │")
+	fmt.Fprintln(out, "│  • m list       — browse example agents        │")
+	fmt.Fprintln(out, "│  • /help        — see all commands in chat     │")
+	fmt.Fprintln(out, "└────────────────────────────────────────────────┘")
+	fmt.Fprintln(out)
 	return cfg, nil
 }
 

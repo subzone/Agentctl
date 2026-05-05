@@ -25,6 +25,144 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.32",
+		Date:    "2026-05-05",
+		Highlights: []string{
+			"Structured logging (slog): JSON output, debug/warn levels, /debug toggle.",
+			"Graceful shutdown: session auto-saved on Ctrl+C / SIGTERM.",
+			"Integration tests: 10 black-box CLI tests (m new, m list, m doctor, etc.).",
+			"Coverage tests: dangerous commands, slash commands, markdown rendering, version compare.",
+			"cmd/m coverage: 16% \u2192 25%.",
+			"TUI fix: ANSI-aware word wrap prevents garbled escape codes.",
+		},
+	},
+	{
+		Version: "0.0.31",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"PII guardrails: redact emails, phones, SSNs, credit cards, API keys before sending to LLM.",
+			"Agent config: pii_guard: redact/warn/off. Toggle with /pii in session.",
+			"Mermaid diagram skill: teaches agents to produce architecture diagrams.",
+			"SAST (gosec) + SCA (govulncheck) in CI pipeline.",
+			"Secret scanning + push protection enabled.",
+		},
+	},
+	{
+		Version: "0.0.30",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"Update notifier: checks GitHub once/day, shows notice if newer version available.",
+			"Non-blocking, cached, silent on errors. Never slows down startup.",
+		},
+	},
+	{
+		Version: "0.0.29",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"REPL color: bold blue prompt, dim tips/shortcuts.",
+			"Help examples: m chat, m run show real usage examples.",
+			"Session summary: /sessions shows first user message for each session.",
+			"Tool output: shows line count or short output instead of raw byte count.",
+		},
+	},
+	{
+		Version: "0.0.28",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"Command shortcuts: /x /r /c /u /m /t /s /h for all slash commands.",
+			"TUI command bar: underlined shortcut letters for discoverability.",
+			"Welcome message: shortcuts listed on every session start.",
+		},
+	},
+	{
+		Version: "0.0.27",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"First-run wizard: visual completion summary with next steps.",
+			"TUI + REPL onboarding: tips line showing key commands on every session start.",
+		},
+	},
+	{
+		Version: "0.0.26",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"m new: scaffold a new agent .md file with boilerplate.",
+			"m doctor: health check (config, API key, model reachability, tools).",
+			"m completion: shell completions for bash/zsh/fish/powershell.",
+			"Named sessions: /save fixing-auth-bug creates a named snapshot.",
+			"Better error messages: API key errors now tell you how to fix them.",
+		},
+	},
+	{
+		Version: "0.0.25",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"MCP HTTP/SSE transport: all three transports now supported (stdio, http, sse).",
+			"Agent registry: m install + m run/chat by name (no path needed).",
+			"Shell timeout: 30s \u2192 120s (terraform/docker friendly).",
+			"Undo stack capped at 20 entries.",
+			"Example MCP servers: datadog (HTTP), slack (SSE).",
+		},
+	},
+	{
+		Version: "0.0.24",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"code_search tool: grep + in-memory symbol index (functions, types, classes, imports).",
+			"Languages: Go, Python, JS, TS, Java, Ruby, Rust, Terraform, Shell.",
+			"Session history: autosave rotates, keeps last 10 backups.",
+			"/trust command: auto-approve tools (dangerous commands still double-confirm).",
+			"Dangerous command protection: 34 patterns always require double y/n.",
+		},
+	},
+	{
+		Version: "0.0.23",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"Fallback models: auto-switch on 429 rate limit. Added to all 30 example agents.",
+			"Per-agent thinking phrases: customize spinner text per agent (e.g. Serbian for Steva \u0110ubre).",
+			"Markdown rendering in TUI: **bold** renders as terminal bold, `code` as dim, ## headers as bold with spacing.",
+			"Tool confirmation cleanup: shows key=value instead of raw JSON.",
+			"Tool output formatting: newlines before/after tool activity lines.",
+			"Removed (thinking) text marker \u2014 TUI spinner handles thinking status.",
+			"Continue prompt: 'Agent worked on this for a while' instead of technical turn count.",
+			"TUI: version + copyright below M banner, tagline below stats.",
+			"Docs: fallback and thinking_phrases documented in README and agents page.",
+		},
+	},
+	{
+		Version: "0.0.22",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"Error intervention: agent auto-retries on tool failures with context.",
+			"Anthropic prompt caching support.",
+			"TUI: version + copyright displayed below M banner.",
+			"All docs and GitHub Pages synced to v0.0.22.",
+		},
+	},
+	{
+		Version: "0.0.21",
+		Date:    "2026-07-04",
+		Highlights: []string{
+			"High-contrast y/n confirmation prompts — ConfirmFg theme field, all 9 themes updated.",
+			"TUI: bypass throttle for important messages (tool output, confirmations).",
+			"Lint fixes: gocritic if-else chain rewritten to switch, go fmt formatting.",
+			"CI: validate all examples/ so cross-references resolve.",
+			"First self-made release by Steva Đubre!",
+		},
+	},
+	{
+		Version: "0.0.19",
+		Date:    "2026-07-04",
+		Highlights: []string{
+			"Homebrew install: brew tap subzone/tap && brew install subzone/tap/m",
+			"Auto-update Homebrew formula on every release via CI.",
+			"SECURITY.md, CODE_OF_CONDUCT.md, CODEOWNERS, issue/PR templates.",
+			"CI on every push/PR (not just tags). Dependabot for Go modules.",
+			"Branch protection, tag protection, repo topics for discoverability.",
+		},
+	},
+	{
 		Version: "0.0.18",
 		Date:    "2026-07-04",
 		Highlights: []string{

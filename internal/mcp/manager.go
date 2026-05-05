@@ -13,13 +13,13 @@ import (
 // Manager owns a set of running MCP clients and exposes their tools as
 // adapters in a tools.Registry.
 type Manager struct {
-	clients []namedClient
+	clients []namedTransport
 	tools   []tools.Tool
 }
 
-type namedClient struct {
-	name   string
-	client *Client
+type namedTransport struct {
+	name      string
+	transport Transport
 }
 
 // Open spawns the MCP servers in specs (filtered by allowed_agents if
@@ -40,24 +40,42 @@ func Open(ctx context.Context, specs []*config.MCPServerSpec, agentName string, 
 			fmt.Fprintf(status, "skipping mcp server %q: agent %q not in allowed_agents\n", spec.Name, agentName)
 			continue
 		}
-		if spec.Transport != config.TransportStdio {
-			fmt.Fprintf(status, "skipping mcp server %q: transport %q not yet supported (stdio only)\n", spec.Name, spec.Transport)
+
+		var transport Transport
+		var err error
+
+		switch spec.Transport {
+		case config.TransportStdio:
+			transport, err = NewProcessClient(ctx, spec.Command, spec.Env)
+		case config.TransportHTTP:
+			if spec.URL == "" {
+				fmt.Fprintf(status, "skipping mcp server %q: http transport requires url\n", spec.Name)
+				continue
+			}
+			transport = NewHTTPClient(spec.URL, false)
+		case config.TransportSSE:
+			if spec.URL == "" {
+				fmt.Fprintf(status, "skipping mcp server %q: sse transport requires url\n", spec.Name)
+				continue
+			}
+			transport = NewHTTPClient(spec.URL, true)
+		default:
+			fmt.Fprintf(status, "skipping mcp server %q: unknown transport %q\n", spec.Name, spec.Transport)
 			continue
 		}
-
-		client, err := NewProcessClient(ctx, spec.Command, spec.Env)
 		if err != nil {
 			m.closeAll()
 			return nil, fmt.Errorf("mcp %s: %w", spec.Name, err)
 		}
-		if err := client.Initialize(ctx, "agent", "0.1"); err != nil {
-			_ = client.Close()
+
+		if err := transport.Initialize(ctx, "agent", "0.1"); err != nil {
+			_ = transport.Close()
 			m.closeAll()
 			return nil, fmt.Errorf("mcp %s: initialize: %w", spec.Name, err)
 		}
-		listing, err := client.ListTools(ctx)
+		listing, err := transport.ListTools(ctx)
 		if err != nil {
-			_ = client.Close()
+			_ = transport.Close()
 			m.closeAll()
 			return nil, fmt.Errorf("mcp %s: tools/list: %w", spec.Name, err)
 		}
@@ -67,10 +85,10 @@ func Open(ctx context.Context, specs []*config.MCPServerSpec, agentName string, 
 			prefix = spec.Name
 		}
 		for _, ut := range listing {
-			m.tools = append(m.tools, NewToolAdapter(client, ut, prefix))
+			m.tools = append(m.tools, NewToolAdapterTransport(transport, ut, prefix))
 		}
-		m.clients = append(m.clients, namedClient{name: spec.Name, client: client})
-		fmt.Fprintf(status, "mcp %s: %d tool(s) available\n", spec.Name, len(listing))
+		m.clients = append(m.clients, namedTransport{name: spec.Name, transport: transport})
+		fmt.Fprintf(status, "mcp %s (%s): %d tool(s) available\n", spec.Name, spec.Transport, len(listing))
 	}
 	return m, nil
 }
@@ -90,7 +108,7 @@ func (m *Manager) Close() error {
 func (m *Manager) closeAll() error {
 	var first error
 	for _, nc := range m.clients {
-		if err := nc.client.Close(); err != nil && first == nil {
+		if err := nc.transport.Close(); err != nil && first == nil {
 			first = fmt.Errorf("mcp %s: close: %w", nc.name, err)
 		}
 	}

@@ -112,11 +112,78 @@
 </section>
 
 <!-- CTA -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Advanced</div>
+      <h2>Agent Features</h2>
+    </div>
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3>Code Search (RAG)</h3>
+      <p>Search the codebase without reading every file. Two modes:</p>
+      <ul>
+        <li><strong>text</strong> — grep/ripgrep for exact pattern matching across all source files</li>
+        <li><strong>symbol</strong> — in-memory index of functions, types, classes, imports. Built automatically on first use.</li>
+      </ul>
+      <p>Languages indexed: Go, Python, JavaScript, TypeScript, Java, Ruby, Rust, Terraform, Shell.</p>
+      <pre><code>tools:
+  - code_search</code></pre>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3>Fallback Models</h3>
+      <p>When the primary model returns 429 (rate limit), the agent automatically tries the next model in the list.</p>
+      <pre><code>fallback:
+  - anthropic/claude-haiku-4-5-20251001
+  - openai/gpt-4.1</code></pre>
+    </div>
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3>Thinking Phrases</h3>
+      <p>Customize the spinner text shown while the agent works. Useful for non-English agents.</p>
+      <pre><code>thinking_phrases:
+  - "razmišljam"
+  - "čekaj bre"
+  - "tražim bug"</code></pre>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3>PII Guardrails</h3>
+      <p>Protect sensitive data from being sent to LLM providers. Scans for emails, phone numbers, SSNs, credit cards, IP addresses, API keys, JWTs, and passwords.</p>
+      <pre><code>pii_guard: redact   # redact | warn | off</code></pre>
+      <p>Modes:</p>
+      <ul>
+        <li><strong>redact</strong> — replaces PII with placeholders (&lt;EMAIL&gt;, &lt;PHONE&gt;, etc.) before sending</li>
+        <li><strong>warn</strong> — shows what was detected, sends anyway</li>
+        <li><strong>off</strong> — no scanning (default)</li>
+      </ul>
+      <p>Toggle in session: <code>/pii</code> (on) / <code>/pii off</code></p>
+    </div>
+
+    <div class="docs-card" style="margin-bottom: 2rem;">
+      <h3>Mermaid Diagrams</h3>
+      <p>Add the mermaid-diagrams skill to teach your agent to produce architecture diagrams, flowcharts, and sequence diagrams.</p>
+      <pre><code>skills:
+  - mermaid-diagrams</code></pre>
+    </div>
+  </div>
+</section>
+  <p>Scaffold a new agent in seconds, or start from an example and customize.</p>
+  <pre style="background:rgba(0,0,0,0.3);padding:1rem;border-radius:8px;color:#fff;margin:1rem auto;max-width:500px;text-align:left;"><code>$ m new my-agent
+created my-agent.md
+edit the system prompt, then run: m chat my-agent</code></pre>
+  <div class="hero-buttons">
+    <a href="https://github.com/subzone/Agentctl/tree/main/examples/agents" class="btn btn-white"><i class="fa-brands fa-github"></i> Browse examples</a>
+  </div>
+</section>
+
 <section class="cta">
   <h2>Build your own agent</h2>
-  <p>Any Markdown file with YAML frontmatter works. Start from an example and customize.</p>
+  <p>Scaffold a new agent in seconds, or start from an example and customize.</p>
+  <pre style="background:rgba(0,0,0,0.3);padding:1rem;border-radius:8px;color:#fff;margin:1rem auto;max-width:500px;text-align:left;"><code>$ m new my-agent
+created my-agent.md
+edit the system prompt, then run: m chat my-agent</code></pre>
   <div class="hero-buttons">
-    <a href="https://github.com/subzone/Agentctl/tree/main/examples/agents" class="btn btn-white"><i class="fa-brands fa-github"></i> Browse on GitHub</a>
+    <a href="https://github.com/subzone/Agentctl/tree/main/examples/agents" class="btn btn-white"><i class="fa-brands fa-github"></i> Browse examples</a>
   </div>
 </section>
 

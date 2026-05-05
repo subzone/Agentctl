@@ -17,7 +17,7 @@ func init() {
 	llm.Register("alibaba", func() (llm.Provider, error) {
 		apiKey := os.Getenv("DASHSCOPE_API_KEY")
 		if apiKey == "" {
-			return nil, errors.New("DASHSCOPE_API_KEY is not set")
+			return nil, errors.New("alibaba API key not found — run `m config` to set it up, or export DASHSCOPE_API_KEY")
 		}
 		baseURL := os.Getenv("DASHSCOPE_BASE_URL")
 		if baseURL == "" {

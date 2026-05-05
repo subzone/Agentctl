@@ -4,11 +4,15 @@ type: agent
 description: Technical writer — creates and edits documentation, READMEs, and prose.
 version: 1
 model: anthropic/claude-sonnet-4-6
+fallback:
+  - anthropic/claude-haiku-4-5-20251001
+  - openai/gpt-4.1
 tools:
   - fs_read
   - fs_write
   - fs_list
   - web_fetch
+  - code_search
 temperature: 0.6
 max_tokens: 4096
 ---

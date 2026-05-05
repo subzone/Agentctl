@@ -4,10 +4,14 @@ type: agent
 description: Spoke agent — reviews code, returns structured JSON with findings.
 version: 1
 model: anthropic/claude-sonnet-4-6
+fallback:
+  - anthropic/claude-haiku-4-5-20251001
+  - openai/gpt-4.1
 tools:
   - fs_read
   - fs_list
   - web_fetch
+  - code_search
 skills:
   - structured-output
 temperature: 0.2

@@ -15,10 +15,10 @@ func detectProjectContext(dir string) string {
 	var parts []string
 
 	checks := []struct {
-		file    string
-		lang    string
-		build   string
-		test    string
+		file  string
+		lang  string
+		build string
+		test  string
 	}{
 		{"go.mod", "Go", "go build ./...", "go test ./..."},
 		{"Cargo.toml", "Rust", "cargo build", "cargo test"},

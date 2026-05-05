@@ -15,14 +15,37 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"strings"
+	"sync"
 
 	"github.com/subzone/Agentctl/internal/llm"
 	"github.com/subzone/Agentctl/internal/tools"
+	"github.com/subzone/Agentctl/internal/logging"
 )
 
-// defaultMaxTurns caps tool-use loops. A productive agent rarely needs more
-// than a handful; this exists to stop runaway loops eating tokens forever.
-const defaultMaxTurns = 15
+// Default configuration values. These can be overridden via Config fields.
+const (
+	// DefaultMaxTurns caps tool-use loops. A productive agent rarely needs more
+	// than a handful; this exists to stop runaway loops eating tokens forever.
+	DefaultMaxTurns = 15
+
+	// DefaultContextBudget is the default context window size when not specified.
+	// 128K is a conservative default that works for most models.
+	DefaultContextBudget = 128_000
+
+	// DefaultCompactionThreshold is the percentage of context budget at which
+	// auto-compaction triggers. 80% leaves room for the response.
+	DefaultCompactionThreshold = 80
+
+	// DefaultCompactionTarget is the percentage of context budget to compact to.
+	// 50% provides headroom for continued conversation.
+	DefaultCompactionTarget = 50
+
+	// DefaultMaxConcurrentTools limits how many tools can run simultaneously.
+	// This prevents resource exhaustion when a model requests many tool calls.
+	// 10 is a reasonable balance between parallelism and resource usage.
+	DefaultMaxConcurrentTools = 10
+)
 
 // Config configures a Run or Session. The zero value is not usable:
 // Provider and Model must be set.
@@ -34,10 +57,24 @@ type Config struct {
 	Temperature *float64
 	MaxTokens   int
 
+	// PIIGuard scans outgoing messages for PII and redacts/warns.
+	// nil means no PII scanning.
+	PIIGuard *tools.PIIGuard
+
 	// MaxContextTokens is the model's context window size. When estimated
 	// input tokens exceed 80% of this, the session auto-compacts. Zero
 	// means use a conservative default (128K).
 	MaxContextTokens int
+
+	// FallbackModels is a list of "provider/model" strings to try when
+	// the primary model returns a rate-limit (429) or overload error.
+	// Tried in order; the session switches to the first one that works.
+	FallbackModels []string
+
+	// ResolveModel resolves a "provider/model" string into a Provider and
+	// bare model name. Required when FallbackModels is set. Typically
+	// wired to llm.Resolve.
+	ResolveModel func(model string) (llm.Provider, string, error)
 
 	// ResponseSchema constrains the model to produce valid JSON matching
 	// this schema. Nil means unconstrained text output.
@@ -61,6 +98,18 @@ type Config struct {
 	// to continue for another MaxTurns rounds, false to stop.
 	// Nil means stop immediately.
 	ContinueConfirm func(ctx context.Context, turns int) (bool, error)
+
+	// ErrorIntervention is called when a tool execution fails. The callback
+	// receives the tool name and the error message. It may return a hint
+	// string that is appended to the error sent back to the LLM, helping
+	// steer the model away from repeated failures. Return "" to let the
+	// model retry on its own. Nil means no intervention (original behavior).
+	ErrorIntervention func(ctx context.Context, toolName string, errMsg string) string
+
+	// MaxConcurrentTools limits how many tools can run simultaneously.
+	// Zero uses DefaultMaxConcurrentTools. This prevents resource exhaustion
+	// when a model requests many tool calls in a single turn.
+	MaxConcurrentTools int
 }
 
 // Run executes one task to completion in a fresh conversation. It is a
@@ -74,15 +123,16 @@ func Run(ctx context.Context, cfg Config, task string) error {
 // user turn and runs the engine loop; the resulting message history is
 // retained on the Session and reused on subsequent Steps.
 type Session struct {
-	cfg           Config
-	out           io.Writer
-	status        io.Writer
-	maxTurns      int
-	contextBudget int // max input tokens before compaction (80% of model window)
-	schemas       []llm.ToolSchema
-	messages      []llm.Message
-	usage         llm.Usage // cumulative across all Steps
-	lastIn        int       // input_tokens from the most recent provider call
+	cfg              Config
+	out              io.Writer
+	status           io.Writer
+	maxTurns         int
+	maxConcurrent    int // max tools running at once
+	contextBudget    int // max input tokens before compaction (80% of model window)
+	schemas          []llm.ToolSchema
+	messages         []llm.Message
+	usage            llm.Usage // cumulative across all Steps
+	lastIn           int       // input_tokens from the most recent provider call
 }
 
 // Usage returns the cumulative token counts across all Steps in this session.
@@ -116,17 +166,22 @@ func NewSession(cfg Config) *Session {
 	}
 	maxTurns := cfg.MaxTurns
 	if maxTurns <= 0 {
-		maxTurns = defaultMaxTurns
+		maxTurns = DefaultMaxTurns
 	}
 	contextBudget := cfg.MaxContextTokens
 	if contextBudget <= 0 {
-		contextBudget = 128_000 // conservative default
+		contextBudget = DefaultContextBudget
+	}
+	maxConcurrent := cfg.MaxConcurrentTools
+	if maxConcurrent <= 0 {
+		maxConcurrent = DefaultMaxConcurrentTools
 	}
 	return &Session{
 		cfg:           cfg,
 		out:           out,
 		status:        status,
 		maxTurns:      maxTurns,
+		maxConcurrent: maxConcurrent,
 		schemas:       buildSchemas(cfg.Tools),
 		contextBudget: contextBudget,
 	}
@@ -194,10 +249,19 @@ func (s *Session) Step(ctx context.Context, task string) error {
 		return errors.New("engine: Model is required")
 	}
 
+	// PII guard: scan and redact user input before sending to LLM.
+	if s.cfg.PIIGuard != nil && s.cfg.PIIGuard.Mode != tools.PIIModeOff {
+		if findings := s.cfg.PIIGuard.Scan(task); len(findings) > 0 {
+			fmt.Fprintln(s.status, s.cfg.PIIGuard.Summary(findings))
+			if s.cfg.PIIGuard.Mode == tools.PIIModeRedact {
+				task = s.cfg.PIIGuard.Redact(task)
+			}
+		}
+	}
 	s.messages = append(s.messages, llm.TextMessage(llm.RoleUser, task))
-	// Auto-compact when estimated tokens exceed 80% of context budget.
+	// Auto-compact when estimated tokens exceed threshold.
 	if s.shouldCompact() {
-		target := s.contextBudget / 2 // compact to 50% to leave room
+		target := s.contextBudget * DefaultCompactionTarget / 100
 		s.messages = validateMessages(tokenCompact(s.messages, target, s.cfg.System))
 		fmt.Fprintf(s.status, "[auto-compacted to ~%dk tokens]\n", target/1000)
 	}
@@ -213,6 +277,9 @@ func (s *Session) Step(ctx context.Context, task string) error {
 			MaxTokens:      s.cfg.MaxTokens,
 			ResponseSchema: s.cfg.ResponseSchema,
 		})
+		if err != nil && isRateLimitError(err) && len(s.cfg.FallbackModels) > 0 {
+			events, err = s.tryFallbacks(ctx)
+		}
 		if err != nil {
 			return err
 		}
@@ -292,13 +359,13 @@ func (s *Session) Step(ctx context.Context, task string) error {
 				}
 				return nil
 			}
-			results, err := executeTools(ctx, s.cfg.Tools, s.cfg.ToolConfirm, s.status, assistant.Content)
+			results, err := executeTools(ctx, s.cfg.Tools, s.cfg.ToolConfirm, s.cfg.ErrorIntervention, s.status, s.maxConcurrent, assistant.Content)
 			if err != nil {
 				return err
 			}
 			s.messages = append(s.messages, results)
 			if s.shouldCompact() {
-				target := s.contextBudget / 2
+				target := s.contextBudget * DefaultCompactionTarget / 100
 				s.messages = validateMessages(tokenCompact(s.messages, target, s.cfg.System))
 				fmt.Fprintf(s.status, "[auto-compacted to ~%dk tokens]\n", target/1000)
 			}
@@ -328,6 +395,54 @@ func (s *Session) Step(ctx context.Context, task string) error {
 	}
 	fmt.Fprintf(s.out, "\n[reached %d tool turns, stopping]\n", s.maxTurns)
 	return nil
+}
+
+// isRateLimitError returns true if the error indicates a rate limit (429)
+// or overload (529) from the provider.
+func isRateLimitError(err error) bool {
+	if err == nil {
+		return false
+	}
+	msg := err.Error()
+	return strings.Contains(msg, "429") ||
+		strings.Contains(msg, "rate limit") ||
+		strings.Contains(msg, "overloaded") ||
+		strings.Contains(msg, "529")
+}
+
+// tryFallbacks attempts each fallback model in order. On success, the
+// session switches to that model for subsequent turns.
+func (s *Session) tryFallbacks(ctx context.Context) (<-chan llm.Event, error) {
+	if s.cfg.ResolveModel == nil {
+		return nil, fmt.Errorf("no model resolver configured for fallbacks")
+	}
+	for _, fb := range s.cfg.FallbackModels {
+		p, model, err := s.cfg.ResolveModel(fb)
+		if err != nil {
+			fmt.Fprintf(s.status, "[fallback %s: resolve error: %v]\n", fb, err)
+			continue
+		}
+		events, err := p.Stream(ctx, llm.Request{
+			Model:          model,
+			System:         s.cfg.System,
+			Messages:       s.messages,
+			Tools:          s.schemas,
+			Temperature:    s.cfg.Temperature,
+			MaxTokens:      s.cfg.MaxTokens,
+			ResponseSchema: s.cfg.ResponseSchema,
+		})
+		if err != nil {
+			fmt.Fprintf(s.status, "[fallback %s: %v]\n", fb, err)
+			continue
+		}
+		// Success — switch to this model for the rest of the session.
+		s.cfg.Provider = p
+		s.cfg.Model = model
+		fmt.Fprintf(s.status, "[switched to fallback: %s]\n", fb)
+		logging.Info("model.fallback", "to", fb)
+		return events, nil
+	}
+	return nil, fmt.Errorf("all fallback models failed")
 }
 
 func validateMessages(msgs []llm.Message) []llm.Message {
@@ -372,12 +487,12 @@ func estimateTokens(msgs []llm.Message) int {
 	return total / 4
 }
 
-// shouldCompact returns true when estimated tokens exceed 80% of the context budget.
+// shouldCompact returns true when estimated tokens exceed the compaction threshold.
 func (s *Session) shouldCompact() bool {
 	est := estimateTokens(s.messages)
 	// Also count system prompt.
 	est += len(s.cfg.System) / 4
-	return est > (s.contextBudget * 80 / 100)
+	return est > (s.contextBudget * DefaultCompactionThreshold / 100)
 }
 
 // tokenCompact removes the oldest messages until estimated tokens are under
@@ -451,12 +566,11 @@ func tokenCompact(msgs []llm.Message, targetTokens int, system string) []llm.Mes
 	return result
 }
 
-
-
 // executeTools runs each tool_use block in assistant. When multiple tools
 // are requested in the same turn, they run concurrently (each tool call
-// is independent). Results are collected in order.
-func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), status io.Writer, assistant []llm.ContentBlock) (llm.Message, error) {
+// is independent) but limited by maxConcurrent to prevent resource exhaustion.
+// Results are collected in order.
+func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), errIntervene func(context.Context, string, string) string, status io.Writer, maxConcurrent int, assistant []llm.ContentBlock) (llm.Message, error) {
 	var calls []llm.ContentBlock
 	for _, b := range assistant {
 		if b.Type == llm.BlockToolUse {
@@ -471,26 +585,43 @@ func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context
 	if len(calls) == 1 {
 		b := calls[0]
 		fmt.Fprintf(status, "→ %s %s\n", b.ToolName, summarizeInput(b.ToolInput))
-		result := runToolBlock(ctx, reg, confirm, status, b)
+		result := runToolBlock(ctx, reg, confirm, errIntervene, status, b)
 		return llm.Message{Role: llm.RoleUser, Content: []llm.ContentBlock{result}}, nil
 	}
 
-	// Multiple tool calls — run concurrently.
+	// Multiple tool calls — run concurrently with semaphore to limit parallelism.
+	// This prevents resource exhaustion when model requests many tool calls.
 	type indexed struct {
 		idx    int
 		result llm.ContentBlock
 	}
 	ch := make(chan indexed, len(calls))
+	
+	// Semaphore to limit concurrent tool executions
+	sem := make(chan struct{}, maxConcurrent)
+	var wg sync.WaitGroup
+	
 	for i, b := range calls {
+		wg.Add(1)
 		fmt.Fprintf(status, "→ %s %s\n", b.ToolName, summarizeInput(b.ToolInput))
 		go func(i int, b llm.ContentBlock) {
-			ch <- indexed{idx: i, result: runToolBlock(ctx, reg, confirm, status, b)}
+			defer wg.Done()
+			// Acquire semaphore
+			sem <- struct{}{}
+			defer func() { <-sem }() // Release semaphore
+			
+			ch <- indexed{idx: i, result: runToolBlock(ctx, reg, confirm, errIntervene, status, b)}
 		}(i, b)
 	}
 
+	// Close channel when all goroutines complete
+	go func() {
+		wg.Wait()
+		close(ch)
+	}()
+
 	results := make([]llm.ContentBlock, len(calls))
-	for range calls {
-		r := <-ch
+	for r := range ch {
 		results[r.idx] = r.result
 	}
 	return llm.Message{Role: llm.RoleUser, Content: results}, nil
@@ -498,10 +629,11 @@ func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context
 
 // readOnlyTools is the set of tool names that never need user confirmation
 // because they only read data without making any changes.
-var readOnlyTools = map[string]bool{"fs_read": true, "fs_list": true, "web_fetch": true}
+var readOnlyTools = map[string]bool{"fs_read": true, "fs_list": true, "web_fetch": true, "code_search": true}
 
-func runToolBlock(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), status io.Writer, b llm.ContentBlock) llm.ContentBlock {
+func runToolBlock(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), errIntervene func(context.Context, string, string) string, status io.Writer, b llm.ContentBlock) llm.ContentBlock {
 	// Read-only tools skip confirmation.
+	logging.Debug("tool.call", "tool", b.ToolName, "input_size", len(b.ToolInput))
 	if confirm != nil && !readOnlyTools[b.ToolName] {
 		ok, err := confirm(ctx, b.ToolName, b.ToolInput)
 		if err != nil {
@@ -528,8 +660,14 @@ func runToolBlock(ctx context.Context, reg *tools.Registry, confirm func(context
 			content = output + "\nERROR: " + err.Error()
 		}
 		fmt.Fprintf(status, "← error: %v\n", err)
+		// Let the user inject a hint before the error goes back to the LLM.
+		if errIntervene != nil {
+			if hint := errIntervene(ctx, b.ToolName, content); hint != "" {
+				content += "\nUser hint: " + hint
+			}
+		}
 	} else {
-		fmt.Fprintf(status, "← %d bytes\n", len(output))
+		fmt.Fprintf(status, "← %s\n", summarizeToolOutput(b.ToolName, output))
 	}
 	return llm.ContentBlock{
 		Type:      llm.BlockToolResult,
@@ -574,6 +712,23 @@ func summarizeInput(input json.RawMessage) string {
 		return s[:limit] + "..."
 	}
 	return s
+}
+
+// summarizeToolOutput produces a human-friendly summary of tool output.
+func summarizeToolOutput(toolName, output string) string {
+	lines := strings.Count(output, "\n")
+	size := len(output)
+	switch {
+	case size == 0:
+		return "(empty)"
+	case lines > 1:
+		return fmt.Sprintf("%d lines, %d bytes", lines, size)
+	default:
+		if size > 80 {
+			return fmt.Sprintf("%d bytes", size)
+		}
+		return strings.TrimSpace(output)
+	}
 }
 
 // allTextBlocks reports whether every block in m is a text block (and the

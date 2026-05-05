@@ -185,9 +185,9 @@ func TestSessionTruncateKeepsToolPair(t *testing.T) {
 // fakeTool keeps engine_test's recordedTool alternative simple here.
 type fakeTool struct{}
 
-func (fakeTool) Name() string                    { return "shell" }
-func (fakeTool) Description() string             { return "" }
-func (fakeTool) InputSchema() json.RawMessage    { return json.RawMessage(`{"type":"object"}`) }
+func (fakeTool) Name() string                 { return "shell" }
+func (fakeTool) Description() string          { return "" }
+func (fakeTool) InputSchema() json.RawMessage { return json.RawMessage(`{"type":"object"}`) }
 func (fakeTool) Run(_ context.Context, _ json.RawMessage) (string, error) {
 	return "ok", nil
 }

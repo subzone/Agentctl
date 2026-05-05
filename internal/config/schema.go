@@ -24,6 +24,7 @@ type Meta struct {
 type AgentSpec struct {
 	Meta           `yaml:",inline"`
 	Model          string   `yaml:"model"`
+	FallbackModels []string `yaml:"fallback,omitempty"`
 	Tools          []string `yaml:"tools,omitempty"`
 	MCP            []string `yaml:"mcp,omitempty"`
 	Skills         []string `yaml:"skills,omitempty"`
@@ -31,7 +32,9 @@ type AgentSpec struct {
 	Powers         []string `yaml:"powers,omitempty"`
 	Temperature    *float64 `yaml:"temperature,omitempty"`
 	MaxTokens      *int     `yaml:"max_tokens,omitempty"`
-	ResponseSchema any      `yaml:"response_schema,omitempty"`
+	ThinkingPhrases []string `yaml:"thinking_phrases,omitempty"`
+	PIIGuard        string   `yaml:"pii_guard,omitempty"`
+	ResponseSchema  any      `yaml:"response_schema,omitempty"`
 }
 
 // ResponseSchemaJSON returns the response_schema as JSON bytes suitable

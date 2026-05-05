@@ -91,6 +91,7 @@ func Builtins(confirm ConfirmFunc, undo *UndoStack) *Registry {
 	return NewRegistry(
 		NewShell(), NewFSRead(), NewFSWrite(confirm, undo),
 		NewFSList(), NewGit(), NewTestRun(), NewWebFetch(),
+		NewCodeSearch(),
 	)
 }
 

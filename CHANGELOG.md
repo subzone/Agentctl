@@ -5,6 +5,175 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.32] - 2026-05-05
+
+### Added
+- Windows support: shell tool uses `cmd.exe`, Windows Credential Manager, `findstr` fallback
+- Windows .exe in release artifacts (goreleaser)
+- CI tests on `windows-latest` in addition to `ubuntu-latest`
+- Structured logging: `internal/logging` package using stdlib slog
+- Graceful shutdown: session auto-saved on Ctrl+C / SIGTERM
+- Integration tests: 10 black-box CLI tests
+- Coverage tests: dangerous commands, slash commands, markdown rendering
+- TUI fix: ANSI-aware word wrap prevents garbled escape codes
+
+### Changed
+- cmd/m test coverage: 16% → 25%
+- Shell timeout: uses `cmd.exe /c` on Windows, `/bin/sh -c` on Unix
+- code_search: falls back to `findstr` on Windows when grep/rg unavailable
+
+## [0.0.31] - 2026-05-04
+
+### Added
+- PII guardrails: scan outgoing messages for sensitive data
+  - Detects: emails, phones, SSNs, credit cards, IPs, AWS keys, API keys, JWTs, private keys, passwords
+  - Modes: `redact` (replace with placeholders), `warn` (show findings), `off`
+  - Agent config: `pii_guard: redact`
+  - Session toggle: `/pii` / `/pii off`
+- Mermaid diagram skill: `examples/skills/mermaid-diagrams.md`
+  - Teaches agents to produce flowcharts, sequence diagrams, C4, ERD, etc.
+- SAST: gosec added to CI pipeline and golangci-lint config
+- SCA: govulncheck added to CI pipeline
+- GitHub secret scanning + push protection enabled
+
+## [0.0.30] - 2026-05-04
+
+### Added
+- Update notifier: checks GitHub releases API once per day
+- Shows dim notice if newer version available: `↑ update available: v0.0.29 → v0.0.30 (brew upgrade subzone/tap/m)`
+- Non-blocking (goroutine), cached (24h), silent on errors
+- Skipped when Version is "dev" (local builds)
+
+## [0.0.29] - 2026-05-04
+
+### Added
+- REPL color: bold blue prompt, dim welcome/tips/shortcuts
+- Help examples: `m chat --help` and `m run --help` show real usage examples
+- Session summary: `/sessions` shows first user message for each saved session
+- Tool output: shows "42 lines, 6196 bytes" or short output instead of raw byte count
+
+## [0.0.28] - 2026-05-04
+
+### Added
+- Command shortcuts: `/x` `/r` `/c` `/u` `/m` `/t` `/s` `/h` for all slash commands
+- TUI command bar: underlined shortcut letters for discoverability
+- Welcome message: shortcuts listed on every session start
+- `/m 3` works as shortcut for `/models 3`
+- `/t dracula` works as shortcut for `/theme dracula`
+- `/s fixing-auth` works as shortcut for `/save fixing-auth`
+
+## [0.0.27] - 2026-05-04
+
+### Added
+- First-run wizard: visual completion summary with next steps box
+- TUI onboarding: tips line on session start (models, themes, trust, save)
+- REPL onboarding: tips line on session start (models, trust, save, debug)
+
+## [0.0.26] - 2026-05-04
+
+### Added
+- `m new <name>`: scaffold a new agent .md file with boilerplate frontmatter
+- `m doctor`: health check — config, API key, model reachability, tools (git, rg, grep)
+- `m completion bash/zsh/fish/powershell`: shell completion scripts
+- Named sessions: `/save fixing-auth-bug` creates a named snapshot
+
+### Changed
+- Error messages: API key errors now include fix instructions (`run m config` or `export ...`)
+
+## [0.0.25] - 2026-05-04
+
+### Added
+- MCP HTTP transport: POST JSON-RPC to URL, get JSON-RPC response
+- MCP SSE transport: POST JSON-RPC, receive response via Server-Sent Events
+- `Transport` interface: stdio, HTTP, SSE all implement the same contract
+- Agent registry: `m install ./agent.md` copies to `~/.config/m/agents/`
+- Name-based run: `m run coder "task"` and `m chat coder` resolve by name
+- Example MCP servers: datadog (HTTP), slack (SSE)
+
+### Changed
+- Shell timeout: 30s → 120s (terraform, docker build friendly)
+- Undo stack capped at 20 entries (was unbounded)
+- MCP HTTP/SSE removed from known gaps
+
+## [0.0.24] - 2026-05-04
+
+### Added
+- `code_search` tool: codebase search with two modes
+  - `text`: grep/ripgrep for pattern matching across source files
+  - `symbol`: in-memory index of functions, types, classes, imports
+  - Languages: Go, Python, JavaScript, TypeScript, Java, Ruby, Rust, Terraform, Shell
+  - Index built lazily on first symbol search, cached for session
+- Session history rotation: autosave backs up before overwriting, keeps last 10
+- `/trust` command in TUI: auto-approve tools (dangerous commands still double-confirm)
+- Dangerous command protection: 34 patterns (`rm -rf`, `kubectl delete`, etc.) always require double confirmation even in trust mode
+- `code_search` added to all 31 example agents
+
+### Changed
+- Tool count: 8 → 9 built-in tools
+- Known gaps updated: codebase RAG partially addressed by code_search
+
+## [0.0.23] - 2026-05-04
+
+### Added
+- Fallback models: auto-switch on 429 rate limit. Added to all 30 example agents
+- Per-agent `thinking_phrases`: customize spinner text per agent
+- Markdown rendering in TUI: `**bold**` as terminal bold, `` `code` `` as dim, `##` headers as bold
+- Fallback and thinking_phrases documented in README and docs/agents.html
+
+### Changed
+- Tool confirmation shows `key=value` instead of raw JSON
+- Tool output lines get newlines before/after so they don't run inline with model text
+- Continue prompt: "Agent worked on this for a while" instead of technical turn count
+- Removed `(thinking)` text marker — TUI spinner handles thinking status
+- TUI: version + copyright below M banner, tagline below stats box
+
+## [0.0.22] - 2026-05-04
+
+### Added
+- Interactive error correction for tool failures: when a tool call fails,
+  the REPL prompts the user to press Enter (retry) or type a hint that gets
+  appended to the error sent back to the LLM, steering it away from loops.
+- Anthropic prompt caching: system prompt and tool schemas are sent with
+  `cache_control: ephemeral`, reducing input tokens and TTFT on every
+  subsequent turn in a session.
+
+### Fixed
+- Pre-existing compile error: `chatState` forward reference and stale
+  `TraceWriter` field in engine Config literal.
+- Chat tests updated to use `chatState` instead of raw `*engine.Session`.
+- Removed unused `stdinToolConfirm` and `isSafeTool` functions (lint).
+- TUI: version + copyright displayed below M banner.
+- All docs and GitHub Pages synced to v0.0.22.
+
+## [0.0.21] - 2026-07-04
+
+### Added
+- `ConfirmFg` theme field for high-contrast y/n prompts (critical fix!)
+- All 9 themes now have proper foreground + background for confirmation prompts
+
+### Fixed
+- **CRITICAL**: Confirmation prompts (y/n) now have MAXIMUM CONTRAST
+  - Before: only background, text depended on terminal default (could be invisible!)
+  - After: foreground + background always set, human eye can actually READ it
+  - This was written by Steva Đubre himself - first self-made release!
+
+### Note
+- This is the first release where Steva Đubre (the agent persona) fixed himself.
+- The confirmation prompt colors were terrible - who wrote that, a monkey?
+- Now you can actually SEE when the agent asks "Allow shell command? [y/n]"
+
+## [0.0.19] - 2026-07-04
+
+### Added
+- Homebrew install: `brew tap subzone/tap && brew install subzone/tap/m`
+- Auto-update Homebrew formula on every release via CI
+- SECURITY.md, CODE_OF_CONDUCT.md, CODEOWNERS
+- Issue templates (bug report, feature request) and PR template
+- CI workflow on every push/PR (vet, lint, race tests, build, validate agents)
+- Dependabot for Go modules and GitHub Actions
+- Branch protection, tag protection, repo topics
+- `.goreleaser.yml` explicit config
+
 ## [0.0.18] - 2026-07-04
 
 ### Added
@@ -67,6 +236,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Theme system (matrix, default, minimal)
 - System stats (CPU/RAM/GPU/Disk)
 
+[0.0.31]: https://github.com/subzone/Agentctl/compare/v0.0.30...v0.0.31
+[0.0.30]: https://github.com/subzone/Agentctl/compare/v0.0.29...v0.0.30
+[0.0.29]: https://github.com/subzone/Agentctl/compare/v0.0.28...v0.0.29
+[0.0.28]: https://github.com/subzone/Agentctl/compare/v0.0.27...v0.0.28
+[0.0.27]: https://github.com/subzone/Agentctl/compare/v0.0.26...v0.0.27
+[0.0.26]: https://github.com/subzone/Agentctl/compare/v0.0.25...v0.0.26
+[0.0.25]: https://github.com/subzone/Agentctl/compare/v0.0.24...v0.0.25
+[0.0.24]: https://github.com/subzone/Agentctl/compare/v0.0.23...v0.0.24
+[0.0.23]: https://github.com/subzone/Agentctl/compare/v0.0.22...v0.0.23
+[0.0.22]: https://github.com/subzone/Agentctl/compare/v0.0.21...v0.0.22
+[0.0.21]: https://github.com/subzone/Agentctl/compare/v0.0.20...v0.0.21
+[0.0.19]: https://github.com/subzone/Agentctl/compare/v0.0.18...v0.0.19
 [0.0.18]: https://github.com/subzone/Agentctl/compare/v0.0.17...v0.0.18
 [0.0.17]: https://github.com/subzone/Agentctl/compare/v0.0.16...v0.0.17
 [0.0.16]: https://github.com/subzone/Agentctl/compare/v0.0.15...v0.0.16

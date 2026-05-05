@@ -42,6 +42,7 @@
   <div class="section-inner">
     <div class="platform-tabs">
       <button class="platform-tab active" onclick="showPlatform('macos')"><i class="fa-brands fa-apple"></i> macOS</button>
+      <button class="platform-tab" onclick="showPlatform('windows')"><i class="fa-brands fa-windows"></i> Windows</button>
       <button class="platform-tab" onclick="showPlatform('linux')"><i class="fa-brands fa-linux"></i> Linux</button>
       <button class="platform-tab" onclick="showPlatform('source')"><i class="fa-solid fa-code"></i> Source</button>
     </div>
@@ -52,9 +53,9 @@
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-content">
-            <h3>Download the .pkg</h3>
-            <p>Grab the universal binary (Intel + Apple Silicon) from the latest release.</p>
-            <a href="https://github.com/subzone/Agentctl/releases/latest" class="btn btn-primary" style="font-size:0.85rem;padding:10px 20px"><i class="fa-solid fa-arrow-down"></i> Download .pkg</a>
+            <h3>Install via Homebrew (recommended)</h3>
+            <div class="step-code"><span class="dim">$</span> brew tap subzone/tap<br><span class="dim">$</span> brew install subzone/tap/m</div>
+            <p style="margin-top:0.75rem">Or download the <a href="https://github.com/subzone/Agentctl/releases/latest">.pkg installer</a> (universal binary, Intel + Apple Silicon).</p>
           </div>
         </div>
         <div class="step">
@@ -77,20 +78,54 @@
           <div class="step-num"><i class="fa-solid fa-check"></i></div>
           <div class="step-content">
             <h3>Verify</h3>
-            <div class="step-code"><span class="dim">$</span> m --version<br>m version 0.0.18</div>
+            <div class="step-code"><span class="dim">$</span> m --version<br>m version 0.0.32<br><br><span class="dim">$</span> m doctor<br>✓ Config: alibaba/deepseek-v3.2<br>✓ API key: found<br>✓ git: found<br>All checks passed!</div>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Linux -->
+    <div class="platform-content" id="platform-windows" style="display:none">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h3>Download the .zip</h3>
+            <p>Grab the Windows amd64 zip from the latest release.</p>
+            <a href="https://github.com/subzone/Agentctl/releases/latest" class="btn btn-primary" style="font-size:0.85rem;padding:10px 20px"><i class="fa-solid fa-arrow-down"></i> Download .zip</a>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h3>Extract and add to PATH</h3>
+            <p>Extract <code>m.exe</code> and move it to a folder on your PATH (e.g. <code>C:\Users\you\bin\</code>).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h3>Run the wizard</h3>
+            <div class="step-code"><span class="dim">PS&gt;</span> m<br><br><span class="dim"># Pick your backend, paste an API key, done.</span></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"><i class="fa-solid fa-check"></i></div>
+          <div class="step-content">
+            <h3>Verify</h3>
+            <div class="step-code"><span class="dim">PS&gt;</span> m --version<br>m version 0.0.32</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="platform-content" id="platform-linux">
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-content">
             <h3>Download the .deb (Debian/Ubuntu)</h3>
-            <div class="step-code"><span class="dim">$</span> wget https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.18_linux_amd64.deb<br><span class="dim">$</span> sudo dpkg -i m_*_linux_amd64.deb</div>
+            <div class="step-code"><span class="dim">$</span> wget https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.32_linux_amd64.deb<br><span class="dim">$</span> sudo dpkg -i m_*_linux_amd64.deb</div>
             <p style="margin-top:12px">For ARM64 (Raspberry Pi, Graviton): grab <code>_linux_arm64.deb</code> instead.</p>
           </div>
         </div>
@@ -98,7 +133,7 @@
           <div class="step-num">1</div>
           <div class="step-content">
             <h3>Or download the tarball (any distro)</h3>
-            <div class="step-code"><span class="dim">$</span> wget https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.18_linux_amd64.tar.gz<br><span class="dim">$</span> tar -xzf m_*_linux_amd64.tar.gz<br><span class="dim">$</span> sudo mv m /usr/local/bin/</div>
+            <div class="step-code"><span class="dim">$</span> wget https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.32_linux_amd64.tar.gz<br><span class="dim">$</span> tar -xzf m_*_linux_amd64.tar.gz<br><span class="dim">$</span> sudo mv m /usr/local/bin/</div>
           </div>
         </div>
         <div class="step">
@@ -112,7 +147,7 @@
           <div class="step-num"><i class="fa-solid fa-check"></i></div>
           <div class="step-content">
             <h3>Verify</h3>
-            <div class="step-code"><span class="dim">$</span> m --version<br>m version 0.0.18</div>
+            <div class="step-code"><span class="dim">$</span> m --version<br>m version 0.0.32</div>
           </div>
         </div>
       </div>
@@ -169,6 +204,21 @@
         <div class="docs-card-title"><i class="fa-solid fa-plug" style="color:var(--accent)"></i> MCP Servers</div>
         <div class="docs-card-desc">Connect to Jira, GitHub, Confluence and other external tools.</div>
       </a>
+    </div>
+  </div>
+</section>
+
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Staying current</div>
+      <h2>Auto-update notifications</h2>
+    </div>
+    <div class="docs-card">
+      <p>AgentCTL checks GitHub for new releases once per day. If a newer version exists, you'll see:</p>
+      <pre><code>↑ update available: v0.0.29 → v0.0.32 (brew upgrade subzone/tap/m)</code></pre>
+      <p>Non-blocking, cached, silent on errors. To upgrade:</p>
+      <pre><code>brew upgrade subzone/tap/m</code></pre>
     </div>
   </div>
 </section>
