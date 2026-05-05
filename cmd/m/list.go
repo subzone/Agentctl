@@ -2,12 +2,14 @@ package main
 
 import (
 	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/spf13/cobra"
 
+	"github.com/subzone/Agentctl/examples"
 	"github.com/subzone/Agentctl/internal/config"
 )
 
@@ -28,10 +30,16 @@ func runList(_ *cobra.Command, args []string) error {
 		if info, err := os.Stat("examples/agents"); err == nil && info.IsDir() {
 			dirs = append(dirs, "examples/agents")
 		}
+		if dir := agentRegistryDir(); dir != "" {
+			if info, err := os.Stat(dir); err == nil && info.IsDir() {
+				dirs = append(dirs, dir)
+			}
+		}
 	}
 
 	var agents []agentInfo
 	seen := map[string]bool{}
+	namesSeen := map[string]bool{}
 	for _, dir := range dirs {
 		found, err := scanAgents(dir)
 		if err != nil {
@@ -44,6 +52,14 @@ func runList(_ *cobra.Command, args []string) error {
 				continue
 			}
 			seen[abs] = true
+			namesSeen[a.name] = true
+			agents = append(agents, a)
+		}
+	}
+
+	// Also include bundled agents not yet on disk.
+	for _, a := range scanBundledAgents() {
+		if !namesSeen[a.name] {
 			agents = append(agents, a)
 		}
 	}
@@ -110,4 +126,32 @@ func scanAgents(dir string) ([]agentInfo, error) {
 		return nil
 	})
 	return out, err
+}
+
+func scanBundledAgents() []agentInfo {
+	var out []agentInfo
+	fs.WalkDir(examples.Agents, "agents", func(path string, d fs.DirEntry, err error) error {
+		if err != nil || d.IsDir() || !strings.HasSuffix(path, ".md") {
+			return err
+		}
+		data, err := examples.Agents.ReadFile(path)
+		if err != nil {
+			return nil
+		}
+		doc, err := config.Parse(data)
+		if err != nil {
+			return nil
+		}
+		agent, ok := doc.Spec.(*config.AgentSpec)
+		if !ok {
+			return nil
+		}
+		out = append(out, agentInfo{
+			name:  agent.Name,
+			model: agent.Model,
+			path:  "(bundled)",
+		})
+		return nil
+	})
+	return out
 }

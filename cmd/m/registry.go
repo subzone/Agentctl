@@ -25,6 +25,7 @@ func agentRegistryDir() string {
 //  2. ~/.config/m/agents/<name>.md
 //  3. ./examples/agents/<name>.md
 //  4. <name>.md in current directory
+//  5. Bundled (embedded) agents
 func resolveAgentPath(ref string) string {
 	// 1. Literal path.
 	if _, err := os.Stat(ref); err == nil {
@@ -40,7 +41,7 @@ func resolveAgentPath(ref string) string {
 			return p
 		}
 	}
-	// 3. Examples directory.
+	// 3. Examples directory (dev/clone scenario).
 	p := filepath.Join("examples", "agents", name+".md")
 	if _, err := os.Stat(p); err == nil {
 		return p
@@ -49,6 +50,10 @@ func resolveAgentPath(ref string) string {
 	p = name + ".md"
 	if _, err := os.Stat(p); err == nil {
 		return p
+	}
+	// 5. Bundled (embedded) — extract on demand.
+	if bp := bundledAgentPath(name); bp != "" {
+		return bp
 	}
 	// Not found — return original ref so the caller gets a clear error.
 	return ref

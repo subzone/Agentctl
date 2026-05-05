@@ -96,6 +96,10 @@ func runWizard(in io.Reader, out, status io.Writer) (*userconfig.Config, error) 
 	if err := userconfig.Save(cfg); err != nil {
 		return nil, err
 	}
+	// Extract bundled agents to ~/.config/m/agents/ on first run.
+	if err := extractBundledAgents(); err != nil {
+		fmt.Fprintf(out, "  warning: could not extract bundled agents: %v\n", err)
+	}
 	p, _ := userconfig.Path()
 	fmt.Fprintf(out, "\n✓ Config saved to %s\n", p)
 	fmt.Fprintln(out)
