@@ -25,6 +25,18 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.33",
+		Date:    "2026-05-05",
+		Highlights: []string{
+			"Bundled agents: all 32 example agents embedded in the binary via go:embed.",
+			"No clone needed: m chat devops / m run reviewer work immediately after install.",
+			"On-demand extraction: agents extracted to ~/.config/m/agents/ on first use.",
+			"m list shows (bundled) agents even before extraction.",
+			"User edits preserved: extracted agents are never overwritten.",
+			"Windows CI fix: bash shell for gosec/govulncheck, JSON path escaping in tests, .exe suffix.",
+		},
+	},
+	{
 		Version: "0.0.32",
 		Date:    "2026-05-05",
 		Highlights: []string{

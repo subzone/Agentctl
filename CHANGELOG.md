@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.33] - 2026-05-05
+
+### Added
+- Bundled agents: all 32 example agents embedded in the binary via `go:embed`
+- `m chat devops` / `m run reviewer` work immediately after install (no clone needed)
+- On-demand extraction: agents extracted to `~/.config/m/agents/` on first use
+- `m list` shows `(bundled)` agents even before extraction
+- User edits preserved: extracted agents are never overwritten
+- `examples/embed.go`: thin package exposing `examples.Agents` embed.FS
+- `cmd/m/bundled.go`: extraction logic (bulk on init, on-demand per agent)
+
+### Fixed
+- Windows CI: force `bash` shell for gosec/govulncheck steps (PowerShell comma parsing)
+- Windows tests: JSON path escaping (`jsonPath` helper), skip unix-only tests
+- Windows integration tests: `.exe` suffix for built binary
+- Windows userconfig tests: use `APPDATA` env var instead of `XDG_CONFIG_HOME`
+
 ## [0.0.32] - 2026-05-05
 
 ### Added

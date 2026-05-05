@@ -7,11 +7,11 @@ against your choice of LLM. Aimed at developers and DevOps people who live in
 the terminal and want to script agentic work without IDE lock-in or SDK
 sprawl.
 
-**Current version:** v0.0.32 | **Go version:** 1.26+ | **Binary size:** ~7.8 MB | **Docker image:** ~16 MB
+**Current version:** v0.0.33 | **Go version:** 1.26+ | **Binary size:** ~8.4 MB | **Docker image:** ~16 MB
 
 **Status:** alpha. ~1 month of evenings of work. Works for the author's daily
 use, but expect breaking changes until v0.1.0. Tagged releases (`v0.0.1` →
-`v0.0.32`) ship as macOS `.pkg` and Linux `.deb`.
+`v0.0.33`) ship as macOS `.pkg` and Linux `.deb`.
 
 ```text
 $ m
@@ -34,7 +34,7 @@ Full docs site (EN + SR): **<https://subzone.github.io/Agentctl/>**
 ```bash
 # 1. Install (macOS — pick one)
 brew tap subzone/tap && brew install subzone/tap/m
-# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.32_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
+# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.33_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
 
 # 2. Run the setup wizard
 m
@@ -215,6 +215,35 @@ including `coder`, `reviewer`, `planner`, `k8s-debug`, `terraform-plan`,
 
 ---
 
+## Bundled agents
+
+All 32 example agents are **embedded in the binary**. No need to clone the
+repo — they're available immediately after install:
+
+```bash
+# List all available agents (bundled + user-created)
+m list
+
+# Run a bundled agent by name — extracted on first use
+m chat devops
+m run reviewer "check the auth module"
+m chat steva-djubre
+```
+
+On first run (or when you reference a bundled agent), the .md file is
+extracted to `~/.config/m/agents/` (or `~/Library/Application Support/m/agents/`
+on macOS). You can edit these freely — your changes are never overwritten.
+
+To reset a bundled agent to its original version, just delete it and run
+again:
+
+```bash
+rm ~/.config/m/agents/devops.md
+m chat devops  # re-extracts the bundled version
+```
+
+---
+
 ## Built-in tools
 
 | Tool        | Purpose                                  | User confirmation |
@@ -333,6 +362,7 @@ structured output mechanics), see the
 ## What works today
 
 - Single-binary install on macOS / Linux / Windows (amd64 + arm64)
+- **32 bundled agents** — available immediately after install, no clone needed
 - 6 LLM providers, switchable mid-session
 - 9 built-in tools with user confirmation on writes + undo
 - MCP stdio + HTTP + SSE transports with auto-discovery and namespacing
