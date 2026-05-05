@@ -130,6 +130,18 @@ m completion fish > ~/.config/fish/completions/m.fish
 API keys are stored in the OS keychain (macOS Keychain / Linux libsecret).
 Never in config files, never in plaintext.
 
+### Auto-update notifications
+
+AgentCTL checks GitHub for new releases once per day. If a newer version
+exists, you'll see a dim notice on startup:
+
+```
+↑ update available: v0.0.29 → v0.0.30 (brew upgrade subzone/tap/m)
+```
+
+This is non-blocking, cached, and silent on errors. No data is sent — it
+only reads the public releases API.
+
 ### API key fallback
 
 If you don't want to use the keychain (or `secret-tool` isn't installed on Linux),
@@ -321,14 +333,20 @@ structured output mechanics), see the
 - Single-binary install on macOS / Linux (amd64 + arm64)
 - 6 LLM providers, switchable mid-session
 - 9 built-in tools with user confirmation on writes + undo
-- MCP stdio transport with auto-discovery and namespacing
+- MCP stdio + HTTP + SSE transports with auto-discovery and namespacing
 - Hub-and-spoke sub-agent delegation
 - Provider-native structured output enforcement (`response_schema`)
 - Full-screen TUI with token/cost/context indicators, falls back to line REPL in pipes
 - 9 built-in themes (matrix, nord, dracula, gruvbox, tokyonight, catppuccin, solarized, default, minimal)
 - Session persistence with AES-256-GCM encryption and autosave
 - Token-based context compaction (per-model context window awareness)
-- Agent discovery (`m list`)
+- Agent discovery (`m list`), registry (`m install`), scaffold (`m new`)
+- Fallback models (auto-switch on 429 rate limit)
+- Dangerous command double-confirmation (34 patterns)
+- Command shortcuts (/x /r /c /u /m /t /s /h)
+- Auto-update notifications (checks GitHub once/day)
+- Shell completions (bash/zsh/fish/powershell)
+- Homebrew tap with auto-update on release
 - Tagged release pipeline producing `.pkg` and `.deb`
 
 ## Known gaps
