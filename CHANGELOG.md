@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.31] - 2026-05-04
+
+### Added
+- PII guardrails: scan outgoing messages for sensitive data
+  - Detects: emails, phones, SSNs, credit cards, IPs, AWS keys, API keys, JWTs, private keys, passwords
+  - Modes: `redact` (replace with placeholders), `warn` (show findings), `off`
+  - Agent config: `pii_guard: redact`
+  - Session toggle: `/pii` / `/pii off`
+- Mermaid diagram skill: `examples/skills/mermaid-diagrams.md`
+  - Teaches agents to produce flowcharts, sequence diagrams, C4, ERD, etc.
+- SAST: gosec added to CI pipeline and golangci-lint config
+- SCA: govulncheck added to CI pipeline
+- GitHub secret scanning + push protection enabled
+
 ## [0.0.30] - 2026-05-04
 
 ### Added
@@ -205,6 +219,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Theme system (matrix, default, minimal)
 - System stats (CPU/RAM/GPU/Disk)
 
+[0.0.31]: https://github.com/subzone/Agentctl/compare/v0.0.30...v0.0.31
 [0.0.30]: https://github.com/subzone/Agentctl/compare/v0.0.29...v0.0.30
 [0.0.29]: https://github.com/subzone/Agentctl/compare/v0.0.28...v0.0.29
 [0.0.28]: https://github.com/subzone/Agentctl/compare/v0.0.27...v0.0.28

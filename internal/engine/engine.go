@@ -35,6 +35,10 @@ type Config struct {
 	Temperature *float64
 	MaxTokens   int
 
+	// PIIGuard scans outgoing messages for PII and redacts/warns.
+	// nil means no PII scanning.
+	PIIGuard *tools.PIIGuard
+
 	// MaxContextTokens is the model's context window size. When estimated
 	// input tokens exceed 80% of this, the session auto-compacts. Zero
 	// means use a conservative default (128K).
@@ -212,6 +216,15 @@ func (s *Session) Step(ctx context.Context, task string) error {
 		return errors.New("engine: Model is required")
 	}
 
+	// PII guard: scan and redact user input before sending to LLM.
+	if s.cfg.PIIGuard != nil && s.cfg.PIIGuard.Mode != tools.PIIModeOff {
+		if findings := s.cfg.PIIGuard.Scan(task); len(findings) > 0 {
+			fmt.Fprintln(s.status, s.cfg.PIIGuard.Summary(findings))
+			if s.cfg.PIIGuard.Mode == tools.PIIModeRedact {
+				task = s.cfg.PIIGuard.Redact(task)
+			}
+		}
+	}
 	s.messages = append(s.messages, llm.TextMessage(llm.RoleUser, task))
 	// Auto-compact when estimated tokens exceed 80% of context budget.
 	if s.shouldCompact() {

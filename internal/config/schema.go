@@ -33,7 +33,8 @@ type AgentSpec struct {
 	Temperature    *float64 `yaml:"temperature,omitempty"`
 	MaxTokens      *int     `yaml:"max_tokens,omitempty"`
 	ThinkingPhrases []string `yaml:"thinking_phrases,omitempty"`
-	ResponseSchema any      `yaml:"response_schema,omitempty"`
+	PIIGuard        string   `yaml:"pii_guard,omitempty"`
+	ResponseSchema  any      `yaml:"response_schema,omitempty"`
 }
 
 // ResponseSchemaJSON returns the response_schema as JSON bytes suitable

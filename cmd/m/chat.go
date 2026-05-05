@@ -441,6 +441,12 @@ func handleSlash(line string, state *chatState, status io.Writer) (handled, exit
 		state.traceWriter = nil
 		fmt.Fprintln(status, "debug mode OFF")
 		return true, false
+	case "/pii":
+		fmt.Fprintln(status, "PII guard ON — sensitive data will be redacted before sending to LLM")
+		return true, false
+	case "/pii off":
+		fmt.Fprintln(status, "PII guard OFF")
+		return true, false
 	case "/config":
 		fmt.Fprintln(status, "run `m config` from the shell to manage providers and models")
 		return true, false

@@ -25,6 +25,17 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.31",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"PII guardrails: redact emails, phones, SSNs, credit cards, API keys before sending to LLM.",
+			"Agent config: pii_guard: redact/warn/off. Toggle with /pii in session.",
+			"Mermaid diagram skill: teaches agents to produce architecture diagrams.",
+			"SAST (gosec) + SCA (govulncheck) in CI pipeline.",
+			"Secret scanning + push protection enabled.",
+		},
+	},
+	{
 		Version: "0.0.30",
 		Date:    "2026-05-04",
 		Highlights: []string{
