@@ -616,19 +616,17 @@ func wordWrap(s string, width int) string {
 	}
 	var b strings.Builder
 	for _, line := range strings.Split(s, "\n") {
-		if len(line) <= width {
+		if visibleLen(line) <= width {
 			b.WriteString(line)
 			b.WriteByte('\n')
 			continue
 		}
-		// Break at word boundaries.
+		// Break at word boundaries using visible width.
 		rem := line
-		for len(rem) > width {
-			// Find last space within width.
-			cut := strings.LastIndex(rem[:width], " ")
+		for visibleLen(rem) > width {
+			cut := findWrapPoint(rem, width)
 			if cut <= 0 {
-				// No space found — hard break.
-				cut = width
+				cut = findHardBreak(rem, width)
 			}
 			b.WriteString(rem[:cut])
 			b.WriteByte('\n')
@@ -637,12 +635,81 @@ func wordWrap(s string, width int) string {
 		b.WriteString(rem)
 		b.WriteByte('\n')
 	}
-	// Remove the trailing extra newline we added.
 	out := b.String()
 	if len(out) > 0 && len(s) > 0 && s[len(s)-1] != '\n' {
 		out = out[:len(out)-1]
 	}
 	return out
+}
+
+// visibleLen returns the visible character count, skipping ANSI escape sequences.
+func visibleLen(s string) int {
+	n := 0
+	inEsc := false
+	for _, r := range s {
+		if r == '\033' {
+			inEsc = true
+			continue
+		}
+		if inEsc {
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
+				inEsc = false
+			}
+			continue
+		}
+		n++
+	}
+	return n
+}
+
+// findWrapPoint finds the last space within visible width, returning byte offset.
+func findWrapPoint(s string, width int) int {
+	visible := 0
+	lastSpace := -1
+	inEsc := false
+	for i, r := range s {
+		if r == '\033' {
+			inEsc = true
+			continue
+		}
+		if inEsc {
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
+				inEsc = false
+			}
+			continue
+		}
+		if r == ' ' {
+			lastSpace = i
+		}
+		visible++
+		if visible >= width {
+			break
+		}
+	}
+	return lastSpace
+}
+
+// findHardBreak returns the byte offset at visible width (hard break).
+func findHardBreak(s string, width int) int {
+	visible := 0
+	inEsc := false
+	for i, r := range s {
+		if r == '\033' {
+			inEsc = true
+			continue
+		}
+		if inEsc {
+			if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {
+				inEsc = false
+			}
+			continue
+		}
+		visible++
+		if visible >= width {
+			return i + 1
+		}
+	}
+	return len(s)
 }
 
 // layout recomputes child component sizes whenever the terminal
