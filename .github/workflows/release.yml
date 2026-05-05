@@ -31,11 +31,13 @@ jobs:
           golangci-lint run
 
       - name: gosec (SAST)
+        shell: bash
         run: |
           go install github.com/securego/gosec/v2/cmd/gosec@latest
           gosec -quiet -exclude=G104,G115,G118,G122,G204,G301,G304,G306,G704 ./...
 
       - name: govulncheck (SCA)
+        shell: bash
         run: |
           go install golang.org/x/vuln/cmd/govulncheck@latest
           govulncheck ./... || echo "::warning::govulncheck found vulnerabilities (see above)"
