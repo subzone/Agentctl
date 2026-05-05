@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.32] - 2026-05-05
+
+### Added
+- Windows support: shell tool uses `cmd.exe`, Windows Credential Manager, `findstr` fallback
+- Windows .exe in release artifacts (goreleaser)
+- CI tests on `windows-latest` in addition to `ubuntu-latest`
+- Structured logging: `internal/logging` package using stdlib slog
+- Graceful shutdown: session auto-saved on Ctrl+C / SIGTERM
+- Integration tests: 10 black-box CLI tests
+- Coverage tests: dangerous commands, slash commands, markdown rendering
+- TUI fix: ANSI-aware word wrap prevents garbled escape codes
+
+### Changed
+- cmd/m test coverage: 16% → 25%
+- Shell timeout: uses `cmd.exe /c` on Windows, `/bin/sh -c` on Unix
+- code_search: falls back to `findstr` on Windows when grep/rg unavailable
+
 ## [0.0.31] - 2026-05-04
 
 ### Added

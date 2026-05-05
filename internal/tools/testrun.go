@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os/exec"
 	"strings"
+	"runtime"
 	"time"
 )
 
@@ -62,7 +63,12 @@ func (t *TestRunTool) Run(ctx context.Context, input json.RawMessage) (string, e
 	cctx, cancel := context.WithTimeout(ctx, timeout)
 	defer cancel()
 
-	cmd := exec.CommandContext(cctx, "/bin/sh", "-c", args.Command)
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.CommandContext(cctx, "cmd.exe", "/c", args.Command)
+	} else {
+		cmd = exec.CommandContext(cctx, "/bin/sh", "-c", args.Command)
+	}
 	out, err := cmd.CombinedOutput()
 	text := string(out)
 	if max := t.MaxOut; max > 0 && len(text) > max {

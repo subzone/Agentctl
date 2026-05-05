@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"runtime"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -79,13 +80,15 @@ func (c *CodeSearchTool) textSearch(ctx context.Context, query, dir string) (str
 	cctx, cancel := context.WithTimeout(ctx, 15*time.Second)
 	defer cancel()
 
-	// Try ripgrep first, fall back to grep.
+	// Try ripgrep first, fall back to grep (Unix) or findstr (Windows).
 	var cmd *exec.Cmd
 	if _, err := exec.LookPath("rg"); err == nil {
 		cmd = exec.CommandContext(cctx, "rg", "--no-heading", "--line-number",
 			"--max-count=5", "--max-filesize=1M",
 			"-g", "!.git", "-g", "!node_modules", "-g", "!vendor", "-g", "!dist",
 			query, dir)
+	} else if runtime.GOOS == "windows" {
+		cmd = exec.CommandContext(cctx, "findstr", "/s", "/n", "/i", query, dir+"\\*.*")
 	} else {
 		cmd = exec.CommandContext(cctx, "grep", "-rn", "--include=*.go",
 			"--include=*.py", "--include=*.js", "--include=*.ts",

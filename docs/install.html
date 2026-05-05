@@ -42,6 +42,7 @@
   <div class="section-inner">
     <div class="platform-tabs">
       <button class="platform-tab active" onclick="showPlatform('macos')"><i class="fa-brands fa-apple"></i> macOS</button>
+      <button class="platform-tab" onclick="showPlatform('windows')"><i class="fa-brands fa-windows"></i> Windows</button>
       <button class="platform-tab" onclick="showPlatform('linux')"><i class="fa-brands fa-linux"></i> Linux</button>
       <button class="platform-tab" onclick="showPlatform('source')"><i class="fa-solid fa-code"></i> Source</button>
     </div>
@@ -84,6 +85,40 @@
     </div>
 
     <!-- Linux -->
+    <div class="platform-content" id="platform-windows" style="display:none">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1</div>
+          <div class="step-content">
+            <h3>Download the .zip</h3>
+            <p>Grab the Windows amd64 zip from the latest release.</p>
+            <a href="https://github.com/subzone/Agentctl/releases/latest" class="btn btn-primary" style="font-size:0.85rem;padding:10px 20px"><i class="fa-solid fa-arrow-down"></i> Download .zip</a>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h3>Extract and add to PATH</h3>
+            <p>Extract <code>m.exe</code> and move it to a folder on your PATH (e.g. <code>C:\Users\you\bin\</code>).</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h3>Run the wizard</h3>
+            <div class="step-code"><span class="dim">PS&gt;</span> m<br><br><span class="dim"># Pick your backend, paste an API key, done.</span></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"><i class="fa-solid fa-check"></i></div>
+          <div class="step-content">
+            <h3>Verify</h3>
+            <div class="step-code"><span class="dim">PS&gt;</span> m --version<br>m version 0.0.32</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <div class="platform-content" id="platform-linux">
       <div class="steps">
         <div class="step">

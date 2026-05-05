@@ -36,6 +36,17 @@
     <div class="timeline">
 
       <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-star"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.0.32</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>Windows support</strong> — shell uses cmd.exe, Windows Credential Manager, .exe in releases</li>
+          <li><strong>Structured logging</strong> — slog JSON output, debug/warn levels</li>
+          <li><strong>Graceful shutdown</strong> — session saved on Ctrl+C / SIGTERM</li>
+          <li><strong>Integration tests</strong> — 10 black-box CLI tests, CI on Windows + Linux</li>
+          <li><strong>TUI fix</strong> — ANSI-aware word wrap</li>
+        </ul>
+      </div></div>
+
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-tag"></i></div><div class="timeline-body">
         <div class="timeline-version">v0.0.31</div><div class="timeline-date">May 2026</div>
         <ul>
           <li><strong>PII guardrails</strong> — redact emails, phones, SSNs, credit cards, API keys before sending to LLM</li>

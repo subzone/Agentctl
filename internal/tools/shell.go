@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"os/exec"
+	"runtime"
 	"time"
 )
 
@@ -19,8 +20,13 @@ type ShellTool struct {
 }
 
 // NewShell returns a ShellTool with reasonable defaults.
+// On Windows, uses cmd.exe; on Unix, /bin/sh.
 func NewShell() *ShellTool {
-	return &ShellTool{Timeout: 120 * time.Second, MaxOut: 16 * 1024, Shell: "/bin/sh"}
+	shell := "/bin/sh"
+	if runtime.GOOS == "windows" {
+		shell = "cmd.exe"
+	}
+	return &ShellTool{Timeout: 120 * time.Second, MaxOut: 16 * 1024, Shell: shell}
 }
 
 // Name implements Tool.
@@ -68,7 +74,12 @@ func (s *ShellTool) Run(ctx context.Context, input json.RawMessage) (string, err
 		shell = "/bin/sh"
 	}
 
-	cmd := exec.CommandContext(cctx, shell, "-c", args.Command)
+	var cmd *exec.Cmd
+	if runtime.GOOS == "windows" {
+		cmd = exec.CommandContext(cctx, shell, "/c", args.Command)
+	} else {
+		cmd = exec.CommandContext(cctx, shell, "-c", args.Command)
+	}
 	out, err := cmd.CombinedOutput()
 	text := string(out)
 	if max := s.MaxOut; max > 0 && len(text) > max {

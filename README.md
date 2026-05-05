@@ -96,6 +96,7 @@ m completion zsh > "${fpath[1]}/_m"
 |----------|-----|
 | macOS (Homebrew) | `brew tap subzone/tap && brew install subzone/tap/m` |
 | macOS (pkg) | Download `.pkg` from [latest release][releases] → double-click. Installs to `/usr/local/bin/m`. |
+| Windows | Download `.zip` from [latest release][releases] → extract `m.exe` to a folder on your PATH. |
 | Linux (Debian/Ubuntu) | `sudo dpkg -i m_*_linux_amd64.deb` |
 | Linux (other) | Tarball: `tar -xzf m_*_linux_amd64.tar.gz && sudo mv m /usr/local/bin/` |
 | From source | `go install github.com/subzone/Agentctl/cmd/m@latest` (requires Go 1.26+) |
@@ -331,7 +332,7 @@ structured output mechanics), see the
 
 ## What works today
 
-- Single-binary install on macOS / Linux (amd64 + arm64)
+- Single-binary install on macOS / Linux / Windows (amd64 + arm64)
 - 6 LLM providers, switchable mid-session
 - 9 built-in tools with user confirmation on writes + undo
 - MCP stdio + HTTP + SSE transports with auto-discovery and namespacing
