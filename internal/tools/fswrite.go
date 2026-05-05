@@ -248,9 +248,9 @@ func (f *FSWriteTool) maxBytes() int {
 	return f.MaxBytes
 }
 
-// unifiedDiff produces a simple unified-diff-style preview. Not a full
-// diff algorithm — shows removed/added lines around the change for
-// quick visual confirmation.
+// unifiedDiff produces a unified-diff-style preview with proper hunk markers.
+// Shows multiple change regions with context, capped at reasonable size.
+// This is a proper diff algorithm, not the joke that was here before.
 func unifiedDiff(path, old, new string) string {
 	oldLines := strings.Split(old, "\n")
 	newLines := strings.Split(new, "\n")
@@ -258,61 +258,200 @@ func unifiedDiff(path, old, new string) string {
 	var b strings.Builder
 	fmt.Fprintf(&b, "--- %s\n+++ %s\n", path, path)
 
-	// Simple line-by-line diff: show first differing region with context.
-	const ctx = 3
-	firstDiff := -1
-	for i := 0; i < len(oldLines) || i < len(newLines); i++ {
-		oldL, newL := "", ""
-		if i < len(oldLines) {
-			oldL = oldLines[i]
-		}
-		if i < len(newLines) {
-			newL = newLines[i]
-		}
-		if oldL != newL && firstDiff < 0 {
-			firstDiff = i
-		}
-	}
-	if firstDiff < 0 {
+	// Find all differing regions (hunks)
+	hunks := findHunks(oldLines, newLines, 3) // 3 lines of context
+
+	if len(hunks) == 0 {
 		b.WriteString("(no changes)\n")
 		return b.String()
 	}
 
-	start := firstDiff - ctx
-	if start < 0 {
-		start = 0
-	}
+	// Limit total output to prevent overwhelming the user
+	maxTotalLines := 100
+	totalLines := 0
 
-	// Show up to 20 lines of diff to keep it readable.
-	shown := 0
-	maxShow := 20
-	for i := start; i < len(oldLines) || i < len(newLines); i++ {
-		if shown >= maxShow {
-			b.WriteString("  ...\n")
+	for _, hunk := range hunks {
+		if totalLines >= maxTotalLines {
+			b.WriteString("... (diff truncated, too many changes)\n")
 			break
 		}
-		oldL, newL := "", ""
-		haveOld, haveNew := i < len(oldLines), i < len(newLines)
-		if haveOld {
-			oldL = oldLines[i]
-		}
-		if haveNew {
-			newL = newLines[i]
-		}
-		if oldL == newL {
-			if i >= firstDiff+ctx && i < firstDiff+maxShow-ctx {
-				continue // skip unchanged middle
-			}
-			fmt.Fprintf(&b, "  %s\n", oldL)
-		} else {
-			if haveOld && oldL != "" {
-				fmt.Fprintf(&b, "- %s\n", oldL)
-			}
-			if haveNew && newL != "" {
-				fmt.Fprintf(&b, "+ %s\n", newL)
+
+		// Write hunk header: @@ -oldStart,oldCount +newStart,newCount @@
+		fmt.Fprintf(&b, "@@ -%d,%d +%d,%d @@\n",
+			hunk.oldStart+1, hunk.oldCount,
+			hunk.newStart+1, hunk.newCount)
+
+		// Write hunk content
+		linesInHunk := 0
+		maxLinesPerHunk := 40
+
+		for i := hunk.oldStart; i < hunk.oldStart+hunk.oldCount && linesInHunk < maxLinesPerHunk; i++ {
+			if i < len(oldLines) {
+				fmt.Fprintf(&b, "-%s\n", oldLines[i])
+				linesInHunk++
+				totalLines++
 			}
 		}
-		shown++
+
+		for i := hunk.newStart; i < hunk.newStart+hunk.newCount && linesInHunk < maxLinesPerHunk; i++ {
+			if i < len(newLines) {
+				fmt.Fprintf(&b, "+%s\n", newLines[i])
+				linesInHunk++
+				totalLines++
+			}
+		}
+
+		// Show context lines after the hunk
+		contextAfter := 3
+		for i := hunk.newStart + hunk.newCount; i < hunk.newStart+hunk.newCount+contextAfter && i < len(newLines) && linesInHunk < maxLinesPerHunk; i++ {
+			fmt.Fprintf(&b, " %s\n", newLines[i])
+			linesInHunk++
+			totalLines++
+		}
 	}
+
 	return b.String()
+}
+
+// hunk represents a change region in a diff
+type hunk struct {
+	oldStart int
+	oldCount int
+	newStart int
+	newCount int
+}
+
+// findHunks identifies all change regions between old and new lines
+// with specified context lines around each change
+func findHunks(oldLines, newLines []string, context int) []hunk {
+	if len(oldLines) == 0 && len(newLines) == 0 {
+		return nil
+	}
+
+	// Simple LCS-based diff to find changes
+	changes := findChanges(oldLines, newLines)
+
+	if len(changes) == 0 {
+		return nil
+	}
+
+	// Group changes into hunks with context
+	hunks := []hunk{}
+	i := 0
+
+	for i < len(changes) {
+		change := changes[i]
+
+		// Find the extent of this hunk
+		hunkStartOld := change.oldIdx - context
+		if hunkStartOld < 0 {
+			hunkStartOld = 0
+		}
+		hunkStartNew := change.newIdx - context
+		if hunkStartNew < 0 {
+			hunkStartNew = 0
+		}
+
+		// Find all consecutive/nearby changes
+		hunkEndOld := change.oldIdx + 1
+		hunkEndNew := change.newIdx + 1
+
+		j := i + 1
+		for j < len(changes) {
+			nextChange := changes[j]
+			// If next change is within context distance, merge into this hunk
+			if nextChange.oldIdx <= hunkEndOld+context+1 && nextChange.newIdx <= hunkEndNew+context+1 {
+				hunkEndOld = nextChange.oldIdx + 1
+				hunkEndNew = nextChange.newIdx + 1
+				j++
+			} else {
+				break
+			}
+		}
+
+		// Add context after the hunk
+		hunkEndOld += context
+		if hunkEndOld > len(oldLines) {
+			hunkEndOld = len(oldLines)
+		}
+		hunkEndNew += context
+		if hunkEndNew > len(newLines) {
+			hunkEndNew = len(newLines)
+		}
+
+		hunks = append(hunks, hunk{
+			oldStart: hunkStartOld,
+			oldCount: hunkEndOld - hunkStartOld,
+			newStart: hunkStartNew,
+			newCount: hunkEndNew - hunkStartNew,
+		})
+
+		i = j
+	}
+
+	return hunks
+}
+
+// change represents a single line change
+type change struct {
+	oldIdx int
+	newIdx int
+	typ    string // "delete", "insert", "replace"
+}
+
+// findChanges identifies individual line changes using LCS algorithm
+func findChanges(oldLines, newLines []string) []change {
+	// Build LCS table
+	lcs := buildLCS(oldLines, newLines)
+
+	// Walk back through LCS to identify changes
+	changes := []change{}
+	i, j := len(oldLines), len(newLines)
+
+	for i > 0 || j > 0 {
+		switch {
+		case i > 0 && j > 0 && oldLines[i-1] == newLines[j-1]:
+			// Lines match - part of LCS
+			i--
+			j--
+		case j > 0 && (i == 0 || lcs[i][j-1] >= lcs[i-1][j]):
+			// Insert from new
+			changes = append([]change{{oldIdx: i, newIdx: j - 1, typ: "insert"}}, changes...)
+			j--
+		case i > 0:
+			// Delete from old
+			changes = append([]change{{oldIdx: i - 1, newIdx: j, typ: "delete"}}, changes...)
+			i--
+		}
+	}
+
+	return changes
+}
+
+// buildLCS constructs the Longest Common Subsequence table
+func buildLCS(oldLines, newLines []string) [][]int {
+	m, n := len(oldLines), len(newLines)
+	lcs := make([][]int, m+1)
+	for i := range lcs {
+		lcs[i] = make([]int, n+1)
+	}
+
+	for i := 1; i <= m; i++ {
+		for j := 1; j <= n; j++ {
+			if oldLines[i-1] == newLines[j-1] {
+				lcs[i][j] = lcs[i-1][j-1] + 1
+			} else {
+				lcs[i][j] = max(lcs[i-1][j], lcs[i][j-1])
+			}
+		}
+	}
+
+	return lcs
+}
+
+func max(a, b int) int {
+	if a > b {
+		return a
+	}
+	return b
 }
