@@ -43,6 +43,9 @@ func main() {
 		SilenceErrors: true,
 		Args:          cobra.NoArgs,
 		RunE:          runDefaultChat,
+		PersistentPreRun: func(cmd *cobra.Command, _ []string) {
+			checkForUpdate(cmd.ErrOrStderr(), Version)
+		},
 	}
 
 	root.AddCommand(newValidateCmd())

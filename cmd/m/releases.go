@@ -25,6 +25,14 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.30",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"Update notifier: checks GitHub once/day, shows notice if newer version available.",
+			"Non-blocking, cached, silent on errors. Never slows down startup.",
+		},
+	},
+	{
 		Version: "0.0.29",
 		Date:    "2026-05-04",
 		Highlights: []string{
