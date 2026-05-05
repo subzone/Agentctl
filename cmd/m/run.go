@@ -29,8 +29,14 @@ func newRunCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "run <agent.md> [task...]",
 		Short: "Run an agent once and stream the reply to stdout",
-		Args:  cobra.MinimumNArgs(1),
-		RunE:  runAgent,
+		Long: `Execute a one-shot task with an agent. Output streams to stdout.
+
+Examples:
+  m run devops "review the Dockerfile"
+  m run coder "fix the failing test in api/handler.go"
+  m run examples/agents/summarize.md`,
+		Args: cobra.MinimumNArgs(1),
+		RunE: runAgent,
 	}
 	return cmd
 }

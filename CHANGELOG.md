@@ -5,6 +5,14 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.29] - 2026-05-04
+
+### Added
+- REPL color: bold blue prompt, dim welcome/tips/shortcuts
+- Help examples: `m chat --help` and `m run --help` show real usage examples
+- Session summary: `/sessions` shows first user message for each saved session
+- Tool output: shows "42 lines, 6196 bytes" or short output instead of raw byte count
+
 ## [0.0.28] - 2026-05-04
 
 ### Added
@@ -189,6 +197,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Theme system (matrix, default, minimal)
 - System stats (CPU/RAM/GPU/Disk)
 
+[0.0.29]: https://github.com/subzone/Agentctl/compare/v0.0.28...v0.0.29
 [0.0.28]: https://github.com/subzone/Agentctl/compare/v0.0.27...v0.0.28
 [0.0.27]: https://github.com/subzone/Agentctl/compare/v0.0.26...v0.0.27
 [0.0.26]: https://github.com/subzone/Agentctl/compare/v0.0.25...v0.0.26

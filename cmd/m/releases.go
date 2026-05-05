@@ -25,6 +25,16 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.29",
+		Date:    "2026-05-04",
+		Highlights: []string{
+			"REPL color: bold blue prompt, dim tips/shortcuts.",
+			"Help examples: m chat, m run show real usage examples.",
+			"Session summary: /sessions shows first user message for each session.",
+			"Tool output: shows line count or short output instead of raw byte count.",
+		},
+	},
+	{
 		Version: "0.0.28",
 		Date:    "2026-05-04",
 		Highlights: []string{

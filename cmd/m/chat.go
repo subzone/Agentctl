@@ -25,7 +25,7 @@ import (
 )
 
 const (
-	chatPrompt       = "» "
+	chatPrompt       = "\033[1;34m» \033[0m"
 	chatMaxExchanges = 8
 )
 
@@ -99,8 +99,14 @@ func newChatCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "chat <agent.md>",
 		Short: "Interactive REPL with an agent",
-		Args:  cobra.ExactArgs(1),
-		RunE:  runChat,
+		Long: `Start an interactive chat session with an agent.
+
+Examples:
+  m chat examples/agents/coder.md
+  m chat devops                    # by name (if installed)
+  m chat coder                     # resolves from examples/agents/`,
+		Args: cobra.ExactArgs(1),
+		RunE: runChat,
 	}
 	return cmd
 }
@@ -345,9 +351,9 @@ func isInteractiveChat(in io.Reader, out, status io.Writer) bool {
 // in-flight Step. Slash commands (/exit, /reset, /help) are handled
 // locally; everything else is passed to sess.Step.
 func chatLoop(ctx context.Context, state *chatState, in io.Reader, out, status io.Writer, name string) error {
-	fmt.Fprintf(status, "chat with %s — /exit to quit, /reset to clear history, /help for more\n", name)
-	fmt.Fprintln(status, "tips: /models (switch model) • /trust (auto-approve) • /save (keep session) • /debug (trace)")
-	fmt.Fprintln(status, "shortcuts: /x=exit /r=reset /c=compact /u=undo /m=models /t=themes /s=save /h=help")
+	fmt.Fprintf(status, "\033[1mchat with %s\033[0m \033[2m— /exit to quit, /reset to clear history, /help for more\033[0m\n", name)
+	fmt.Fprintln(status, "\033[2mtips: /models (switch model) • /trust (auto-approve) • /save (keep session) • /debug (trace)\033[0m")
+	fmt.Fprintln(status, "\033[2mshortcuts: /x=exit /r=reset /c=compact /u=undo /m=models /t=themes /s=save /h=help\033[0m")
 
 	lines := readLines(in)
 
@@ -644,7 +650,21 @@ func handleSessionList(status io.Writer) {
 	}
 	fmt.Fprintf(status, "saved sessions (%d):\n", len(ids))
 	for i, id := range ids {
-		fmt.Fprintf(status, "  %d) %s\n", i+1, id)
+		// Try to load and show first user message as summary.
+		summary := ""
+		if data, lerr := store.LoadSession(context.Background(), id); lerr == nil {
+			for _, msg := range data.Messages {
+				if msg.Role == "user" && len(msg.Content) > 0 && msg.Content[0].Text != "" {
+					s := msg.Content[0].Text
+					if len(s) > 50 {
+						s = s[:50] + "..."
+					}
+					summary = " \u2014 " + s
+					break
+				}
+			}
+		}
+		fmt.Fprintf(status, "  %d) %s%s\n", i+1, id, summary)
 	}
 	fmt.Fprintln(status, "use /resume <id or number> to restore")
 }

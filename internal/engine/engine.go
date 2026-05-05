@@ -601,7 +601,7 @@ func runToolBlock(ctx context.Context, reg *tools.Registry, confirm func(context
 			}
 		}
 	} else {
-		fmt.Fprintf(status, "← %d bytes\n", len(output))
+		fmt.Fprintf(status, "← %s\n", summarizeToolOutput(b.ToolName, output))
 	}
 	return llm.ContentBlock{
 		Type:      llm.BlockToolResult,
@@ -646,6 +646,23 @@ func summarizeInput(input json.RawMessage) string {
 		return s[:limit] + "..."
 	}
 	return s
+}
+
+// summarizeToolOutput produces a human-friendly summary of tool output.
+func summarizeToolOutput(toolName, output string) string {
+	lines := strings.Count(output, "\n")
+	size := len(output)
+	switch {
+	case size == 0:
+		return "(empty)"
+	case lines > 1:
+		return fmt.Sprintf("%d lines, %d bytes", lines, size)
+	default:
+		if size > 80 {
+			return fmt.Sprintf("%d bytes", size)
+		}
+		return strings.TrimSpace(output)
+	}
 }
 
 // allTextBlocks reports whether every block in m is a text block (and the
