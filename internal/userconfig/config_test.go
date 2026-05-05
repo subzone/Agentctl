@@ -3,13 +3,24 @@ package userconfig
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
+// setTestConfigDir sets env vars so configDir() resolves to dir/m.
+func setTestConfigDir(t *testing.T, dir string) {
+	t.Helper()
+	if runtime.GOOS == "windows" {
+		t.Setenv("APPDATA", dir)
+	} else {
+		t.Setenv("XDG_CONFIG_HOME", dir)
+		t.Setenv("HOME", dir)
+	}
+}
+
 func TestSaveAndLoadConfig(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir) // Linux
-	t.Setenv("HOME", dir)            // fallback
+	setTestConfigDir(t, dir)
 	os.MkdirAll(filepath.Join(dir, "m"), 0o700)
 
 	cfg := &Config{Provider: ProviderOllama, Model: "qwen3-coder"}
@@ -37,8 +48,7 @@ func TestSaveRejectsEmpty(t *testing.T) {
 
 func TestLoadMissing(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir)
-	t.Setenv("HOME", dir)
+	setTestConfigDir(t, dir)
 
 	_, err := Load()
 	if err == nil {
@@ -52,8 +62,7 @@ func TestLoadMissing(t *testing.T) {
 
 func TestExists(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir)
-	t.Setenv("HOME", dir)
+	setTestConfigDir(t, dir)
 
 	if Exists() {
 		t.Error("Exists should be false before Save")
@@ -69,8 +78,7 @@ func TestExists(t *testing.T) {
 
 func TestSaveAndLoadState(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir)
-	t.Setenv("HOME", dir)
+	setTestConfigDir(t, dir)
 	os.MkdirAll(filepath.Join(dir, "m"), 0o700)
 
 	st := &State{LastSeenVersion: "0.0.3"}
@@ -88,8 +96,7 @@ func TestSaveAndLoadState(t *testing.T) {
 
 func TestLoadStateMissing(t *testing.T) {
 	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir)
-	t.Setenv("HOME", dir)
+	setTestConfigDir(t, dir)
 
 	_, err := LoadState()
 	if err == nil {
@@ -108,9 +115,11 @@ func TestIsKeyNotFound(t *testing.T) {
 }
 
 func TestConfigFilePermissions(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix file permissions not applicable on Windows")
+	}
 	dir := t.TempDir()
-	t.Setenv("XDG_CONFIG_HOME", dir)
-	t.Setenv("HOME", dir)
+	setTestConfigDir(t, dir)
 
 	cfg := &Config{Provider: ProviderOpenAI, Model: "gpt-4o"}
 	if err := Save(cfg); err != nil {

@@ -2,11 +2,15 @@ package tools
 
 import (
 	"context"
+	"runtime"
 	"testing"
 	"time"
 )
 
 func TestShellTool_BasicCommand(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix shell test")
+	}
 	shell := NewShell()
 	ctx := context.Background()
 
@@ -40,6 +44,9 @@ func TestShellTool_InvalidJSON(t *testing.T) {
 }
 
 func TestShellTool_Timeout(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix shell test")
+	}
 	if testing.Short() {
 		t.Skip("skipping timeout test in short mode")
 	}
@@ -64,6 +71,9 @@ func TestShellTool_Timeout(t *testing.T) {
 }
 
 func TestShellTool_NonZeroExit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix shell test")
+	}
 	shell := NewShell()
 	ctx := context.Background()
 
@@ -78,6 +88,9 @@ func TestShellTool_NonZeroExit(t *testing.T) {
 }
 
 func TestShellTool_OutputTruncation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix shell test")
+	}
 	shell := &ShellTool{Timeout: 5 * time.Second, MaxOut: 10}
 	ctx := context.Background()
 
@@ -95,6 +108,9 @@ func TestShellTool_OutputTruncation(t *testing.T) {
 }
 
 func TestShellTool_ContextCancellation(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix shell test")
+	}
 	shell := &ShellTool{Timeout: 10 * time.Second, MaxOut: 1024}
 	ctx, cancel := context.WithCancel(context.Background())
 	
@@ -108,6 +124,9 @@ func TestShellTool_ContextCancellation(t *testing.T) {
 }
 
 func TestShellTool_CustomShell(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix shell test")
+	}
 	shell := &ShellTool{Timeout: 5 * time.Second, MaxOut: 1024, Shell: "/bin/bash"}
 	ctx := context.Background()
 
@@ -122,6 +141,9 @@ func TestShellTool_CustomShell(t *testing.T) {
 }
 
 func TestShellTool_CombinedOutput(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix shell test")
+	}
 	shell := NewShell()
 	ctx := context.Background()
 

@@ -3,6 +3,7 @@ package tools
 import (
 	"context"
 	"encoding/json"
+	"runtime"
 	"testing"
 )
 
@@ -61,6 +62,9 @@ func TestRegistryRunUnknown(t *testing.T) {
 }
 
 func TestShellSimple(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix shell test")
+	}
 	out, err := NewShell().Run(context.Background(), json.RawMessage(`{"command":"echo hi"}`))
 	if err != nil {
 		t.Fatalf("Run: %v", err)
@@ -71,6 +75,9 @@ func TestShellSimple(t *testing.T) {
 }
 
 func TestShellNonZeroExit(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix shell test")
+	}
 	out, err := NewShell().Run(context.Background(), json.RawMessage(`{"command":"sh -c 'echo nope >&2; exit 7'"}`))
 	if err != nil {
 		t.Fatalf("non-zero exit should not be a tool error, got %v", err)
@@ -88,6 +95,9 @@ func TestShellInvalidInput(t *testing.T) {
 }
 
 func TestShellTruncates(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix shell test")
+	}
 	s := NewShell()
 	s.MaxOut = 4
 	out, err := s.Run(context.Background(), json.RawMessage(`{"command":"printf abcdefghij"}`))
@@ -105,7 +115,7 @@ func TestFSReadHappy(t *testing.T) {
 	if err := writeFile(path, "hello world\n"); err != nil {
 		t.Fatal(err)
 	}
-	out, err := NewFSRead().Run(context.Background(), json.RawMessage(`{"path":"`+path+`"}`))
+	out, err := NewFSRead().Run(context.Background(), json.RawMessage(`{"path":"`+jsonPath(path)+`"}`))
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -129,7 +139,7 @@ func TestFSReadTruncates(t *testing.T) {
 	}
 	f := NewFSRead()
 	f.MaxBytes = 4
-	out, err := f.Run(context.Background(), json.RawMessage(`{"path":"`+path+`"}`))
+	out, err := f.Run(context.Background(), json.RawMessage(`{"path":"`+jsonPath(path)+`"}`))
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}

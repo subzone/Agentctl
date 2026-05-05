@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 )
 
@@ -12,7 +13,7 @@ func TestFSWriteCreate(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "new.txt")
 	w := NewFSWrite(nil, nil) // auto-approve
-	out, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+path+`","mode":"create","content":"hello\n"}`))
+	out, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+jsonPath(path)+`","mode":"create","content":"hello\n"}`))
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -28,7 +29,7 @@ func TestFSWriteCreateSubdir(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "sub", "deep", "file.txt")
 	w := NewFSWrite(nil, nil)
-	_, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+path+`","mode":"create","content":"ok"}`))
+	_, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+jsonPath(path)+`","mode":"create","content":"ok"}`))
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -44,7 +45,7 @@ func TestFSWritePatch(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := NewFSWrite(nil, nil)
-	out, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+path+`","mode":"patch","old_str":"world","new_str":"go"}`))
+	out, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+jsonPath(path)+`","mode":"patch","old_str":"world","new_str":"go"}`))
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -63,7 +64,7 @@ func TestFSWritePatchNotFound(t *testing.T) {
 		t.Fatal(err)
 	}
 	w := NewFSWrite(nil, nil)
-	_, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+path+`","mode":"patch","old_str":"zzz","new_str":"x"}`))
+	_, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+jsonPath(path)+`","mode":"patch","old_str":"zzz","new_str":"x"}`))
 	if err == nil {
 		t.Fatal("expected error for missing old_str")
 	}
@@ -74,7 +75,7 @@ func TestFSWriteDeclined(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "no.txt")
 	w := NewFSWrite(decline, nil)
-	out, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+path+`","mode":"create","content":"nope"}`))
+	out, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+jsonPath(path)+`","mode":"create","content":"nope"}`))
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -95,10 +96,13 @@ func TestFSWriteInvalidMode(t *testing.T) {
 }
 
 func TestFSWriteCreateFileMode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix file permissions not applicable on Windows")
+	}
 	dir := t.TempDir()
 	path := filepath.Join(dir, "mode.txt")
 	w := NewFSWrite(nil, nil)
-	if _, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+path+`","mode":"create","content":"hello"}`)); err != nil {
+	if _, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+jsonPath(path)+`","mode":"create","content":"hello"}`)); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 	info, err := os.Stat(path)
@@ -111,13 +115,16 @@ func TestFSWriteCreateFileMode(t *testing.T) {
 }
 
 func TestFSWritePatchPreservesFileMode(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix file permissions not applicable on Windows")
+	}
 	dir := t.TempDir()
 	path := filepath.Join(dir, "exec.sh")
 	if err := os.WriteFile(path, []byte("echo hello"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	w := NewFSWrite(nil, nil)
-	if _, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+path+`","mode":"patch","old_str":"hello","new_str":"world"}`)); err != nil {
+	if _, err := w.Run(context.Background(), json.RawMessage(`{"path":"`+jsonPath(path)+`","mode":"patch","old_str":"hello","new_str":"world"}`)); err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 	info, err := os.Stat(path)

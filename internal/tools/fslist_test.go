@@ -16,14 +16,14 @@ func TestFSListFlat(t *testing.T) {
 	writeFile(filepath.Join(dir, "b.txt"), "b")
 
 	l := NewFSList()
-	out, err := l.Run(context.Background(), json.RawMessage(`{"path":"`+dir+`"}`))
+	out, err := l.Run(context.Background(), json.RawMessage(`{"path":"`+jsonPath(dir)+`"}`))
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
 	if !strings.Contains(out, "a.txt") || !strings.Contains(out, "b.txt") {
 		t.Errorf("missing files: %q", out)
 	}
-	if !strings.Contains(out, "sub/") {
+	if !strings.Contains(out, "sub/") && !strings.Contains(out, "sub\\") {
 		t.Errorf("missing dir with trailing slash: %q", out)
 	}
 }
@@ -36,7 +36,7 @@ func TestFSListRecursive(t *testing.T) {
 	writeFile(filepath.Join(dir, "a", "b", "deep.txt"), "d")
 
 	l := NewFSList()
-	out, err := l.Run(context.Background(), json.RawMessage(`{"path":"`+dir+`","recursive":true}`))
+	out, err := l.Run(context.Background(), json.RawMessage(`{"path":"`+jsonPath(dir)+`","recursive":true}`))
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
@@ -52,7 +52,7 @@ func TestFSListSkipsGit(t *testing.T) {
 	writeFile(filepath.Join(dir, "real.txt"), "r")
 
 	l := NewFSList()
-	out, err := l.Run(context.Background(), json.RawMessage(`{"path":"`+dir+`","recursive":true}`))
+	out, err := l.Run(context.Background(), json.RawMessage(`{"path":"`+jsonPath(dir)+`","recursive":true}`))
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
