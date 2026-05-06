@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"time"
 
 	"github.com/subzone/Agentctl/internal/config"
 	"github.com/subzone/Agentctl/internal/tools"
@@ -97,6 +98,20 @@ func Open(ctx context.Context, specs []*config.MCPServerSpec, agentName string, 
 // open client. Builtins are not included; callers compose them externally.
 func (m *Manager) Registry() *tools.Registry {
 	return tools.NewRegistry(m.tools...)
+}
+
+// HealthCheck checks the health of each MCP server by calling ListTools.
+// Returns a map of server name to error (nil if healthy).
+func (m *Manager) HealthCheck(ctx context.Context) map[string]error {
+	results := make(map[string]error)
+	for _, nc := range m.clients {
+		// Use a short timeout for health check
+		hctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		defer cancel()
+		_, err := nc.transport.ListTools(hctx)
+		results[nc.name] = err
+	}
+	return results
 }
 
 // Close shuts down every client. The first error is returned; later errors
