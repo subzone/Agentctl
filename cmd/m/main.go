@@ -54,11 +54,13 @@ func main() {
 	root.AddCommand(newInitCmd())
 	root.AddCommand(newConfigCmd())
 	root.AddCommand(newListCmd())
+	root.AddCommand(newSearchCmd())
 	root.AddCommand(newInstallCmd())
 	root.AddCommand(newChangelogCmd())
 	root.AddCommand(newTestCmd())
 	root.AddCommand(newNewCmd())
 	root.AddCommand(newDoctorCmd())
+	root.AddCommand(newUpgradeCmd())
 
 	// Shell completions: m completion bash/zsh/fish/powershell
 	root.AddCommand(newCompletionCmd())

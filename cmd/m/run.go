@@ -26,6 +26,8 @@ import (
 const defaultMaxTokens = 0
 
 func newRunCmd() *cobra.Command {
+	var yes bool
+	var dryRun bool
 	cmd := &cobra.Command{
 		Use:   "run <agent.md> [task...]",
 		Short: "Run an agent once and stream the reply to stdout",
@@ -33,15 +35,22 @@ func newRunCmd() *cobra.Command {
 
 Examples:
   m run devops "review the Dockerfile"
-  m run coder "fix the failing test in api/handler.go"
-  m run examples/agents/summarize.md`,
+  m run --yes devops "apply the terraform plan"
+  m run --dry-run coder "refactor auth"`,
 		Args: cobra.MinimumNArgs(1),
-		RunE: runAgent,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			if dryRun {
+				return runDryRun(cmd, args)
+			}
+			return runAgent(cmd, args, yes)
+		},
 	}
+	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Auto-approve all tool calls (dangerous commands still blocked)")
+	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate agent and show config without calling the LLM")
 	return cmd
 }
 
-func runAgent(cmd *cobra.Command, args []string) error {
+func runAgent(cmd *cobra.Command, args []string, autoApprove bool) error {
 	path := resolveAgentPath(args[0])
 	doc, err := config.ParseFile(path)
 	if err != nil {
@@ -84,6 +93,12 @@ func runAgent(cmd *cobra.Command, args []string) error {
 		undo:       &tools.UndoStack{},
 		spawnDepth: 1, // children of the hub run at depth 1
 	}
+	if autoApprove {
+		hubSpawner.confirm = func(_ context.Context, prompt string) (bool, error) {
+			fmt.Fprintf(stderr, "→ %s [auto-approved]\n", prompt)
+			return true, nil
+		}
+	}
 
 	rt, err := buildAgentRuntime(ctx, agent, docs, hubSpawner, stderr)
 	if err != nil {
@@ -96,6 +111,18 @@ func runAgent(cmd *cobra.Command, args []string) error {
 		maxTokens = *agent.MaxTokens
 	}
 
+	var toolConfirm func(context.Context, string, json.RawMessage) (bool, error)
+	if autoApprove {
+		toolConfirm = func(_ context.Context, name string, input json.RawMessage) (bool, error) {
+			if pattern := isDangerousCommand(name, input); pattern != "" {
+				fmt.Fprintf(stderr, "\n⚠️  DANGEROUS: \"%s\" in %s — skipped in --yes mode\n", pattern, name)
+				return false, nil
+			}
+			fmt.Fprintf(stderr, "→ %s %s [auto-approved]\n", name, summarizeToolInput(input))
+			return true, nil
+		}
+	}
+
 	return engine.Run(ctx, engine.Config{
 		Provider:    provider,
 		Model:       model,
@@ -103,6 +130,7 @@ func runAgent(cmd *cobra.Command, args []string) error {
 		Tools:       rt.registry,
 		Temperature: agent.Temperature,
 		MaxTokens:   maxTokens,
+		ToolConfirm: toolConfirm,
 		Out:         out,
 		Status:      stderr,
 	}, task)
@@ -243,4 +271,56 @@ func summarizeToolInput(input json.RawMessage) string {
 		return k + "=" + s
 	}
 	return string(input)
+}
+
+// runDryRun validates the agent, resolves the provider, and prints the
+// resolved configuration without making any LLM calls.
+func runDryRun(cmd *cobra.Command, args []string) error {
+	path := resolveAgentPath(args[0])
+	doc, err := config.ParseFile(path)
+	if err != nil {
+		return err
+	}
+	agent, ok := doc.Spec.(*config.AgentSpec)
+	if !ok {
+		return fmt.Errorf("%s: not an agent (type=%s)", args[0], doc.Meta().Type)
+	}
+
+	out := cmd.OutOrStdout()
+	fmt.Fprintf(out, "Agent:       %s\n", agent.Name)
+	fmt.Fprintf(out, "Path:        %s\n", path)
+	fmt.Fprintf(out, "Model:       %s\n", agent.Model)
+	if len(agent.FallbackModels) > 0 {
+		fmt.Fprintf(out, "Fallbacks:   %s\n", strings.Join(agent.FallbackModels, ", "))
+	}
+	if agent.Temperature != nil {
+		fmt.Fprintf(out, "Temperature: %.1f\n", *agent.Temperature)
+	}
+	fmt.Fprintf(out, "Tools:       %s\n", strings.Join(agent.Tools, ", "))
+
+	if issues := config.Validate(doc); len(issues) > 0 {
+		fmt.Fprintf(out, "\nValidation issues:\n")
+		for _, iss := range issues {
+			fmt.Fprintf(out, "  ⚠ %s\n", iss.Error())
+		}
+		return fmt.Errorf("%d validation issue(s)", len(issues))
+	}
+	fmt.Fprintf(out, "\n✓ Agent valid\n")
+
+	// Try resolving the provider.
+	_, model, err := llm.Resolve(agent.Model)
+	if err != nil {
+		fmt.Fprintf(out, "✗ Provider: %v\n", err)
+		return err
+	}
+	fmt.Fprintf(out, "✓ Provider resolved (model: %s)\n", model)
+
+	if len(args) > 1 {
+		task := strings.Join(args[1:], " ")
+		fmt.Fprintf(out, "\nTask:        %s\n", task)
+		fmt.Fprintf(out, "System:      %d chars\n", len(doc.Body))
+	}
+
+	fmt.Fprintf(out, "\nDry run complete — no LLM calls made.\n")
+	return nil
 }

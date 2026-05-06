@@ -90,6 +90,7 @@ func (r *Registry) Run(ctx context.Context, name string, input json.RawMessage) 
 func Builtins(confirm ConfirmFunc, undo *UndoStack) *Registry {
 	return NewRegistry(
 		NewShell(), NewFSRead(), NewFSWrite(confirm, undo),
+		NewFSWriteMulti(confirm, undo),
 		NewFSList(), NewGit(), NewTestRun(), NewWebFetch(),
 		NewCodeSearch(),
 	)

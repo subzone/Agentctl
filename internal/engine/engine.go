@@ -268,6 +268,7 @@ func (s *Session) Step(ctx context.Context, task string) error {
 	wroteAny := false
 
 	for turn := 0; turn < s.maxTurns; turn++ {
+		endLLM := logging.Span("llm.stream", "model", s.cfg.Model, "turn", turn)
 		events, err := s.cfg.Provider.Stream(ctx, llm.Request{
 			Model:          s.cfg.Model,
 			System:         s.cfg.System,
@@ -280,6 +281,7 @@ func (s *Session) Step(ctx context.Context, task string) error {
 		if err != nil && isRateLimitError(err) && len(s.cfg.FallbackModels) > 0 {
 			events, err = s.tryFallbacks(ctx)
 		}
+		endLLM()
 		if err != nil {
 			return err
 		}
@@ -633,6 +635,8 @@ var readOnlyTools = map[string]bool{"fs_read": true, "fs_list": true, "web_fetch
 
 func runToolBlock(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), errIntervene func(context.Context, string, string) string, status io.Writer, b llm.ContentBlock) llm.ContentBlock {
 	// Read-only tools skip confirmation.
+	endTool := logging.Span("tool.exec", "tool", b.ToolName)
+	defer endTool()
 	logging.Debug("tool.call", "tool", b.ToolName, "input_size", len(b.ToolInput))
 	if confirm != nil && !readOnlyTools[b.ToolName] {
 		ok, err := confirm(ctx, b.ToolName, b.ToolInput)
