@@ -171,5 +171,5 @@ func (f *FSWriteMultiTool) applyPatch(path, oldStr, newStr string) error {
 	if info, err := os.Stat(path); err == nil {
 		perm = info.Mode().Perm()
 	}
-	return os.WriteFile(path, []byte(content), perm) //nolint:gosec // path cleaned above
+	return os.WriteFile(path, []byte(content), perm) // #nosec G703 -- path cleaned with filepath.Clean above
 }
