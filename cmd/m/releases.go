@@ -25,6 +25,20 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.34",
+		Date:    "2026-05-05",
+		Highlights: []string{
+			"Default agent personality: The Pragmatic Architect — direct, FinOps-aware, automation-first.",
+			"m run --yes: auto-approve tools for CI/headless (dangerous commands still blocked).",
+			"m run --dry-run: validate agent and show config without calling the LLM.",
+			"m search: fuzzy agent discovery by name, model, or path.",
+			"m upgrade: self-update via brew, go install, or manual download.",
+			"fs_write_multi: atomic multi-file writes with rollback on failure.",
+			"Trace spans: per-turn LLM timing and per-tool duration (debug mode).",
+			"Log file rotation: ~/.config/m/logs/ with 5-file cap.",
+		},
+	},
+	{
 		Version: "0.0.33",
 		Date:    "2026-05-05",
 		Highlights: []string{

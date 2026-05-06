@@ -7,11 +7,11 @@ against your choice of LLM. Aimed at developers and DevOps people who live in
 the terminal and want to script agentic work without IDE lock-in or SDK
 sprawl.
 
-**Current version:** v0.0.33 | **Go version:** 1.26+ | **Binary size:** ~8.4 MB | **Docker image:** ~16 MB
+**Current version:** v0.0.34 | **Go version:** 1.26+ | **Binary size:** ~8.4 MB | **Docker image:** ~16 MB
 
 **Status:** alpha. ~1 month of evenings of work. Works for the author's daily
 use, but expect breaking changes until v0.1.0. Tagged releases (`v0.0.1` →
-`v0.0.33`) ship as macOS `.pkg` and Linux `.deb`.
+`v0.0.34`) ship as macOS `.pkg` and Linux `.deb`.
 
 ```text
 $ m
@@ -34,7 +34,7 @@ Full docs site (EN + SR): **<https://subzone.github.io/Agentctl/>**
 ```bash
 # 1. Install (macOS — pick one)
 brew tap subzone/tap && brew install subzone/tap/m
-# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.33_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
+# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.34_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
 
 # 2. Run the setup wizard
 m
@@ -364,7 +364,8 @@ structured output mechanics), see the
 - Single-binary install on macOS / Linux / Windows (amd64 + arm64)
 - **32 bundled agents** — available immediately after install, no clone needed
 - 6 LLM providers, switchable mid-session
-- 9 built-in tools with user confirmation on writes + undo
+- 10 built-in tools with user confirmation on writes + undo
+- Multi-file atomic edits (`fs_write_multi`) with rollback on failure
 - MCP stdio + HTTP + SSE transports with auto-discovery and namespacing
 - Hub-and-spoke sub-agent delegation
 - Provider-native structured output enforcement (`response_schema`)
@@ -372,7 +373,11 @@ structured output mechanics), see the
 - 9 built-in themes (matrix, nord, dracula, gruvbox, tokyonight, catppuccin, solarized, default, minimal)
 - Session persistence with AES-256-GCM encryption, autosave, and graceful shutdown (Ctrl+C saves)
 - Token-based context compaction (per-model context window awareness)
-- Agent discovery (`m list`), registry (`m install`), scaffold (`m new`)
+- Agent discovery (`m list`), search (`m search`), registry (`m install`), scaffold (`m new`)
+- `m run --yes` for CI/headless execution (dangerous commands still blocked)
+- `m run --dry-run` to validate agents without calling the LLM
+- `m upgrade` self-update command (brew/go install/manual)
+- Trace spans and log file rotation (`~/.config/m/logs/`)
 - Fallback models (auto-switch on 429 rate limit)
 - Dangerous command double-confirmation (34 patterns)
 - PII guardrails (redact emails, phones, SSNs, credit cards, API keys before sending to LLM)

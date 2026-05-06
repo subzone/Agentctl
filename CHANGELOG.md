@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.34] - 2026-05-05
+
+### Added
+- Default agent personality: "The Pragmatic Architect" — direct, FinOps-aware, Balkan-style
+- `m run --yes` / `-y`: auto-approve tools for CI/headless execution
+- `m run --dry-run`: validate agent config without calling the LLM
+- `m search <query>`: fuzzy agent discovery by name, model, or path
+- `m upgrade`: self-update command (brew/go install/manual)
+- `fs_write_multi` tool: atomic multi-file writes with rollback on failure
+- Trace spans: per-turn LLM timing, per-tool duration (`logging.Span`)
+- Log file rotation: `~/.config/m/logs/` with 5-file cap
+- `code_search` and `web_fetch` added to default agent tools
+
+### Changed
+- Default agent temperature lowered to 0.4 for precision
+- Default agent now has fallback models configured
+
 ## [0.0.33] - 2026-05-05
 
 ### Added
