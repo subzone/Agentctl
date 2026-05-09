@@ -88,7 +88,8 @@ func TestCLIDryRunInvalidAgent(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error for nonexistent agent")
 	}
-	if !strings.Contains(string(out), "no such file") && !strings.Contains(string(out), "parse") {
+	output := string(out)
+	if !strings.Contains(output, "no such file") && !strings.Contains(output, "cannot find") && !strings.Contains(output, "parse") {
 		t.Errorf("expected file error: %s", out)
 	}
 }
