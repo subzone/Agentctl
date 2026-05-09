@@ -196,7 +196,15 @@ func findAgentDoc(docs []*config.Document, name string) (*config.Document, error
 			return d, nil
 		}
 	}
-	return nil, fmt.Errorf("subagent %q not found in companion docs", name)
+	// Fallback: resolve from registry/bundled agents.
+	path := resolveAgentPath(name)
+	if path != name {
+		doc, err := config.ParseFile(path)
+		if err == nil {
+			return doc, nil
+		}
+	}
+	return nil, fmt.Errorf("subagent %q not found in companion docs or agent registry", name)
 }
 
 func contains(ss []string, s string) bool {

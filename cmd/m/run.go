@@ -140,11 +140,33 @@ func runAgent(cmd *cobra.Command, args []string, autoApprove bool) error {
 // root. Parse failures are silently dropped (the user surfaces them via
 // `agent validate`); resolve-time misses are reported individually.
 func loadCompanionDocs(agentPath string) []*config.Document {
-	root, err := projectRoot(agentPath)
-	if err != nil {
-		return nil
+	var docs []*config.Document
+	seen := map[string]bool{}
+
+	// 1. Scan the agent's project root.
+	if root, err := projectRoot(agentPath); err == nil {
+		if found, _ := config.LoadDir(root); len(found) > 0 {
+			for _, d := range found {
+				if a, ok := d.Spec.(*config.AgentSpec); ok {
+					seen[a.Name] = true
+				}
+				docs = append(docs, d)
+			}
+		}
 	}
-	docs, _ := config.LoadDir(root)
+
+	// 2. Also scan the user's agent registry dir (bundled/installed agents).
+	if dir := agentRegistryDir(); dir != "" {
+		if found, _ := config.LoadDir(dir); len(found) > 0 {
+			for _, d := range found {
+				if a, ok := d.Spec.(*config.AgentSpec); ok && !seen[a.Name] {
+					seen[a.Name] = true
+					docs = append(docs, d)
+				}
+			}
+		}
+	}
+
 	return docs
 }
 
