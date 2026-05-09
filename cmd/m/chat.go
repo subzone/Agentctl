@@ -389,6 +389,10 @@ func chatLoop(ctx context.Context, state *chatState, in io.Reader, out, status i
 				}
 				continue
 			}
+			line, included := expandAtFiles(line)
+			if len(included) > 0 {
+				fmt.Fprintf(status, "\033[2m  included: %s\033[0m\n", strings.Join(included, ", "))
+			}
 			if err := state.sess.Step(ctx, line); err != nil {
 				if errors.Is(err, context.Canceled) {
 					return nil

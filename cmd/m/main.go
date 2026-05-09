@@ -63,6 +63,9 @@ func main() {
 	root.AddCommand(newUpgradeCmd())
 	root.AddCommand(newMCPCmd())
 	root.AddCommand(newSessionCmd())
+	root.AddCommand(newPipeCmd())
+	root.AddCommand(newCostCmd())
+	root.AddCommand(newDiffCmd())
 
 	// Shell completions: m completion bash/zsh/fish/powershell
 	root.AddCommand(newCompletionCmd())

@@ -364,6 +364,10 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			}
 			m.appendHistory(m.styles.User.Render("» "+line) + "\n")
+			line, included := expandAtFiles(line)
+			if len(included) > 0 {
+				m.appendHistory(m.styles.Dim.Render("  included: "+strings.Join(included, ", ")) + "\n")
+			}
 			m.thinking = true
 			m.thinkTick = 0
 			stepCtx, stepCancel := context.WithCancel(m.ctx)
