@@ -469,8 +469,43 @@ func handleSlash(line string, state *chatState, status io.Writer) (handled, exit
 		fmt.Fprintln(status, "or tell the current agent: 'follow the spec workflow for this task'")
 		return true, false
 	case "/help", "/h":
-		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /undo /trust /debug /model <provider/model> /models /theme [name] /themes /save /sessions /resume <id> /config /help")
-		fmt.Fprintln(status, "aliases:  /x=exit /r=reset /c=compact /u=undo /m=models /t=themes /s=save /h=help")
+		fmt.Fprintln(status, "commands: /exit /quit /reset /compact /undo /trust /debug /agent <name> /model <provider/model> /models /theme /themes /save /sessions /resume /config /help")
+		fmt.Fprintln(status, "aliases:  /x=exit /r=reset /c=compact /u=undo /a=agent /m=models /t=themes /s=save /h=help")
+		return true, false
+	}
+	if line == "/agent" || line == "/a" {
+		agents := collectAllAgents()
+		fmt.Fprintf(status, "Available agents (%d):\n", len(agents))
+		for i, a := range agents {
+			fmt.Fprintf(status, "  %d) %-20s %s\n", i+1, a.name, a.model)
+		}
+		fmt.Fprintln(status, "\nUse /agent <name> to switch.")
+		return true, false
+	}
+	if strings.HasPrefix(line, "/agent ") || strings.HasPrefix(line, "/a ") {
+		arg := strings.TrimSpace(strings.TrimPrefix(line, "/agent "))
+		if strings.HasPrefix(line, "/a ") {
+			arg = strings.TrimSpace(strings.TrimPrefix(line, "/a "))
+		}
+		path := resolveAgentPath(arg)
+		doc, err := config.ParseFile(path)
+		if err != nil {
+			fmt.Fprintf(status, "error: %v\n", err)
+			return true, false
+		}
+		agent, ok := doc.Spec.(*config.AgentSpec)
+		if !ok {
+			fmt.Fprintln(status, "error: not an agent")
+			return true, false
+		}
+		p, model, err := llm.Resolve(agent.Model)
+		if err != nil {
+			fmt.Fprintf(status, "error: %v\n", err)
+			return true, false
+		}
+		state.sess.SetModel(p, model)
+		state.sess.SetSystem(doc.Body)
+		fmt.Fprintf(status, "◆ switched to agent: %s (%s)\n", agent.Name, agent.Model)
 		return true, false
 	}
 	if line == "/themes" || line == "/t" || strings.HasPrefix(line, "/themes ") {

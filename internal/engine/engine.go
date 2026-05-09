@@ -149,6 +149,11 @@ func (s *Session) SetModel(p llm.Provider, model string) {
 	s.cfg.Model = model
 }
 
+// SetSystem replaces the system prompt for subsequent Steps.
+func (s *Session) SetSystem(system string) {
+	s.cfg.System = system
+}
+
 // Model returns the current bare model id.
 func (s *Session) Model() string { return s.cfg.Model }
 

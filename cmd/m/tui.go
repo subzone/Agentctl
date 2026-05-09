@@ -14,6 +14,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/subzone/Agentctl/internal/config"
 	"github.com/subzone/Agentctl/internal/engine"
 	"github.com/subzone/Agentctl/internal/llm"
 	"github.com/subzone/Agentctl/internal/tools"
@@ -247,6 +248,57 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nil
 			case "/config":
 				m.appendHistory("run `m config` from the shell to manage providers and models\n")
+				return m, nil
+			}
+			// /agent or /a — switch agent mid-session
+			if line == "/agent" || line == "/a" {
+				agents := collectAllAgents()
+				var list []string
+				for i, a := range agents {
+					list = append(list, fmt.Sprintf("  %d) %s (%s)", i+1, a.name, a.model))
+				}
+				m.appendHistory("Available agents:\n" + strings.Join(list, "\n") + "\nUse /agent <name> to switch.\n")
+				return m, nil
+			}
+			if strings.HasPrefix(line, "/agent ") || strings.HasPrefix(line, "/a ") {
+				arg := strings.TrimSpace(strings.TrimPrefix(line, "/agent "))
+				if strings.HasPrefix(line, "/a ") {
+					arg = strings.TrimSpace(strings.TrimPrefix(line, "/a "))
+				}
+				// Try to resolve by number or name.
+				agents := collectAllAgents()
+				var picked string
+				var idx int
+				if _, err := fmt.Sscanf(arg, "%d", &idx); err == nil && idx >= 1 && idx <= len(agents) {
+					picked = agents[idx-1].name
+				} else {
+					picked = arg
+				}
+				path := resolveAgentPath(picked)
+				doc, err := config.ParseFile(path)
+				if err != nil {
+					m.appendHistory(fmt.Sprintf("error: %v\n", err))
+					return m, nil
+				}
+				agent, ok := doc.Spec.(*config.AgentSpec)
+				if !ok {
+					m.appendHistory("error: not an agent\n")
+					return m, nil
+				}
+				p, model, err := llm.Resolve(agent.Model)
+				if err != nil {
+					m.appendHistory(fmt.Sprintf("error: %v\n", err))
+					return m, nil
+				}
+				m.sess.SetModel(p, model)
+				m.sess.SetSystem(doc.Body)
+				m.provider, _, _ = strings.Cut(agent.Model, "/")
+				m.model = model
+				m.name = agent.Name
+				if agent.ThinkingPhrases != nil {
+					m.agentPhrases = agent.ThinkingPhrases
+				}
+				m.appendHistory(fmt.Sprintf("◆ switched to agent: %s (%s)\n", agent.Name, agent.Model))
 				return m, nil
 			}
 			if line == "/models" || line == "/m" || strings.HasPrefix(line, "/models ") || strings.HasPrefix(line, "/m ") {
@@ -798,10 +850,13 @@ func (m tuiModel) View() string {
 		inputLine = inputLine + strings.Repeat(" ", pad) + ctxLabel
 	}
 
+	// Agent indicator — bold, visible.
+	agentLabel := m.styles.User.Render("◆ " + m.name)
+
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		header,
-		cmdsBar+"  "+cwdLabel,
+		agentLabel + "  " + cmdsBar + "  " + cwdLabel,
 		bodyStyle.Render(body),
 		inputStyle.Render(inputLine),
 	)
