@@ -94,6 +94,7 @@ type chatState struct {
 	autoApprove bool      // /trust mode - auto-approve all destructive tools
 	traceWriter io.Writer // /debug mode - stream raw LLM JSON here
 	traceFile   *os.File  // if traceWriter is a file, close on exit
+	lastMessage string    // last user message for /retry
 }
 
 func newChatCmd() *cobra.Command {
@@ -383,6 +384,21 @@ func chatLoop(ctx context.Context, state *chatState, in io.Reader, out, status i
 			if line == "" {
 				continue
 			}
+			// Multi-line input: collect lines between """ delimiters.
+			if line == `"""` || strings.HasPrefix(line, `"""`) {
+				fmt.Fprintf(status, "\033[2m  (multi-line mode — end with \"\"\")\033[0m\n")
+				var multiLines []string
+				if rest := strings.TrimPrefix(line, `"""`); rest != "" {
+					multiLines = append(multiLines, rest)
+				}
+				for ml := range lines {
+					if strings.TrimSpace(ml) == `"""` {
+						break
+					}
+					multiLines = append(multiLines, ml)
+				}
+				line = strings.Join(multiLines, "\n")
+			}
 			if handled, exit := handleSlash(line, state, status); handled {
 				if exit {
 					return nil
@@ -393,6 +409,7 @@ func chatLoop(ctx context.Context, state *chatState, in io.Reader, out, status i
 			if len(included) > 0 {
 				fmt.Fprintf(status, "\033[2m  included: %s\033[0m\n", strings.Join(included, ", "))
 			}
+			state.lastMessage = line
 			if err := state.sess.Step(ctx, line); err != nil {
 				if errors.Is(err, context.Canceled) {
 					return nil
@@ -438,6 +455,16 @@ func handleSlash(line string, state *chatState, status io.Writer) (handled, exit
 	case "/trust":
 		state.autoApprove = true
 		fmt.Fprintln(status, "trust mode ON — all tools auto-approved")
+		return true, false
+	case "/retry":
+		if state.lastMessage == "" {
+			fmt.Fprintln(status, "nothing to retry")
+			return true, false
+		}
+		fmt.Fprintf(status, "\033[2mretrying: %s\033[0m\n", summarizeTask(state.lastMessage))
+		if err := state.sess.Step(context.Background(), state.lastMessage); err != nil {
+			fmt.Fprintln(status, "error:", err)
+		}
 		return true, false
 	case "/trust off":
 		state.autoApprove = false

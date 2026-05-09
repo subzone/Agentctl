@@ -95,6 +95,26 @@ func runDefaultChat(cmd *cobra.Command, _ []string) error {
 
 	showReleaseNotesIfNeeded(cmd.OutOrStdout(), Version)
 
+	// Check for per-project config (.m/config.yaml).
+	if proj := loadProjectConfig(); proj != nil {
+		if proj.Agent != "" {
+			path := resolveAgentPath(proj.Agent)
+			if doc, err := config.ParseFile(path); err == nil {
+				fmt.Fprintf(cmd.OutOrStdout(), "\033[2m  project agent: %s\033[0m\n", proj.Agent)
+				if proj.Model != "" {
+					if spec, ok := doc.Spec.(*config.AgentSpec); ok {
+						spec.Model = proj.Model
+					}
+				}
+				fmt.Fprintln(cmd.OutOrStdout())
+				return runChatWithDoc(cmd, doc, loadCompanionDocs(path))
+			}
+		}
+		if proj.Model != "" {
+			os.Setenv("M_MODEL", proj.Model)
+		}
+	}
+
 	// If the user configured a custom default agent, use it.
 	if cfg.DefaultAgent != "" {
 		doc, err := config.ParseFile(cfg.DefaultAgent)

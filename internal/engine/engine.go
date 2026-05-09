@@ -17,6 +17,7 @@ import (
 	"io"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/subzone/Agentctl/internal/llm"
 	"github.com/subzone/Agentctl/internal/tools"
@@ -658,7 +659,8 @@ func runToolBlock(ctx context.Context, reg *tools.Registry, confirm func(context
 			}
 		}
 	}
-	output, err := runOne(ctx, reg, b)
+	// Run tool with progress indicator for long-running operations.
+	output, err := runWithProgress(ctx, reg, status, b)
 	isErr := false
 	content := output
 	if err != nil {
@@ -691,6 +693,32 @@ func runOne(ctx context.Context, reg *tools.Registry, b llm.ContentBlock) (strin
 		return "", fmt.Errorf("no tool registry; cannot run %q", b.ToolName)
 	}
 	return reg.Run(ctx, b.ToolName, b.ToolInput)
+}
+
+// runWithProgress runs a tool and prints elapsed time every 5s for long operations.
+func runWithProgress(ctx context.Context, reg *tools.Registry, status io.Writer, b llm.ContentBlock) (string, error) {
+	type result struct {
+		output string
+		err    error
+	}
+	ch := make(chan result, 1)
+	go func() {
+		out, err := runOne(ctx, reg, b)
+		ch <- result{out, err}
+	}()
+
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	elapsed := 0
+	for {
+		select {
+		case r := <-ch:
+			return r.output, r.err
+		case <-ticker.C:
+			elapsed += 5
+			fmt.Fprintf(status, "  ⏳ %s running... %ds\n", b.ToolName, elapsed)
+		}
+	}
 }
 
 func buildSchemas(reg *tools.Registry) []llm.ToolSchema {
