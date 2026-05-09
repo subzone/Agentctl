@@ -5,6 +5,35 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.0.35] - 2026-05-06
+
+### Added
+- `m pipe`: stdin/stdout mode for Unix pipelines (`cat log | m pipe "explain"`)
+- `@file` context: reference files in prompts with `@path` (auto-inlined, no tool call)
+- `m cost`: show token usage and estimated cost for recent sessions
+- `m diff`: show all uncommitted changes the agent made (git diff + stat)
+- `m mcp setup`: automated MCP server install, credential config, connectivity check
+- `m mcp status`: show installed/missing state of all MCP servers
+- `m mcp list`: list available MCP server definitions
+- `m session list/export/delete`: full session management from CLI
+- `developer-hub` agent: Jira → branch → code → test → PR → Confluence
+- `steve-webdev` / `steva-webdev`: web design hub agents with code/design/review spokes
+- `spoke-webdev-code/design/review`: specialized web development spokes
+- `spoke-steva-code/infra`, `spoke-steve-code/infra`: language-specific spokes
+- Steva/Steve rebuilt as hub-and-spoke orchestrators
+- Hub agents resolve spokes from bundled/registry (no clone needed)
+- `MCPServerSpec.Install` field for automated installation (pip/npm/brew)
+- `userconfig.SaveAPIKeyByName/GetAPIKeyByName` for MCP secrets
+- MCP `HealthCheck()` method for connectivity verification
+- Engine benchmarks: Step, tokenCompact, estimateTokens
+- Logging tests: full coverage for slog + Span
+- 15 new functional tests for all new features
+
+### Changed
+- 42 bundled agents (was 32)
+- `loadCompanionDocs` also scans agent registry dir for spokes
+- `findAgentDoc` falls back to `resolveAgentPath` for spoke resolution
+
 ## [0.0.34] - 2026-05-05
 
 ### Added

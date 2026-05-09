@@ -25,6 +25,23 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.0.35",
+		Date:    "2026-05-06",
+		Highlights: []string{
+			"m pipe: stdin/stdout mode for Unix pipelines (cat log | m pipe 'explain').",
+			"@file context: @main.go in prompts auto-inlines file content. No tool call needed.",
+			"m cost: token usage and estimated cost for recent sessions.",
+			"m diff: show all uncommitted changes the agent made (git diff + stat).",
+			"m mcp setup: automated MCP server install + credential config + connectivity check.",
+			"m session list/export/delete: full session management from CLI.",
+			"developer-hub agent: Jira ticket → branch → code → PR → Confluence docs.",
+			"Web design agents: steve-webdev/steva-webdev hub + code/design/review spokes.",
+			"Steva/Steve rebuilt as hub-and-spoke: code spoke + infra spoke with structured output.",
+			"Hub agents resolve spokes from bundled/registry (no clone needed).",
+			"42 bundled agents (was 32).",
+		},
+	},
+	{
 		Version: "0.0.34",
 		Date:    "2026-05-05",
 		Highlights: []string{

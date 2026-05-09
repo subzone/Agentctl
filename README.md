@@ -7,11 +7,11 @@ against your choice of LLM. Aimed at developers and DevOps people who live in
 the terminal and want to script agentic work without IDE lock-in or SDK
 sprawl.
 
-**Current version:** v0.0.34 | **Go version:** 1.26+ | **Binary size:** ~8.4 MB | **Docker image:** ~16 MB
+**Current version:** v0.0.35 | **Go version:** 1.26+ | **Binary size:** ~8.4 MB | **Docker image:** ~16 MB
 
 **Status:** alpha. ~1 month of evenings of work. Works for the author's daily
 use, but expect breaking changes until v0.1.0. Tagged releases (`v0.0.1` →
-`v0.0.34`) ship as macOS `.pkg` and Linux `.deb`.
+`v0.0.35`) ship as macOS `.pkg` and Linux `.deb`.
 
 ```text
 $ m
@@ -34,7 +34,7 @@ Full docs site (EN + SR): **<https://subzone.github.io/Agentctl/>**
 ```bash
 # 1. Install (macOS — pick one)
 brew tap subzone/tap && brew install subzone/tap/m
-# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.34_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
+# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.0.35_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
 
 # 2. Run the setup wizard
 m
@@ -61,14 +61,29 @@ m
 m run examples/agents/devops.md "review the Dockerfile"
 m chat examples/agents/coder.md
 
-# 6. Create your own agent
+# 6. Pipe mode — use with Unix tools
+cat error.log | m pipe "explain this error"
+git diff | m pipe "write a commit message"
+kubectl get pods | m pipe "which pods are unhealthy?"
+
+# 7. Reference files in chat with @
+» @main.go fix the nil check on line 42
+# (file content is auto-inlined — no tool call needed)
+
+# 8. Create your own agent
 m new my-agent
 # edit my-agent.md, then: m chat my-agent
 
-# 7. Check your setup
+# 9. Check your setup
 m doctor
 
-# 8. Shell completions
+# 10. See what the agent changed
+m diff
+
+# 11. Track costs
+m cost
+
+# 12. Shell completions
 m completion zsh > "${fpath[1]}/_m"
 ```
 
@@ -308,6 +323,106 @@ into the same registry as built-ins. Supported transports:
 
 ---
 
+## Pipe mode
+
+`m pipe` reads stdin, applies an instruction, and writes to stdout. No REPL,
+no TUI — pure Unix pipe:
+
+```bash
+# Explain an error
+cat error.log | m pipe "explain this error and suggest a fix"
+
+# Generate a commit message from a diff
+git diff --staged | m pipe "write a conventional commit message"
+
+# Analyze infrastructure
+kubectl get pods -A | m pipe "which pods are unhealthy and why?"
+
+# Chain agents
+m run reviewer "check auth" | m pipe "summarize the issues as a TODO list"
+
+# Override model
+cat main.go | m pipe -m openai/gpt-4.1 "find bugs"
+```
+
+---
+
+## @file context
+
+Reference files directly in your prompt with `@path`. The file content is
+automatically inlined — no tool call needed:
+
+```
+» @src/handler.go fix the nil pointer on line 42
+  included: src/handler.go
+→ fs_write src/handler.go (patch: add nil check)
+
+» @Dockerfile @docker-compose.yml optimize for smaller image size
+  included: Dockerfile, docker-compose.yml
+```
+
+Works in both REPL and TUI. Paths are relative to cwd.
+
+---
+
+## MCP server management
+
+Install and configure MCP servers with one command:
+
+```bash
+# List available MCP server definitions
+m mcp list
+
+# Check what's installed
+m mcp status
+
+# Install + configure a server (installs binary, prompts for credentials)
+m mcp setup jira
+m mcp setup github
+m mcp setup confluence
+
+# Auto-setup ALL servers an agent needs
+m mcp setup developer-hub
+```
+
+Credentials are stored in the OS keychain. Install methods (pip/npm/brew)
+are defined in the MCP server definition files.
+
+---
+
+## Session management
+
+```bash
+# List saved sessions
+m session list
+
+# Export a session to JSON or Markdown
+m session export _autosave --format json --output session.json
+m session export fixing-auth --format markdown --output review.md
+
+# Delete a session
+m session delete old-session
+
+# Track costs across sessions
+m cost
+```
+
+---
+
+## Reviewing changes
+
+After an agent session, review what was modified:
+
+```bash
+# Show all unstaged changes the agent made
+m diff
+
+# Show staged changes
+m diff --staged
+```
+
+---
+
 ## Slash commands (chat REPL)
 
 | Command     | Effect |
@@ -362,7 +477,7 @@ structured output mechanics), see the
 ## What works today
 
 - Single-binary install on macOS / Linux / Windows (amd64 + arm64)
-- **32 bundled agents** — available immediately after install, no clone needed
+- **42 bundled agents** — available immediately after install, no clone needed
 - 6 LLM providers, switchable mid-session
 - 10 built-in tools with user confirmation on writes + undo
 - Multi-file atomic edits (`fs_write_multi`) with rollback on failure
@@ -373,6 +488,12 @@ structured output mechanics), see the
 - 9 built-in themes (matrix, nord, dracula, gruvbox, tokyonight, catppuccin, solarized, default, minimal)
 - Session persistence with AES-256-GCM encryption, autosave, and graceful shutdown (Ctrl+C saves)
 - Token-based context compaction (per-model context window awareness)
+- `m pipe` for Unix pipeline integration (`cat log | m pipe "explain"`)
+- `@file` context expansion in prompts (auto-inlines file content)
+- `m cost` session cost tracking with per-model pricing
+- `m diff` to review all changes the agent made
+- `m mcp setup` automated MCP server installation and configuration
+- `m session list/export/delete` for session management
 - Agent discovery (`m list`), search (`m search`), registry (`m install`), scaffold (`m new`)
 - `m run --yes` for CI/headless execution (dangerous commands still blocked)
 - `m run --dry-run` to validate agents without calling the LLM
