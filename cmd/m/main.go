@@ -61,6 +61,7 @@ func main() {
 	root.AddCommand(newNewCmd())
 	root.AddCommand(newDoctorCmd())
 	root.AddCommand(newUpgradeCmd())
+	root.AddCommand(newMCPCmd())
 	root.AddCommand(newSessionCmd())
 
 	// Shell completions: m completion bash/zsh/fish/powershell

@@ -11,10 +11,13 @@ env:
   JIRA_URL: ${env:JIRA_URL}
   JIRA_TOKEN: ${secret:jira-token}
   JIRA_EMAIL: ${env:JIRA_EMAIL}
+install:
+  pip: mcp-server-atlassian
 tool_prefix: jira
 allowed_agents:
   - ticket-worker
   - ticket-reviewer
+  - developer-hub
 ---
 Atlassian Jira MCP server. Exposes tools under the `jira__` prefix.
 

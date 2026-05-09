@@ -92,6 +92,14 @@ type MCPServerSpec struct {
 	Env           map[string]string `yaml:"env,omitempty"`
 	ToolPrefix    string            `yaml:"tool_prefix,omitempty"`
 	AllowedAgents []string          `yaml:"allowed_agents,omitempty"`
+	Install       *MCPInstall       `yaml:"install,omitempty"`
+}
+
+// MCPInstall describes how to install the MCP server binary.
+type MCPInstall struct {
+	Pip  string `yaml:"pip,omitempty"`
+	Npm  string `yaml:"npm,omitempty"`
+	Brew string `yaml:"brew,omitempty"`
 }
 
 // Document is the parsed result of a single MD file.

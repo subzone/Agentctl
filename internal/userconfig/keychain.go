@@ -50,3 +50,13 @@ func IsKeyNotFound(err error) bool {
 	_, ok := err.(*errKeyNotFound)
 	return ok
 }
+
+// SaveAPIKeyByName stores a secret by arbitrary name (for MCP tokens etc).
+func SaveAPIKeyByName(name, key string) error {
+	return saveKey(name, key)
+}
+
+// GetAPIKeyByName retrieves a secret by arbitrary name.
+func GetAPIKeyByName(name string) (string, error) {
+	return getKey(name)
+}

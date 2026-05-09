@@ -11,10 +11,13 @@ env:
   CONFLUENCE_URL: ${env:CONFLUENCE_URL}
   CONFLUENCE_TOKEN: ${secret:confluence-token}
   CONFLUENCE_EMAIL: ${env:CONFLUENCE_EMAIL}
+install:
+  pip: mcp-server-atlassian
 tool_prefix: confluence
 allowed_agents:
   - ticket-worker
   - ticket-reviewer
+  - developer-hub
 ---
 Atlassian Confluence MCP server. Exposes tools under the `confluence__` prefix.
 
