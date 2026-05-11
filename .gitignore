@@ -20,3 +20,15 @@ coverage.txt
 .env
 .env.*
 !.env.example
+
+# Desktop / Frontend
+/frontend/node_modules/
+/frontend/dist/
+/frontend/wailsjs/
+/build/bin/
+*.app
+*.dmg
+*.deb
+*.rpm
+*.AppImage
+*.msi

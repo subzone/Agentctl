@@ -35,6 +35,20 @@ const banner = `
 var Version = "dev"
 
 func main() {
+	// Check if we should launch GUI mode instead of CLI
+	if hasGUISupport() && shouldLaunchGUI() {
+		if err := launchGUI(); err != nil {
+			fmt.Fprintln(os.Stderr, "error:", err)
+			os.Exit(1)
+		}
+		return
+	}
+	
+	// Continue with CLI mode
+	runCLI()
+}
+
+func runCLI() {
 	root := &cobra.Command{
 		Use:           "m",
 		Short:         "MD-driven agent for code, infra, and automation work",
@@ -69,6 +83,19 @@ func main() {
 
 	// Shell completions: m completion bash/zsh/fish/powershell
 	root.AddCommand(newCompletionCmd())
+	
+	// Add GUI subcommand (only visible when GUI support is compiled in)
+	if hasGUISupport() {
+		guiCmd := &cobra.Command{
+			Use:   "gui",
+			Short: "Launch desktop GUI mode",
+			Args:  cobra.NoArgs,
+			RunE: func(cmd *cobra.Command, _ []string) error {
+				return launchGUI()
+			},
+		}
+		root.AddCommand(guiCmd)
+	}
 
 	if err := root.Execute(); err != nil {
 		fmt.Fprintln(os.Stderr, "error:", err)

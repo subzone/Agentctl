@@ -1,0 +1,30 @@
+{
+  "$schema": "https://wails.io/schemas/config.v2.json",
+  "name": "AgentCTL",
+  "outputfilename": "m",
+  "frontend": "./frontend",
+  "frontend:install": "npm install",
+  "frontend:build": "npm run build",
+  "frontend:dev": "npm run dev",
+  "frontend:dev:watcher": "npm run dev",
+  "frontend:dev:serverUrl": "auto",
+  "author": {
+    "name": "subzone",
+    "email": "contact@subzone.dev"
+  },
+  "info": {
+    "companyName": "subzone",
+    "productName": "AgentCTL",
+    "productVersion": "0.0.36",
+    "copyright": "Copyright © 2024-2026 subzone",
+    "comments": "MD-driven agent for code, infra, and automation work"
+  },
+  "wailsjsdir": "./frontend/src",
+  "assetdir": "./frontend/dist",
+  "reloaddirs": "frontend/src",
+  "build:dir": "./build",
+  "debounceMS": 750,
+  "devServer": "localhost:34115",
+  "appargs": "",
+  "runNonNativeBuildScript": false
+}

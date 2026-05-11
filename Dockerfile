@@ -16,11 +16,12 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 
 COPY . .
 
-# Build static binary with cache mounts
+# Build static binary with cache mounts (headless - no GUI)
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
     go build \
+        -tags headless \
         -trimpath \
         -ldflags "-s -w -X main.Version=${VERSION}" \
         -o /out/m \

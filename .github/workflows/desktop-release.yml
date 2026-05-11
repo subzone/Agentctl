@@ -1,0 +1,127 @@
+name: Desktop Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version to build (e.g., v0.0.36)'
+        required: true
+        default: 'v0.0.36'
+
+jobs:
+  # Desktop builds for all platforms
+  desktop:
+    name: Build Desktop - ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - os: macos-latest
+            platform: darwin/universal
+            artifact: m-macos-universal.app.tar.gz
+          - os: ubuntu-latest
+            platform: linux/amd64
+            artifact: m-linux-amd64
+          - os: windows-latest
+            platform: windows/amd64
+            artifact: m-windows-amd64.exe
+    
+    runs-on: ${{ matrix.os }}
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+      
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+      
+      - name: Install frontend dependencies
+        run: cd frontend && npm install
+      
+      - name: Build desktop app
+        run: |
+          wails build -platform ${{ matrix.platform }} -clean
+        env:
+          VERSION: ${{ github.ref_name || inputs.version }}
+      
+      - name: Package macOS app
+        if: matrix.os == 'macos-latest'
+        run: |
+          cd build/bin
+          tar -czf m-macos-universal.app.tar.gz m.app
+      
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.os }}
+          path: |
+            build/bin/m-macos-universal.app.tar.gz
+            build/bin/m
+            build/bin/m.exe
+          retention-days: 7
+  
+  # Docker build (headless CLI only)
+  docker:
+    name: Build Docker Image
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Build Docker image
+        run: |
+          docker build --build-arg VERSION=${{ github.ref_name || inputs.version }} -t agentctl:${{ github.ref_name || inputs.version }} .
+      
+      - name: Save Docker image
+        run: |
+          docker save agentctl:${{ github.ref_name || inputs.version }} | gzip > agentctl-docker.tar.gz
+      
+      - name: Upload Docker image
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: agentctl-docker.tar.gz
+          retention-days: 7
+  
+  # Create release with all artifacts
+  release:
+    name: Create Release
+    needs: [desktop, docker]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
+    
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      
+      - name: Create Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            artifacts/desktop-macos-latest/*.tar.gz
+            artifacts/desktop-ubuntu-latest/m
+            artifacts/desktop-windows-latest/m.exe
+            artifacts/docker-image/*.tar.gz
+          draft: false
+          prerelease: false
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
