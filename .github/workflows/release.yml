@@ -155,7 +155,7 @@ jobs:
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
           cd build/bin
-          tar -czf "AgentCTL_${VERSION}_linux_amd64.tar.gz" AgentCTL
+          tar -czf "AgentCTL_${VERSION}_linux_amd64.tar.gz" m
 
       - name: Upload to release
         env:
@@ -206,7 +206,8 @@ jobs:
         shell: pwsh
         run: |
           $VERSION = $env:GITHUB_REF_NAME -replace '^v',''
-          Compress-Archive -Path build/bin/AgentCTL.exe -DestinationPath "build/bin/AgentCTL_${VERSION}_windows_amd64.zip"
+          $ZIP = "build/bin/AgentCTL_${VERSION}_windows_amd64.zip"
+          Compress-Archive -Path build/bin/m.exe -DestinationPath $ZIP
 
       - name: Upload to release
         shell: bash
