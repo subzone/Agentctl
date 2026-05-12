@@ -20,7 +20,11 @@ desktop-dev: ## Run desktop app in development mode (requires Wails)
 
 desktop-build: ## Build desktop app for current platform (requires Wails)
 	@command -v wails >/dev/null 2>&1 || { echo "wails not found — install with: go install github.com/wailsapp/wails/v2/cmd/wails@latest"; exit 1; }
-	wails build -clean
+	@if [ "$$(uname)" = "Linux" ]; then \
+		wails build -tags webkit2_41 -clean; \
+	else \
+		wails build -clean; \
+	fi
 	@if [ "$$(uname)" = "Darwin" ]; then \
 		codesign --force --deep --sign - --entitlements build/darwin/entitlements.plist build/bin/AgentCTL.app; \
 		echo "Signed with entitlements"; \
