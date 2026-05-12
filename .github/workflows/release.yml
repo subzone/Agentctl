@@ -66,115 +66,6 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-  macos-desktop:
-    name: macOS Desktop (.app.zip)
-    needs: linux
-    runs-on: macos-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
-
-      - name: Build frontend
-        run: cd frontend && npm ci && npm run build
-
-      - name: Build desktop app
-        run: |
-          set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
-          wails build -clean -ldflags "-X main.Version=${VERSION}"
-
-      - name: Sign with entitlements
-        run: |
-          codesign --force --deep --sign - \
-            --entitlements build/darwin/entitlements.plist \
-            build/bin/AgentCTL.app
-
-      - name: Package as zip
-        run: |
-          set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
-          cd build/bin
-          zip -r "AgentCTL_${VERSION}_macos.zip" AgentCTL.app
-
-      - name: Upload desktop app to release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
-          gh release upload "${GITHUB_REF_NAME}" \
-            "build/bin/AgentCTL_${VERSION}_macos.zip" \
-            --clobber
-
-  linux-desktop:
-    name: Linux Desktop (.tar.gz)
-    needs: linux
-    runs-on: ubuntu-22.04
-    env:
-      PKG_CONFIG_PATH: /usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-go@v6
-        with:
-          go-version-file: go.mod
-
-      - name: Install system deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libgtk-3-dev \
-            libwebkit2gtk-4.0-dev \
-            pkg-config \
-            build-essential
-          pkg-config --modversion webkit2gtk-4.0
-          pkg-config --modversion gtk+-3.0
-
-      - name: Setup Node
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-
-      - name: Install Wails
-        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
-
-      - name: Build frontend
-        run: cd frontend && npm ci && npm run build
-
-      - name: Build desktop app
-        run: |
-          set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
-          wails build -clean -ldflags "-X main.Version=${VERSION}"
-
-      - name: Package as tar.gz
-        run: |
-          set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
-          cd build/bin
-          tar -czf "AgentCTL_${VERSION}_linux_amd64.tar.gz" m
-
-      - name: Upload to release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          VERSION="${GITHUB_REF_NAME#v}"
-          gh release upload "${GITHUB_REF_NAME}" \
-            "build/bin/AgentCTL_${VERSION}_linux_amd64.tar.gz" \
-            --clobber
-
   windows-desktop:
     name: Windows Desktop (.exe.zip)
     needs: linux
@@ -225,6 +116,57 @@ jobs:
           VERSION="${GITHUB_REF_NAME#v}"
           gh release upload "${GITHUB_REF_NAME}" \
             "build/bin/AgentCTL_${VERSION}_windows_amd64.zip" \
+            --clobber
+
+  macos-desktop:
+    name: macOS Desktop (.app.zip)
+    needs: linux
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Build frontend
+        run: cd frontend && npm ci && npm run build
+
+      - name: Build desktop app
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          wails build -clean -ldflags "-X main.Version=${VERSION}"
+
+      - name: Sign with entitlements
+        run: |
+          codesign --force --deep --sign - \
+            --entitlements build/darwin/entitlements.plist \
+            build/bin/AgentCTL.app
+
+      - name: Package as zip
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          cd build/bin
+          zip -r "AgentCTL_${VERSION}_macos.zip" AgentCTL.app
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release upload "${GITHUB_REF_NAME}" \
+            "build/bin/AgentCTL_${VERSION}_macos.zip" \
             --clobber
 
   macos:
