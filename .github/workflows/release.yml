@@ -120,7 +120,7 @@ jobs:
   linux-desktop:
     name: Linux Desktop (.tar.gz)
     needs: linux
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v6
 
@@ -133,14 +133,9 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y \
             libgtk-3-dev \
-            libwebkit2gtk-4.1-dev \
             libwebkit2gtk-4.0-dev \
             pkg-config \
-            build-essential || true
-          # Try webkit2gtk-4.1 first (Ubuntu 22.04+), fall back to 4.0
-          pkg-config --exists webkit2gtk-4.1 && echo "Using webkit2gtk-4.1" || \
-          pkg-config --exists webkit2gtk-4.0 && echo "Using webkit2gtk-4.0" || \
-          (echo "webkit2gtk not found" && exit 1)
+            build-essential
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -157,7 +152,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
-          wails build -clean -tags webkit2_41 -ldflags "-X main.Version=${VERSION}"
+          wails build -clean -ldflags "-X main.Version=${VERSION}"
 
       - name: Package as tar.gz
         run: |
