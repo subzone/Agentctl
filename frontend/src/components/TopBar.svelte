@@ -1,146 +1,121 @@
 <script>
   import { createEventDispatcher } from 'svelte';
   export let agent = null;
-  export let cost = { inputTokens: 0, outputTokens: 0, cost: 0, model: '' };
-  
+  export let cost = { inputTokens: 0, outputTokens: 0, cost: 0 };
   const dispatch = createEventDispatcher();
-  
-  function formatTokens(n) {
-    if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
-    if (n >= 1000) return (n / 1000).toFixed(1) + 'k';
-    return n.toString();
-  }
-  
-  function formatCost(c) {
-    if (c < 0.01) return '$' + c.toFixed(4);
-    return '$' + c.toFixed(2);
+
+  function fmt(n) { return (n||0) >= 1000 ? ((n||0)/1000).toFixed(1)+'k' : String(n||0); }
+  function fmtCost(c) {
+    if (!c) return '$0.00';
+    return c < 0.01 ? '$'+c.toFixed(4) : '$'+c.toFixed(2);
   }
 </script>
 
 <header class="topbar">
+  <!-- Drag region — sits behind everything -->
+  <div class="drag-region"></div>
+
   <div class="left">
-    <span class="logo">◆</span>
-    <button class="agent-name" on:click={() => dispatch('switchAgent', agent)}>
-      {agent ? agent.name : 'No agent'}
-    </button>
+    <svg class="logo" viewBox="0 0 32 32" width="22" height="22">
+      <rect width="32" height="32" rx="6" fill="#4f46e5"/>
+      <rect x="4" y="4" width="6" height="24" rx="1" fill="#fff"/>
+      <rect x="22" y="4" width="6" height="24" rx="1" fill="#fff"/>
+      <rect x="10" y="4" width="6" height="6" rx="1" fill="#fff"/>
+      <rect x="12" y="10" width="4" height="4" rx="1" fill="#fff"/>
+      <rect x="16" y="4" width="6" height="6" rx="1" fill="#fff"/>
+      <rect x="16" y="10" width="4" height="4" rx="1" fill="#fff"/>
+      <rect x="14" y="12" width="4" height="4" rx="1" fill="#fff"/>
+    </svg>
+    <span class="title">AgentCTL</span>
     {#if agent}
-      <span class="model">{agent.model || cost.model}</span>
+      <span class="sep">›</span>
+      <span class="agent-name">{agent.name}</span>
+      <span class="model">{agent.model}</span>
     {/if}
   </div>
-  
-  <div class="stats">
-    <div class="stat">
-      <span class="stat-label">In</span>
-      <span class="stat-value">{formatTokens(cost.inputTokens)}</span>
-    </div>
-    <div class="stat">
-      <span class="stat-label">Out</span>
-      <span class="stat-value">{formatTokens(cost.outputTokens)}</span>
-    </div>
-    <div class="stat cost">
-      <span class="stat-label">Cost</span>
-      <span class="stat-value">{formatCost(cost.cost)}</span>
-    </div>
-  </div>
-  
+
   <div class="right">
-    <button class="icon-btn" on:click={() => dispatch('settings')} title="Settings">
-      ⚙️
+    {#if agent}
+      <div class="tokens">
+        <span class="tok-label">In</span><span class="tok-val">{fmt(cost.inputTokens)}</span>
+        <span class="tok-sep">·</span>
+        <span class="tok-label">Out</span><span class="tok-val">{fmt(cost.outputTokens)}</span>
+        <span class="tok-sep">·</span>
+        <span class="tok-cost">{fmtCost(cost.cost)}</span>
+      </div>
+    {/if}
+    <button class="settings-btn" on:click={() => dispatch('settings')} title="Settings">
+      <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor">
+        <path fill-rule="evenodd" d="M11.49 3.17c-.38-1.56-2.6-1.56-2.98 0a1.532 1.532 0 01-2.286.948c-1.372-.836-2.942.734-2.106 2.106.54.886.061 2.042-.947 2.287-1.561.379-1.561 2.6 0 2.978a1.532 1.532 0 01.947 2.287c-.836 1.372.734 2.942 2.106 2.106a1.532 1.532 0 012.287.947c.379 1.561 2.6 1.561 2.978 0a1.533 1.533 0 012.287-.947c1.372.836 2.942-.734 2.106-2.106a1.533 1.533 0 01.947-2.287c1.561-.379 1.561-2.6 0-2.978a1.532 1.532 0 01-.947-2.287c.836-1.372-.734-2.942-2.106-2.106a1.532 1.532 0 01-2.287-.947zM10 13a3 3 0 100-6 3 3 0 000 6z" clip-rule="evenodd"/>
+      </svg>
     </button>
   </div>
 </header>
 
 <style>
   .topbar {
+    position: relative;
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 8px 16px;
-    background-color: #1e293b;
+    height: 52px;
+    padding: 0 12px;
+    padding-top: 28px; /* macOS traffic lights height */
+    padding-left: 80px; /* space for traffic lights */
+    background: #1e293b;
     border-bottom: 1px solid #334155;
-    height: 44px;
+    flex-shrink: 0;
+    gap: 12px;
+  }
+
+  /* Full-width drag region behind content */
+  .drag-region {
+    position: absolute;
+    inset: 0;
     -webkit-app-region: drag;
   }
-  
-  .left {
+
+  /* All interactive content must be no-drag */
+  .left, .right {
+    position: relative;
+    z-index: 1;
     display: flex;
     align-items: center;
-    gap: 10px;
+    gap: 8px;
     -webkit-app-region: no-drag;
+    min-width: 0;
   }
-  
-  .logo {
-    font-size: 20px;
-    color: #3b82f6;
-  }
-  
+
+  .left { flex: 1; overflow: hidden; }
+  .right { flex-shrink: 0; }
+
+  .logo { flex-shrink: 0; }
+  .title { font-size: 14px; font-weight: 700; color: #f1f5f9; flex-shrink: 0; }
+  .sep { color: #475569; flex-shrink: 0; }
   .agent-name {
-    background: none;
-    border: 1px solid #475569;
-    border-radius: 6px;
-    color: #f1f5f9;
-    font-size: 14px;
-    font-weight: 600;
-    padding: 4px 12px;
-    cursor: pointer;
-    transition: all 0.2s;
+    font-size: 13px; font-weight: 600; color: #93c5fd;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    max-width: 160px;
   }
-  
-  .agent-name:hover {
-    border-color: #3b82f6;
-    background-color: #1e3a5f;
-  }
-  
   .model {
-    font-size: 12px;
-    color: #64748b;
+    font-size: 11px; color: #64748b; background: #0f172a;
+    padding: 2px 7px; border-radius: 4px; white-space: nowrap;
+    flex-shrink: 0; max-width: 180px; overflow: hidden; text-overflow: ellipsis;
   }
-  
-  .stats {
-    display: flex;
-    gap: 16px;
-    -webkit-app-region: no-drag;
+
+  .tokens {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 12px; font-family: 'SF Mono', Menlo, monospace;
   }
-  
-  .stat {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 1px;
+  .tok-label { color: #475569; font-size: 10px; text-transform: uppercase; }
+  .tok-val { color: #94a3b8; }
+  .tok-sep { color: #334155; }
+  .tok-cost { color: #4ade80; font-weight: 600; }
+
+  .settings-btn {
+    background: none; border: 1px solid #334155; border-radius: 6px;
+    color: #64748b; padding: 5px 7px; cursor: pointer; display: flex;
+    align-items: center; transition: all 0.15s;
   }
-  
-  .stat-label {
-    font-size: 10px;
-    color: #64748b;
-    text-transform: uppercase;
-  }
-  
-  .stat-value {
-    font-size: 13px;
-    font-weight: 500;
-    color: #94a3b8;
-    font-family: 'SF Mono', 'Fira Code', monospace;
-  }
-  
-  .cost .stat-value {
-    color: #4ade80;
-  }
-  
-  .right {
-    -webkit-app-region: no-drag;
-  }
-  
-  .icon-btn {
-    background: none;
-    border: none;
-    font-size: 18px;
-    cursor: pointer;
-    padding: 4px 8px;
-    border-radius: 4px;
-    transition: background-color 0.2s;
-  }
-  
-  .icon-btn:hover {
-    background-color: #334155;
-  }
+  .settings-btn:hover { background: #334155; color: #e2e8f0; }
 </style>

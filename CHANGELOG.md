@@ -5,6 +5,36 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.0] - 2026-05-09
+
+### Added
+- Desktop app (Wails + Svelte): streaming chat, agent switcher, file upload, cost display
+- 8 themes in desktop UI: default, matrix, nord, dracula, gruvbox, tokyonight, catppuccin, solarized
+- Desktop settings panel: provider, model, API key, visual theme picker
+- Native macOS file picker (entitlements for user-selected file access)
+- Agent switcher: `/agent` command in TUI + REPL, active agent shown in header
+- `/retry`: re-send last message without retyping
+- Progress timer: shows elapsed time every 5s for long-running tools
+- Multi-line input: paste code blocks between `"""` delimiters
+- `.m/config.yaml`: per-project agent/model override (walks up to repo root)
+- `m pipe`: stdin/stdout pipeline mode
+- `@file` context: auto-inline file content in prompts
+- `m cost`: token usage and estimated cost for recent sessions
+- `m diff`: show all uncommitted changes the agent made
+- `m mcp setup/status/list`: automated MCP server deployment
+- `m session list/export/delete`: full session management
+- `m upgrade`: self-update command
+- `m search`: fuzzy agent discovery
+- `m run --yes` / `--dry-run`: CI/headless and validation modes
+- `fs_write_multi`: atomic multi-file writes with rollback
+- 42 bundled agents: hub-and-spoke Steva/Steve, web design, developer-hub
+- Hub agents resolve spokes from bundled/registry (no clone needed)
+- Trace spans + log file rotation
+
+### Changed
+- Version milestone: v0.0.x → v0.1.0 (first stable release)
+- Binary size: ~8.4 MB CLI, ~18 MB desktop
+
 ## [0.0.35] - 2026-05-06
 
 ### Added

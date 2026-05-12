@@ -14,6 +14,14 @@ import (
 	"github.com/wailsapp/wails/v2/pkg/options/windows"
 
 	"github.com/subzone/Agentctl/desktop"
+
+	// Register all LLM providers (same as cmd/m/main.go)
+	_ "github.com/subzone/Agentctl/internal/llm/alibaba"
+	_ "github.com/subzone/Agentctl/internal/llm/anthropic"
+	_ "github.com/subzone/Agentctl/internal/llm/gemini"
+	_ "github.com/subzone/Agentctl/internal/llm/litellm"
+	_ "github.com/subzone/Agentctl/internal/llm/ollama"
+	_ "github.com/subzone/Agentctl/internal/llm/openai"
 )
 
 //go:embed all:frontend/dist
@@ -36,7 +44,10 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		BackgroundColour: &options.RGBA{R: 27, G: 38, B: 54, A: 1},
+		Debug: options.Debug{
+			OpenInspectorOnStartup: true,
+		},
+		BackgroundColour: &options.RGBA{R: 15, G: 23, B: 42, A: 1},
 		OnStartup:        app.Startup,
 		Bind: []interface{}{
 			app,
@@ -44,9 +55,9 @@ func main() {
 		Mac: &mac.Options{
 			TitleBar: &mac.TitleBar{
 				TitlebarAppearsTransparent: true,
-				HideTitle:                  false,
+				HideTitle:                  true,
 				HideTitleBar:               false,
-				FullSizeContent:            false,
+				FullSizeContent:            true,
 				UseToolbar:                 false,
 				HideToolbarSeparator:       true,
 			},

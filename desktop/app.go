@@ -112,6 +112,34 @@ func (a *App) Startup(ctx context.Context) {
 		cfg = &userconfig.Config{}
 	}
 	a.cfg = cfg
+
+	// Apply config: load API keys from keychain into env vars.
+	if cfg.Provider != "" {
+		if key, err := userconfig.GetAPIKeyWithFallback(cfg.Provider); err == nil && key != "" {
+			switch cfg.Provider {
+			case userconfig.ProviderAnthropic:
+				os.Setenv("ANTHROPIC_API_KEY", key)
+			case userconfig.ProviderOpenAI:
+				os.Setenv("OPENAI_API_KEY", key)
+			case userconfig.ProviderGemini:
+				os.Setenv("GEMINI_API_KEY", key)
+			case userconfig.ProviderAlibaba:
+				os.Setenv("DASHSCOPE_API_KEY", key)
+			case userconfig.ProviderLiteLLM:
+				os.Setenv("LITELLM_API_KEY", key)
+			}
+		}
+		if cfg.BaseURL != "" {
+			switch cfg.Provider {
+			case userconfig.ProviderAlibaba:
+				os.Setenv("DASHSCOPE_BASE_URL", cfg.BaseURL)
+			case userconfig.ProviderLiteLLM:
+				os.Setenv("LITELLM_BASE_URL", cfg.BaseURL)
+			case userconfig.ProviderOllama:
+				os.Setenv("OLLAMA_HOST", cfg.BaseURL)
+			}
+		}
+	}
 }
 
 // --- Config ---
@@ -319,12 +347,14 @@ func (a *App) SendMessage(sessionID, message string) error {
 				"error":     err.Error(),
 			})
 		}
-		// Emit done event with usage.
+		// Emit done event with usage and cost.
 		usage := sess.engine.Usage()
+		cost := calcCost(sess.Model, usage.InputTokens, usage.OutputTokens)
 		runtime.EventsEmit(a.ctx, "done", map[string]any{
 			"sessionId":    sessionID,
 			"inputTokens":  usage.InputTokens,
 			"outputTokens": usage.OutputTokens,
+			"cost":         cost,
 		})
 	}()
 
@@ -375,11 +405,76 @@ func (a *App) GetCost(sessionID string) *CostInfo {
 		return nil
 	}
 	usage := sess.engine.Usage()
+	cost := calcCost(sess.Model, usage.InputTokens, usage.OutputTokens)
 	return &CostInfo{
 		InputTokens:  usage.InputTokens,
 		OutputTokens: usage.OutputTokens,
+		Cost:         cost,
 		Model:        sess.Model,
 	}
+}
+
+// calcCost estimates cost in USD from token counts.
+func calcCost(model string, in, out int) float64 {
+	if i := strings.LastIndex(model, "/"); i >= 0 {
+		model = model[i+1:]
+	}
+	type rate struct{ in, out float64 }
+	pricing := map[string]rate{
+		"claude-sonnet-4-6":         {3.0, 15.0},
+		"claude-haiku-4-5-20251001": {1.0, 5.0},
+		"claude-opus-4":             {15.0, 75.0},
+		"gpt-4o":                    {2.50, 10.0},
+		"gpt-4.1":                   {2.0, 8.0},
+		"gpt-4o-mini":               {0.15, 0.60},
+		"gemini-2.5-pro":            {1.25, 10.0},
+		"gemini-2.5-flash":          {0.15, 0.60},
+		"qwen-plus":                 {0.80, 2.0},
+		"qwen-max":                  {2.0, 6.0},
+		"qwen-turbo":                {0.30, 0.60},
+		"deepseek-v3.2":             {0.27, 1.10},
+		"glm-5":                     {0.50, 0.50},
+		"qwen3.6-plus":              {0.80, 2.0},
+		"qwen3.6-flash":             {0.15, 0.60},
+	}
+	p, ok := pricing[model]
+	if !ok {
+		return 0
+	}
+	return (float64(in)*p.in + float64(out)*p.out) / 1_000_000
+}
+
+// FileResult is returned by OpenFile.
+type FileResult struct {
+	Path    string `json:"path"`
+	Name    string `json:"name"`
+	Content string `json:"content"`
+}
+
+// OpenFile opens a native file picker and returns the file path and content.
+func (a *App) OpenFile() (*FileResult, error) {
+	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
+		Title: "Select file to attach",
+	})
+	if err != nil {
+		return nil, err
+	}
+	if path == "" {
+		return nil, nil
+	}
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, fmt.Errorf("read file: %w", err)
+	}
+	content := string(data)
+	if len(content) > 50000 {
+		content = content[:50000] + "\n[truncated]"
+	}
+	return &FileResult{
+		Path:    path,
+		Name:    filepath.Base(path),
+		Content: content,
+	}, nil
 }
 
 func (a *App) CloseSession(sessionID string) {
@@ -501,4 +596,35 @@ func (w *streamWriter) Write(p []byte) (int, error) {
 		"text":      string(p),
 	})
 	return len(p), nil
+}
+
+// ThemeInfo describes a desktop theme.
+type ThemeInfo struct {
+	Name      string `json:"name"`
+	BG        string `json:"bg"`
+	BGPanel   string `json:"bgPanel"`
+	BGInput   string `json:"bgInput"`
+	Border    string `json:"border"`
+	User      string `json:"user"`
+	Assistant string `json:"assistant"`
+	Tool      string `json:"tool"`
+	Error     string `json:"error"`
+	Accent    string `json:"accent"`
+	Text      string `json:"text"`
+	Muted     string `json:"muted"`
+}
+
+var desktopThemes = []ThemeInfo{
+	{Name: "default", BG: "#0f172a", BGPanel: "#1e293b", BGInput: "#1e293b", Border: "#334155", User: "#5f87ff", Assistant: "#d0d0d0", Tool: "#d7af00", Error: "#ff5f5f", Accent: "#3b82f6", Text: "#e2e8f0", Muted: "#64748b"},
+	{Name: "matrix", BG: "#0d0d0d", BGPanel: "#111111", BGInput: "#0a0a0a", Border: "#003300", User: "#00ff00", Assistant: "#00cc00", Tool: "#008800", Error: "#ff3333", Accent: "#00ff00", Text: "#00ee00", Muted: "#005500"},
+	{Name: "nord", BG: "#2e3440", BGPanel: "#3b4252", BGInput: "#3b4252", Border: "#4c566a", User: "#88c0d0", Assistant: "#d8dee9", Tool: "#81a1c1", Error: "#bf616a", Accent: "#88c0d0", Text: "#eceff4", Muted: "#4c566a"},
+	{Name: "dracula", BG: "#282a36", BGPanel: "#44475a", BGInput: "#44475a", Border: "#6272a4", User: "#8be9fd", Assistant: "#f8f8f2", Tool: "#ffb86c", Error: "#ff5555", Accent: "#bd93f9", Text: "#f8f8f2", Muted: "#6272a4"},
+	{Name: "gruvbox", BG: "#282828", BGPanel: "#3c3836", BGInput: "#3c3836", Border: "#504945", User: "#83a598", Assistant: "#ebdbb2", Tool: "#fe8019", Error: "#fb4934", Accent: "#b8bb26", Text: "#ebdbb2", Muted: "#928374"},
+	{Name: "tokyonight", BG: "#1a1b26", BGPanel: "#24283b", BGInput: "#24283b", Border: "#414868", User: "#7dcfff", Assistant: "#c0caf5", Tool: "#e0af68", Error: "#f7768e", Accent: "#7aa2f7", Text: "#c0caf5", Muted: "#565f89"},
+	{Name: "catppuccin", BG: "#1e1e2e", BGPanel: "#313244", BGInput: "#313244", Border: "#45475a", User: "#89dceb", Assistant: "#cdd6f4", Tool: "#fab387", Error: "#f38ba8", Accent: "#cba6f7", Text: "#cdd6f4", Muted: "#6c7086"},
+	{Name: "solarized", BG: "#002b36", BGPanel: "#073642", BGInput: "#073642", Border: "#586e75", User: "#268bd2", Assistant: "#839496", Tool: "#b58900", Error: "#dc322f", Accent: "#2aa198", Text: "#839496", Muted: "#586e75"},
+}
+
+func (a *App) GetThemes() []ThemeInfo {
+	return desktopThemes
 }

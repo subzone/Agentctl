@@ -25,6 +25,25 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.1.0",
+		Date:    "2026-05-09",
+		Highlights: []string{
+			"v0.1.0 — first stable release milestone.",
+			"Desktop app: Wails-based GUI with streaming, agent switcher, file upload, themes.",
+			"8 themes: default, matrix, nord, dracula, gruvbox, tokyonight, catppuccin, solarized.",
+			"Desktop settings panel: provider, model, API key, theme picker.",
+			"Native file picker with OS keychain integration.",
+			"Cost display in desktop UI (per-session token + $ tracking).",
+			"Agent switcher: /agent command in TUI + REPL, visible agent name in header.",
+			"/retry: re-send last message without retyping.",
+			"Progress timer: shows elapsed time every 5s for long-running tools.",
+			"Multi-line input: paste code blocks between triple-quotes.",
+			".m/config.yaml: per-project agent/model override.",
+			"m pipe, @file context, m cost, m diff, m mcp setup, m session management.",
+			"42 bundled agents including hub-and-spoke Steva/Steve, web design, developer-hub.",
+		},
+	},
+	{
 		Version: "0.0.35",
 		Date:    "2026-05-06",
 		Highlights: []string{

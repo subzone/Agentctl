@@ -14,18 +14,46 @@ export function GetConfig() {
   return window['go']['desktop']['App']['GetConfig']();
 }
 
-export function GetMessages(arg1) {
-  return window['go']['desktop']['App']['GetMessages'](arg1);
+export function GetCost(arg1) {
+  return window['go']['desktop']['App']['GetCost'](arg1);
+}
+
+export function GetMCPStatus() {
+  return window['go']['desktop']['App']['GetMCPStatus']();
+}
+
+export function GetSessions() {
+  return window['go']['desktop']['App']['GetSessions']();
+}
+
+export function GetThemes() {
+  return window['go']['desktop']['App']['GetThemes']();
 }
 
 export function ListAgents() {
   return window['go']['desktop']['App']['ListAgents']();
 }
 
-export function SaveConfig(arg1) {
-  return window['go']['desktop']['App']['SaveConfig'](arg1);
+export function OpenFile() {
+  return window['go']['desktop']['App']['OpenFile']();
+}
+
+export function SaveAPIKey(arg1, arg2) {
+  return window['go']['desktop']['App']['SaveAPIKey'](arg1, arg2);
+}
+
+export function SaveConfig(arg1, arg2, arg3) {
+  return window['go']['desktop']['App']['SaveConfig'](arg1, arg2, arg3);
 }
 
 export function SendMessage(arg1, arg2) {
   return window['go']['desktop']['App']['SendMessage'](arg1, arg2);
+}
+
+export function StopGeneration(arg1) {
+  return window['go']['desktop']['App']['StopGeneration'](arg1);
+}
+
+export function SwitchAgent(arg1, arg2) {
+  return window['go']['desktop']['App']['SwitchAgent'](arg1, arg2);
 }
