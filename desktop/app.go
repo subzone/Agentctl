@@ -1,3 +1,4 @@
+
 // Package desktop provides the bridge between the Wails GUI and the
 // AgentCTL engine. It exposes engine functionality as methods that can
 // be called from the frontend via Wails bindings, and emits events for

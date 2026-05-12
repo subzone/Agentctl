@@ -23,7 +23,6 @@ coverage.txt
 
 # Desktop / Frontend
 /frontend/node_modules/
-/frontend/dist/
 /frontend/wailsjs/
 /build/bin/
 *.app

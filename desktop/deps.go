@@ -1,3 +1,4 @@
+
 // This file ensures go.mod includes wails dependencies
 
 package desktop

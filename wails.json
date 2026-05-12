@@ -26,5 +26,6 @@
   "debounceMS": 750,
   "devServer": "localhost:34115",
   "appargs": "",
+  "buildtags": "desktop",
   "runNonNativeBuildScript": false
 }
