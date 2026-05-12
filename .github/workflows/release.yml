@@ -121,6 +121,8 @@ jobs:
     name: Linux Desktop (.tar.gz)
     needs: linux
     runs-on: ubuntu-22.04
+    env:
+      PKG_CONFIG_PATH: /usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig
     steps:
       - uses: actions/checkout@v6
 
@@ -151,8 +153,6 @@ jobs:
         run: cd frontend && npm ci && npm run build
 
       - name: Build desktop app
-        env:
-          PKG_CONFIG_PATH: /usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
