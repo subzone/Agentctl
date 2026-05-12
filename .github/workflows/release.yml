@@ -136,6 +136,8 @@ jobs:
             libwebkit2gtk-4.0-dev \
             pkg-config \
             build-essential
+          pkg-config --modversion webkit2gtk-4.0
+          pkg-config --modversion gtk+-3.0
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -149,6 +151,8 @@ jobs:
         run: cd frontend && npm ci && npm run build
 
       - name: Build desktop app
+        env:
+          PKG_CONFIG_PATH: /usr/lib/x86_64-linux-gnu/pkgconfig:/usr/lib/pkgconfig:/usr/share/pkgconfig
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
