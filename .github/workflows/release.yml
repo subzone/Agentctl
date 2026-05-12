@@ -117,6 +117,107 @@ jobs:
             "build/bin/AgentCTL_${VERSION}_macos.zip" \
             --clobber
 
+  linux-desktop:
+    name: Linux Desktop (.tar.gz)
+    needs: linux
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Install system deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.0-dev
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Build frontend
+        run: cd frontend && npm ci && npm run build
+
+      - name: Build desktop app
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          wails build -clean -ldflags "-X main.Version=${VERSION}"
+
+      - name: Package as tar.gz
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          cd build/bin
+          tar -czf "AgentCTL_${VERSION}_linux_amd64.tar.gz" AgentCTL
+
+      - name: Upload to release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release upload "${GITHUB_REF_NAME}" \
+            "build/bin/AgentCTL_${VERSION}_linux_amd64.tar.gz" \
+            --clobber
+
+  windows-desktop:
+    name: Windows Desktop (.exe.zip)
+    needs: linux
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install Wails
+        run: go install github.com/wailsapp/wails/v2/cmd/wails@latest
+
+      - name: Install WebView2
+        run: |
+          Invoke-WebRequest -Uri 'https://go.microsoft.com/fwlink/p/?LinkId=2124703' -OutFile 'MicrosoftEdgeWebview2Setup.exe'
+          Start-Process -FilePath 'MicrosoftEdgeWebview2Setup.exe' -ArgumentList '/silent /install' -Wait
+        shell: pwsh
+
+      - name: Build frontend
+        shell: bash
+        run: cd frontend && npm ci && npm run build
+
+      - name: Build desktop app
+        shell: bash
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          ~/go/bin/wails build -clean -ldflags "-X main.Version=${VERSION}"
+
+      - name: Package as zip
+        shell: pwsh
+        run: |
+          $VERSION = $env:GITHUB_REF_NAME -replace '^v',''
+          Compress-Archive -Path build/bin/AgentCTL.exe -DestinationPath "build/bin/AgentCTL_${VERSION}_windows_amd64.zip"
+
+      - name: Upload to release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          gh release upload "${GITHUB_REF_NAME}" \
+            "build/bin/AgentCTL_${VERSION}_windows_amd64.zip" \
+            --clobber
+
   macos:
     name: macOS (.pkg)
     needs: linux
