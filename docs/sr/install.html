@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Instaliraj AgentCTL — macOS, Linux, iz izvora</title>
-<meta name="description" content="Instaliraj AgentCTL za 30 sekundi. macOS .pkg, Linux .deb, ili buildaj iz izvora. Ako ti i to fali, idi u IT podrška.">
+<title>Instaliraj AgentCTL — macOS, Linux, Windows, iz izvora</title>
+<meta name="description" content="Instaliraj AgentCTL za 30 sekundi. Homebrew, macOS .pkg, Windows .zip, Linux .deb, ili buildaj iz izvora.">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="../css/style.css">
 <link rel="icon" type="image/svg+xml" href="../favicon.svg">
@@ -23,6 +23,7 @@
     <a href="architecture.html">Arhitektura</a>
     <a href="mcp.html">MCP</a>
     <a href="changelog.html">Istorija</a>
+    <a href="sessions.html">Sesije</a>
     <a href="install.html" class="nav-cta">Instaliraj</a>
   </div>
   <div class="lang-toggle">
@@ -34,18 +35,20 @@
 
 <section class="page-hero">
   <h1><i class="fa-solid fa-download" style="color:var(--accent)"></i> Instalacija</h1>
-  <p>Jedan binary. Bez zavisnosti. 30 sekundi do prvog razgovora. Ako si tu, već znaš šta radiš.</p>
+  <p>Jedan binary. Bez zavisnosti. 30 sekundi do prvog razgovora.</p>
 </section>
 
 <section class="section">
   <div class="section-inner">
     <div class="platform-tabs">
       <button class="platform-tab active" onclick="showPlatform('macos')"><i class="fa-brands fa-apple"></i> macOS</button>
+      <button class="platform-tab" onclick="showPlatform('windows')"><i class="fa-brands fa-windows"></i> Windows</button>
       <button class="platform-tab" onclick="showPlatform('linux')"><i class="fa-brands fa-linux"></i> Linux</button>
+      <button class="platform-tab" onclick="showPlatform('desktop')"><i class="fa-solid fa-display"></i> Desktop GUI</button>
       <button class="platform-tab" onclick="showPlatform('source')"><i class="fa-solid fa-code"></i> Iz izvora</button>
     </div>
 
-    <!-- macOS -->
+    <!-- macOS CLI -->
     <div class="platform-content active" id="platform-macos">
       <div class="steps">
         <div class="step">
@@ -59,7 +62,7 @@
         <div class="step">
           <div class="step-num">2</div>
           <div class="step-content">
-            <h3>Dupli klik za instalaciju</h3>
+            <h3>Instaliraj .pkg (alternativa)</h3>
             <p>Instaler ubacuje <code>m</code> u <code>/usr/local/bin/m</code>. Ako macOS Gatekeeper baci upozorenje (nepotpisan .pkg), desni klik → Open, ili:</p>
             <div class="step-code">xattr -d com.apple.quarantine ~/Downloads/m_*.pkg</div>
           </div>
@@ -68,7 +71,7 @@
           <div class="step-num">3</div>
           <div class="step-content">
             <h3>Pokreni čarobnjaka</h3>
-            <p>Prvo pokretanje otvara setup wizard — biraš Ollama (lokalno, besplatno), Anthropic, OpenAI, Gemini, Alibaba ili LiteLLM. Ne moraš ništa da znaš unapred.</p>
+            <p>Prvo pokretanje otvara setup wizard — biraš Ollama (lokalno, besplatno), Anthropic, OpenAI, Gemini, Alibaba ili LiteLLM.</p>
             <div class="step-code"><span class="dim">$</span> m<br><br><span class="dim"># Izaberi backend, nalepi API ključ (ili preskoči za Ollamu), gotovo.</span></div>
           </div>
         </div>
@@ -76,25 +79,62 @@
           <div class="step-num"><i class="fa-solid fa-check"></i></div>
           <div class="step-content">
             <h3>Provera</h3>
-            <div class="step-code"><span class="dim">$</span> m --version<br>m version 0.1.0</div>
+            <div class="step-code"><span class="dim">$</span> m --version<br>m version 0.1.0<br><br><span class="dim">$</span> m doctor<br>✓ Config: alibaba/deepseek-v3.2<br>✓ API key: found<br>✓ git: found<br>All checks passed!</div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- Linux -->
-    <div class="platform-content" id="platform-linux">
+    <!-- Windows CLI -->
+    <div class="platform-content" id="platform-windows">
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
           <div class="step-content">
-            <h3>Skini .deb (Debian/Ubuntu)</h3>
-            <div class="step-code"><span class="dim">$</span> wget https://github.com/subzone/Agentctl/releases/latest/download/m_0.1.0_linux_amd64.deb<br><span class="dim">$</span> sudo dpkg -i m_*_linux_amd64.deb</div>
-            <p style="margin-top:12px">Za ARM64 (Raspberry Pi, Graviton): uzmi <code>_linux_arm64.deb</code> umesto. Ne mozak ne zatvaraj — i Raspberry Pi je računar.</p>
+            <h3>Skini .zip</h3>
+            <p>Preuzmi Windows amd64 zip sa poslednjeg release-a.</p>
+            <a href="https://github.com/subzone/Agentctl/releases/latest" class="btn btn-primary" style="font-size:0.85rem;padding:10px 20px"><i class="fa-solid fa-arrow-down"></i> Preuzmi .zip</a>
           </div>
         </div>
         <div class="step">
-          <div class="step-num">1</div>
+          <div class="step-num">2</div>
+          <div class="step-content">
+            <h3>Raspakuj i dodaj u PATH</h3>
+            <p>Raspakuj <code>m.exe</code> i premesti u folder koji je u PATH-u (npr. <code>C:\Users\ti\bin\</code>). Zatim dodaj taj folder u PATH: Settings → System → Advanced system settings → Environment Variables.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h3>Pokreni čarobnjaka</h3>
+            <p>Otvori novi PowerShell ili Command Prompt, pa pokreni:</p>
+            <div class="step-code"><span class="dim">PS&gt;</span> m<br><br><span class="dim"># Izaberi backend, nalepi API ključ, gotovo.</span></div>
+            <p style="margin-top:0.75rem">API ključevi se čuvaju u Windows Credential Manager-u — bez plaintext fajlova.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num"><i class="fa-solid fa-check"></i></div>
+          <div class="step-content">
+            <h3>Provera</h3>
+            <div class="step-code"><span class="dim">PS&gt;</span> m --version<br>m version 0.1.0<br><br><span class="dim">PS&gt;</span> m doctor<br>✓ Config: openai/gpt-4o<br>✓ API key: found<br>All checks passed!</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Linux CLI -->
+    <div class="platform-content" id="platform-linux">
+      <div class="steps">
+        <div class="step">
+          <div class="step-num">1a</div>
+          <div class="step-content">
+            <h3>Skini .deb (Debian/Ubuntu)</h3>
+            <div class="step-code"><span class="dim">$</span> wget https://github.com/subzone/Agentctl/releases/latest/download/m_0.1.0_linux_amd64.deb<br><span class="dim">$</span> sudo dpkg -i m_*_linux_amd64.deb</div>
+            <p style="margin-top:12px">Za ARM64 (Raspberry Pi, Graviton): uzmi <code>_linux_arm64.deb</code> umesto toga.</p>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">1b</div>
           <div class="step-content">
             <h3>Ili tarball (bilo koja distribucija)</h3>
             <div class="step-code"><span class="dim">$</span> wget https://github.com/subzone/Agentctl/releases/latest/download/m_0.1.0_linux_amd64.tar.gz<br><span class="dim">$</span> tar -xzf m_*_linux_amd64.tar.gz<br><span class="dim">$</span> sudo mv m /usr/local/bin/</div>
@@ -102,6 +142,14 @@
         </div>
         <div class="step">
           <div class="step-num">2</div>
+          <div class="step-content">
+            <h3>Instaliraj secret-tool (za bezbedan keychain)</h3>
+            <p><code>m</code> koristi <code>secret-tool</code> za sigurno čuvanje API ključeva. Instaliraj ako nije prisutan:</p>
+            <div class="step-code"><span class="dim">$</span> sudo apt-get install -y libsecret-tools   <span class="dim"># Debian/Ubuntu</span><br><span class="dim">$</span> sudo dnf install libsecret               <span class="dim"># Fedora/RHEL</span></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
           <div class="step-content">
             <h3>Pokreni čarobnjaka</h3>
             <div class="step-code"><span class="dim">$</span> m<br><br><span class="dim"># Wizard instalira Ollamu ako biraš lokalno, ili pita za API ključ.</span></div>
@@ -117,6 +165,102 @@
       </div>
     </div>
 
+    <!-- Desktop GUI -->
+    <div class="platform-content" id="platform-desktop">
+      <p style="margin-bottom:1.5rem">Desktop GUI je napravljen sa <a href="https://wails.io" target="_blank" rel="noopener">Wails</a> (Go + Svelte). Deli isti config i sesije sa CLI-jem — koristi jedno, drugo, ili oba.</p>
+      <div class="platform-tabs" style="margin-bottom:1.5rem">
+        <button class="platform-tab active" onclick="showDesktop('dt-macos')"><i class="fa-brands fa-apple"></i> macOS</button>
+        <button class="platform-tab" onclick="showDesktop('dt-windows')"><i class="fa-brands fa-windows"></i> Windows</button>
+        <button class="platform-tab" onclick="showDesktop('dt-linux')"><i class="fa-brands fa-linux"></i> Linux</button>
+      </div>
+
+      <!-- Desktop macOS -->
+      <div class="platform-content active" id="dt-macos">
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <h3>Preuzmi AgentCTL macOS aplikaciju</h3>
+              <a href="https://github.com/subzone/Agentctl/releases/latest" class="btn btn-primary" style="font-size:0.85rem;padding:10px 20px"><i class="fa-solid fa-arrow-down"></i> Preuzmi AgentCTL_*_macos.zip</a>
+              <p style="margin-top:0.75rem">Sadrži <code>AgentCTL.app</code> — univerzalni binary za Intel + Apple Silicon.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <h3>Raspakuj i premesti u Applications</h3>
+              <div class="step-code"><span class="dim">$</span> cd ~/Downloads<br><span class="dim">$</span> unzip AgentCTL_*_macos.zip<br><span class="dim">$</span> mv AgentCTL.app /Applications/</div>
+              <p style="margin-top:0.75rem">Ako Gatekeeper blokira: desni klik na app → Open → Open anyway. Ili:</p>
+              <div class="step-code">xattr -d com.apple.quarantine /Applications/AgentCTL.app</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <h3>Pokreni i podesi</h3>
+              <p>Otvori AgentCTL iz Launchpad-a ili Spotlight-a. Ako si već pokrenuo <code>m</code> u terminalu, config se automatski preuzima. Ako nije — Settings panel u aplikaciji nudi izbor provajdera i unos API ključa.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Desktop Windows -->
+      <div class="platform-content" id="dt-windows" style="display:none">
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <h3>Preuzmi AgentCTL Windows aplikaciju</h3>
+              <a href="https://github.com/subzone/Agentctl/releases/latest" class="btn btn-primary" style="font-size:0.85rem;padding:10px 20px"><i class="fa-solid fa-arrow-down"></i> Preuzmi AgentCTL_*_windows_amd64.zip</a>
+              <p style="margin-top:0.75rem">Zahteva WebView2 Runtime (ugrađen u Windows 10 20H2+ i Windows 11).</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <h3>Raspakuj i pokreni</h3>
+              <p>Raspakuj zip. Dvostruki klik na <code>m.exe</code>. Windows Defender može pokazati SmartScreen upozorenje pri prvom pokretanju — klikni "More info" → "Run anyway".</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <h3>Podesi u Settings panelu</h3>
+              <p>Klikni na ikonicu zupčanika u aplikaciji. Izaberi provajdera, nalepi API ključ, izaberi temu. Config se deli sa CLI-jem (<code>%APPDATA%\m\</code>).</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Desktop Linux -->
+      <div class="platform-content" id="dt-linux" style="display:none">
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <h3>Instaliraj WebKit2 zavisnost</h3>
+              <div class="step-code"><span class="dim">$</span> sudo apt-get install -y libwebkit2gtk-4.1-0   <span class="dim"># Ubuntu 24.04+</span><br><span class="dim">$</span> sudo apt-get install -y libwebkit2gtk-4.0-37   <span class="dim"># Ubuntu 22.04</span></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <h3>Preuzmi i raspakuj</h3>
+              <a href="https://github.com/subzone/Agentctl/releases/latest" class="btn btn-primary" style="font-size:0.85rem;padding:10px 20px"><i class="fa-solid fa-arrow-down"></i> Preuzmi AgentCTL_*_linux_amd64.tar.gz</a>
+              <div class="step-code" style="margin-top:0.75rem"><span class="dim">$</span> tar -xzf AgentCTL_*_linux_amd64.tar.gz<br><span class="dim">$</span> ./m</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <h3>Podesi</h3>
+              <p>Desktop aplikacija čita isti config kao CLI (<code>~/.config/m/config.yaml</code>). Koristi Settings panel unutar aplikacije za izbor provajdera i unos API ključa.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Source -->
     <div class="platform-content" id="platform-source">
       <div class="steps">
@@ -124,7 +268,7 @@
           <div class="step-num">1</div>
           <div class="step-content">
             <h3>Kloniraj i buildaj</h3>
-            <p>Treba ti Go 1.26+. Ako nemaš Go, šta uopšte radiš ovde?</p>
+            <p>Treba ti Go 1.26+.</p>
             <div class="step-code"><span class="dim">$</span> git clone https://github.com/subzone/Agentctl.git<br><span class="dim">$</span> cd Agentctl<br><span class="dim">$</span> go install ./cmd/m</div>
           </div>
         </div>
@@ -134,6 +278,14 @@
             <h3>Dodaj u PATH</h3>
             <p>Binary se sleti u <code>$(go env GOPATH)/bin/m</code>. Postaraj se da to bude u PATH-u.</p>
             <div class="step-code"><span class="dim">$</span> export PATH="$PATH:$(go env GOPATH)/bin"</div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h3>Buildaj desktop GUI (opciono)</h3>
+            <p>Zahteva <a href="https://wails.io" target="_blank" rel="noopener">Wails</a> i Node.js 20+.</p>
+            <div class="step-code"><span class="dim">$</span> go install github.com/wailsapp/wails/v2/cmd/wails@latest<br><span class="dim">$</span> cd Agentctl<br><span class="dim">$</span> make desktop-build</div>
           </div>
         </div>
         <div class="step">
@@ -149,6 +301,91 @@
   </div>
 </section>
 
+<!-- Konfiguracija -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Podešavanje</div>
+      <h2>Konfiguracija</h2>
+    </div>
+    <div class="docs-grid">
+
+      <div class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--accent)"></i> Wizard za prvo pokretanje</div>
+        <div class="docs-card-desc">Pokreni <code>m</code> bez argumenata. Wizard te vodi kroz izbor provajdera i unos API ključa. Config se čuva u <code>~/.config/m/config.yaml</code> (Linux/macOS) ili <code>%APPDATA%\m\config.yaml</code> (Windows). Ključevi su u OS keychain-u, nikad u plaintext-u.</div>
+      </div>
+
+      <div class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-sliders" style="color:var(--accent)"></i> Promena provajdera / modela</div>
+        <div class="docs-card-desc">Pokreni <code>m config</code> da promeniš provajdera ili model interaktivno. Ili postavi <code>M_MODEL</code> env varijablu za jednokratni prelaz:<br><br><code>M_MODEL=openai/gpt-4o m "objasni ovo"</code></div>
+      </div>
+
+      <div class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-key" style="color:var(--accent)"></i> API ključevi preko env varijabli</div>
+        <div class="docs-card-desc">Env varijable imaju prioritet nad keychain-om. Korisno za CI i Docker:<br><br>
+          <code>ANTHROPIC_API_KEY</code><br>
+          <code>OPENAI_API_KEY</code><br>
+          <code>GEMINI_API_KEY</code><br>
+          <code>DASHSCOPE_API_KEY</code> (Alibaba)<br>
+          <code>LITELLM_API_KEY</code>
+        </div>
+      </div>
+
+      <div class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-folder-open" style="color:var(--accent)"></i> Config po projektu</div>
+        <div class="docs-card-desc">Stavi <code>.m/config.yaml</code> u root bilo kog repo-a da pregaziš globalni agent i model samo za taj projekat. <code>m</code> automatski traži fajl hoda up direktorijumskim stablom.<br><br>
+<pre style="font-size:0.78rem;margin:0.5rem 0 0"><code>agent: devops
+model: anthropic/claude-sonnet-4-5</code></pre></div>
+      </div>
+
+      <div class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-stethoscope" style="color:var(--accent)"></i> Provera zdravlja</div>
+        <div class="docs-card-desc">Pokreni <code>m doctor</code> da proveriš da li je sve ispravno: config fajl, API ključ, dostupnost modela, git. Otkrij probleme pre nego što postanu nejasne greške usred rada.</div>
+      </div>
+
+      <div class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-plug" style="color:var(--accent)"></i> MCP serveri</div>
+        <div class="docs-card-desc">Povezi se na GitHub, Jiru, Confluence i druge alate preko MCP-a. Pokreni <code>m mcp setup github</code> za automatsku instalaciju, ili pogledaj <a href="mcp.html">MCP dokumentaciju</a> za ručno podešavanje.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Shell kompletiranje -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Shell integracija</div>
+      <h2>Shell kompletiranje</h2>
+    </div>
+    <div class="docs-card">
+      <p>Tab-kompletiranje za sve <code>m</code> komande, flagove i imena agenata. Pokreni jednom, reload shell-a.</p>
+      <div class="platform-tabs" style="margin:1rem 0 1.25rem">
+        <button class="platform-tab active" onclick="showCompletion('comp-bash')">bash</button>
+        <button class="platform-tab" onclick="showCompletion('comp-zsh')">zsh</button>
+        <button class="platform-tab" onclick="showCompletion('comp-fish')">fish</button>
+        <button class="platform-tab" onclick="showCompletion('comp-ps')">PowerShell</button>
+      </div>
+      <div id="comp-bash" class="comp-block">
+        <div class="step-code"><span class="dim">$</span> m completion bash >> ~/.bashrc<br><span class="dim">$</span> source ~/.bashrc</div>
+      </div>
+      <div id="comp-zsh" class="comp-block" style="display:none">
+        <div class="step-code"><span class="dim">$</span> m completion zsh >> ~/.zshrc<br><span class="dim">$</span> source ~/.zshrc</div>
+        <p style="margin-top:0.5rem;font-size:0.85rem">Proveri da je <code>compinit</code> uključen u tvom <code>.zshrc</code>.</p>
+      </div>
+      <div id="comp-fish" class="comp-block" style="display:none">
+        <div class="step-code"><span class="dim">$</span> m completion fish > ~/.config/fish/completions/m.fish</div>
+      </div>
+      <div id="comp-ps" class="comp-block" style="display:none">
+        <div class="step-code"><span class="dim">PS&gt;</span> m completion powershell | Out-String | Invoke-Expression</div>
+        <p style="margin-top:0.5rem;font-size:0.85rem">Za trajno čuvanje dodaj ovu liniju u PowerShell profil (<code>$PROFILE</code>).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Šta dalje -->
 <section class="section section-alt">
   <div class="section-inner">
     <div class="section-header">
@@ -162,12 +399,39 @@
       </a>
       <a href="agents.html" class="docs-card">
         <div class="docs-card-title"><i class="fa-solid fa-robot" style="color:var(--accent)"></i> Primeri agenata</div>
-        <div class="docs-card-desc">Pregledaj 20+ spremnih agenata za kod, DevOps i ostalo.</div>
+        <div class="docs-card-desc">Pregledaj 42 gotova agenta za kod, DevOps, Jiru i više.</div>
       </a>
       <a href="mcp.html" class="docs-card">
         <div class="docs-card-title"><i class="fa-solid fa-plug" style="color:var(--accent)"></i> MCP serveri</div>
         <div class="docs-card-desc">Spoji se na Jiru, GitHub, Confluence i ostale eksterne alate.</div>
       </a>
+      <a href="sessions.html" class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-floppy-disk" style="color:var(--accent)"></i> Sesije</div>
+        <div class="docs-card-desc">Automatski snimljene, enkriptovane, nastavljive. Nikad ne gubi kontekst.</div>
+      </a>
+    </div>
+  </div>
+</section>
+
+<!-- Ažuriranja -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Ostani ažuran</div>
+      <h2>Ažuriranja</h2>
+    </div>
+    <div class="docs-grid">
+      <div class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-bell" style="color:var(--accent)"></i> Automatsko obaveštenje</div>
+        <div class="docs-card-desc">AgentCTL jednom dnevno proverava GitHub za novu verziju. Ako postoji, vidiš:<br><br>
+          <code>↑ update available: v0.0.29 → v0.1.0 (brew upgrade subzone/tap/m)</code><br><br>
+          Nema blokiranja, keširano, tiho ako nema interneta.
+        </div>
+      </div>
+      <div class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-arrows-rotate" style="color:var(--accent)"></i> Samo-ažuriranje</div>
+        <div class="docs-card-desc">Pokreni <code>m upgrade</code> da ažuriraš CLI binary direktno — bez package manager-a. Radi na Linux, macOS i Windows.<br><br>Homebrew korisnici mogu i:<br><code>brew upgrade subzone/tap/m</code></div>
+      </div>
     </div>
   </div>
 </section>
@@ -180,18 +444,38 @@
 ██║╚██╔╝██║
 ██║ ╚═╝ ██║
 ╚═╝     ╚═╝</div><p>MD-driven agent CLI za kod, infrastrukturu i automatizaciju. Bez gluposti.</p></div>
-    <div class="footer-col"><h4>Proizvod</h4><a href="https://github.com/subzone/Agentctl/releases/latest">Skini</a><a href="install.html">Instalacija</a><a href="changelog.html">Istorija</a></div>
+    <div class="footer-col"><h4>Proizvod</h4><a href="https://github.com/subzone/Agentctl/releases/latest">Skini</a><a href="install.html">Instalacija</a><a href="changelog.html">Istorija</a><a href="sessions.html">Sesije</a></div>
     <div class="footer-col"><h4>Resursi</h4><a href="agents.html">Primeri agenata</a><a href="mcp.html">MCP serveri</a><a href="architecture.html">Arhitektura</a></div>
     <div class="footer-col"><h4>Zajednica</h4><a href="https://github.com/subzone/Agentctl">GitHub</a><a href="https://github.com/subzone/Agentctl/issues">Problemi</a><a href="support.html">Podrška</a></div>
   </div>
-  <div class="footer-bottom"><span>© 2025 AgentCTL</span><span>Napravljeno sa <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/Agentctl"><i class="fa-brands fa-github"></i> subzone/Agentctl</a></span></div>
+  <div class="footer-bottom"><span>© 2026 AgentCTL</span><span>Napravljeno sa <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/Agentctl"><i class="fa-brands fa-github"></i> subzone/Agentctl</a></span></div>
 </div></footer>
 
 <script>
 function showPlatform(id) {
-  document.querySelectorAll('.platform-content').forEach(e => e.classList.remove('active'));
-  document.querySelectorAll('.platform-tab').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('#platform-macos, #platform-windows, #platform-linux, #platform-desktop, #platform-source').forEach(function(e) {
+    e.classList.remove('active');
+    e.style.display = '';
+  });
+  document.querySelectorAll('.section > .section-inner > .platform-tabs .platform-tab').forEach(function(e) { e.classList.remove('active'); });
   document.getElementById('platform-' + id).classList.add('active');
+  event.target.closest('.platform-tab').classList.add('active');
+}
+function showDesktop(id) {
+  document.querySelectorAll('#dt-macos, #dt-windows, #dt-linux').forEach(function(e) {
+    e.classList.remove('active');
+    e.style.display = 'none';
+  });
+  document.querySelectorAll('#platform-desktop .platform-tab').forEach(function(e) { e.classList.remove('active'); });
+  var el = document.getElementById(id);
+  el.style.display = '';
+  el.classList.add('active');
+  event.target.closest('.platform-tab').classList.add('active');
+}
+function showCompletion(id) {
+  document.querySelectorAll('.comp-block').forEach(function(e) { e.style.display = 'none'; });
+  document.querySelectorAll('.docs-card .platform-tab').forEach(function(e) { e.classList.remove('active'); });
+  document.getElementById(id).style.display = '';
   event.target.closest('.platform-tab').classList.add('active');
 }
 </script>

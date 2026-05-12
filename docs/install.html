@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Install AgentCTL — macOS, Linux, Source</title>
-<meta name="description" content="Install AgentCTL in 30 seconds. macOS .pkg, Linux .deb, or build from source.">
+<title>Install AgentCTL — macOS, Linux, Windows, Source</title>
+<meta name="description" content="Install AgentCTL in 30 seconds. Homebrew, macOS .pkg, Windows .zip, Linux .deb, or build from source.">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 <link rel="stylesheet" href="css/style.css">
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
@@ -23,7 +23,7 @@
     <a href="architecture.html">Architecture</a>
     <a href="mcp.html">MCP</a>
     <a href="changelog.html">Changelog</a>
-      <a href="sessions.html">Sessions</a>
+    <a href="sessions.html">Sessions</a>
     <a href="install.html" class="nav-cta">Install</a>
   </div>
   <div class="lang-toggle">
@@ -44,10 +44,11 @@
       <button class="platform-tab active" onclick="showPlatform('macos')"><i class="fa-brands fa-apple"></i> macOS</button>
       <button class="platform-tab" onclick="showPlatform('windows')"><i class="fa-brands fa-windows"></i> Windows</button>
       <button class="platform-tab" onclick="showPlatform('linux')"><i class="fa-brands fa-linux"></i> Linux</button>
+      <button class="platform-tab" onclick="showPlatform('desktop')"><i class="fa-solid fa-display"></i> Desktop GUI</button>
       <button class="platform-tab" onclick="showPlatform('source')"><i class="fa-solid fa-code"></i> Source</button>
     </div>
 
-    <!-- macOS -->
+    <!-- macOS CLI -->
     <div class="platform-content active" id="platform-macos">
       <div class="steps">
         <div class="step">
@@ -61,7 +62,7 @@
         <div class="step">
           <div class="step-num">2</div>
           <div class="step-content">
-            <h3>Double-click to install</h3>
+            <h3>Install the .pkg (alternative)</h3>
             <p>The installer places <code>m</code> at <code>/usr/local/bin/m</code>. If macOS shows a Gatekeeper warning (unsigned .pkg), right-click → Open, or run:</p>
             <div class="step-code">xattr -d com.apple.quarantine ~/Downloads/m_*.pkg</div>
           </div>
@@ -69,7 +70,7 @@
         <div class="step">
           <div class="step-num">3</div>
           <div class="step-content">
-            <h3>Run the wizard</h3>
+            <h3>Run the setup wizard</h3>
             <p>First launch opens a setup wizard — pick Ollama (local, free), Anthropic, OpenAI, Gemini, Alibaba, or LiteLLM.</p>
             <div class="step-code"><span class="dim">$</span> m<br><br><span class="dim"># Pick your backend, paste an API key (or skip for Ollama), done.</span></div>
           </div>
@@ -84,8 +85,8 @@
       </div>
     </div>
 
-    <!-- Linux -->
-    <div class="platform-content" id="platform-windows" style="display:none">
+    <!-- Windows CLI -->
+    <div class="platform-content" id="platform-windows">
       <div class="steps">
         <div class="step">
           <div class="step-num">1</div>
@@ -99,30 +100,33 @@
           <div class="step-num">2</div>
           <div class="step-content">
             <h3>Extract and add to PATH</h3>
-            <p>Extract <code>m.exe</code> and move it to a folder on your PATH (e.g. <code>C:\Users\you\bin\</code>).</p>
+            <p>Extract <code>m.exe</code> and move it to a folder on your PATH (e.g. <code>C:\Users\you\bin\</code>). Then add that folder to your system PATH via Settings → System → Advanced system settings → Environment Variables.</p>
           </div>
         </div>
         <div class="step">
           <div class="step-num">3</div>
           <div class="step-content">
-            <h3>Run the wizard</h3>
+            <h3>Run the setup wizard</h3>
+            <p>Open a new PowerShell or Command Prompt window, then run:</p>
             <div class="step-code"><span class="dim">PS&gt;</span> m<br><br><span class="dim"># Pick your backend, paste an API key, done.</span></div>
+            <p style="margin-top:0.75rem">API keys are stored in Windows Credential Manager — no plaintext config files.</p>
           </div>
         </div>
         <div class="step">
           <div class="step-num"><i class="fa-solid fa-check"></i></div>
           <div class="step-content">
             <h3>Verify</h3>
-            <div class="step-code"><span class="dim">PS&gt;</span> m --version<br>m version 0.1.0</div>
+            <div class="step-code"><span class="dim">PS&gt;</span> m --version<br>m version 0.1.0<br><br><span class="dim">PS&gt;</span> m doctor<br>✓ Config: openai/gpt-4o<br>✓ API key: found<br>All checks passed!</div>
           </div>
         </div>
       </div>
     </div>
 
+    <!-- Linux CLI -->
     <div class="platform-content" id="platform-linux">
       <div class="steps">
         <div class="step">
-          <div class="step-num">1</div>
+          <div class="step-num">1a</div>
           <div class="step-content">
             <h3>Download the .deb (Debian/Ubuntu)</h3>
             <div class="step-code"><span class="dim">$</span> wget https://github.com/subzone/Agentctl/releases/latest/download/m_0.1.0_linux_amd64.deb<br><span class="dim">$</span> sudo dpkg -i m_*_linux_amd64.deb</div>
@@ -130,7 +134,7 @@
           </div>
         </div>
         <div class="step">
-          <div class="step-num">1</div>
+          <div class="step-num">1b</div>
           <div class="step-content">
             <h3>Or download the tarball (any distro)</h3>
             <div class="step-code"><span class="dim">$</span> wget https://github.com/subzone/Agentctl/releases/latest/download/m_0.1.0_linux_amd64.tar.gz<br><span class="dim">$</span> tar -xzf m_*_linux_amd64.tar.gz<br><span class="dim">$</span> sudo mv m /usr/local/bin/</div>
@@ -139,7 +143,15 @@
         <div class="step">
           <div class="step-num">2</div>
           <div class="step-content">
-            <h3>Run the wizard</h3>
+            <h3>Install secret-tool (for keychain storage)</h3>
+            <p><code>m</code> uses <code>secret-tool</code> to store API keys securely. Install it if it's missing:</p>
+            <div class="step-code"><span class="dim">$</span> sudo apt-get install -y libsecret-tools   <span class="dim"># Debian/Ubuntu</span><br><span class="dim">$</span> sudo dnf install libsecret               <span class="dim"># Fedora/RHEL</span></div>
+          </div>
+        </div>
+        <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h3>Run the setup wizard</h3>
             <div class="step-code"><span class="dim">$</span> m<br><br><span class="dim"># Wizard installs Ollama if you pick local, or prompts for an API key.</span></div>
           </div>
         </div>
@@ -148,6 +160,102 @@
           <div class="step-content">
             <h3>Verify</h3>
             <div class="step-code"><span class="dim">$</span> m --version<br>m version 0.1.0</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Desktop GUI -->
+    <div class="platform-content" id="platform-desktop">
+      <p style="margin-bottom:1.5rem">The desktop GUI is built with <a href="https://wails.io" target="_blank" rel="noopener">Wails</a> (Go + Svelte). It shares the same config and sessions as the CLI — pick one or use both.</p>
+      <div class="platform-tabs" style="margin-bottom:1.5rem">
+        <button class="platform-tab active" onclick="showDesktop('dt-macos')"><i class="fa-brands fa-apple"></i> macOS</button>
+        <button class="platform-tab" onclick="showDesktop('dt-windows')"><i class="fa-brands fa-windows"></i> Windows</button>
+        <button class="platform-tab" onclick="showDesktop('dt-linux')"><i class="fa-brands fa-linux"></i> Linux</button>
+      </div>
+
+      <!-- Desktop macOS -->
+      <div class="platform-content active" id="dt-macos">
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <h3>Download AgentCTL macOS app</h3>
+              <a href="https://github.com/subzone/Agentctl/releases/latest" class="btn btn-primary" style="font-size:0.85rem;padding:10px 20px"><i class="fa-solid fa-arrow-down"></i> Download AgentCTL_*_macos.zip</a>
+              <p style="margin-top:0.75rem">Contains <code>AgentCTL.app</code> — universal binary for Intel + Apple Silicon.</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <h3>Unzip and move to Applications</h3>
+              <div class="step-code"><span class="dim">$</span> cd ~/Downloads<br><span class="dim">$</span> unzip AgentCTL_*_macos.zip<br><span class="dim">$</span> mv AgentCTL.app /Applications/</div>
+              <p style="margin-top:0.75rem">If Gatekeeper blocks it: right-click the app → Open → Open anyway. Or:</p>
+              <div class="step-code">xattr -d com.apple.quarantine /Applications/AgentCTL.app</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <h3>Launch and configure</h3>
+              <p>Open AgentCTL from Launchpad or Spotlight. On first launch it reads your existing CLI config — no additional setup needed if you already ran <code>m</code> on this machine. Otherwise the settings panel lets you pick a provider and paste an API key.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Desktop Windows -->
+      <div class="platform-content" id="dt-windows">
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <h3>Download AgentCTL Windows app</h3>
+              <a href="https://github.com/subzone/Agentctl/releases/latest" class="btn btn-primary" style="font-size:0.85rem;padding:10px 20px"><i class="fa-solid fa-arrow-down"></i> Download AgentCTL_*_windows_amd64.zip</a>
+              <p style="margin-top:0.75rem">Requires WebView2 Runtime (pre-installed on Windows 10 20H2+ and Windows 11).</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <h3>Extract and run</h3>
+              <p>Extract the zip. Double-click <code>m.exe</code> to launch. Windows Defender may show a SmartScreen warning on first run — click "More info" → "Run anyway".</p>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <h3>Configure in the Settings panel</h3>
+              <p>Click the gear icon in the desktop app to open Settings. Pick your provider, paste your API key, choose a theme. Config is shared with the CLI (<code>%APPDATA%\m\</code>).</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Desktop Linux -->
+      <div class="platform-content" id="dt-linux">
+        <div class="steps">
+          <div class="step">
+            <div class="step-num">1</div>
+            <div class="step-content">
+              <h3>Install WebKit2 dependency</h3>
+              <div class="step-code"><span class="dim">$</span> sudo apt-get install -y libwebkit2gtk-4.1-0   <span class="dim"># Ubuntu 24.04+</span><br><span class="dim">$</span> sudo apt-get install -y libwebkit2gtk-4.0-37   <span class="dim"># Ubuntu 22.04</span></div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">2</div>
+            <div class="step-content">
+              <h3>Download and extract</h3>
+              <a href="https://github.com/subzone/Agentctl/releases/latest" class="btn btn-primary" style="font-size:0.85rem;padding:10px 20px"><i class="fa-solid fa-arrow-down"></i> Download AgentCTL_*_linux_amd64.tar.gz</a>
+              <div class="step-code" style="margin-top:0.75rem"><span class="dim">$</span> tar -xzf AgentCTL_*_linux_amd64.tar.gz<br><span class="dim">$</span> ./m</div>
+            </div>
+          </div>
+          <div class="step">
+            <div class="step-num">3</div>
+            <div class="step-content">
+              <h3>Configure</h3>
+              <p>The desktop app reads the same config as the CLI (<code>~/.config/m/config.yaml</code>). Use the in-app Settings panel to set your provider and API key.</p>
+            </div>
           </div>
         </div>
       </div>
@@ -173,6 +281,14 @@
           </div>
         </div>
         <div class="step">
+          <div class="step-num">3</div>
+          <div class="step-content">
+            <h3>Build the desktop GUI (optional)</h3>
+            <p>Requires <a href="https://wails.io" target="_blank" rel="noopener">Wails</a> and Node.js 20+.</p>
+            <div class="step-code"><span class="dim">$</span> go install github.com/wailsapp/wails/v2/cmd/wails@latest<br><span class="dim">$</span> cd Agentctl<br><span class="dim">$</span> make desktop-build</div>
+          </div>
+        </div>
+        <div class="step">
           <div class="step-num"><i class="fa-solid fa-check"></i></div>
           <div class="step-content">
             <h3>Verify</h3>
@@ -185,6 +301,91 @@
   </div>
 </section>
 
+<!-- Configuration -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Setup</div>
+      <h2>Configuration</h2>
+    </div>
+    <div class="docs-grid">
+
+      <div class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-wand-magic-sparkles" style="color:var(--accent)"></i> First-run wizard</div>
+        <div class="docs-card-desc">Run <code>m</code> with no arguments. The wizard prompts you to pick a provider and paste an API key. That's it — the config lives at <code>~/.config/m/config.yaml</code> (Linux/macOS) or <code>%APPDATA%\m\config.yaml</code> (Windows). Keys are stored in the OS keychain, never in plaintext.</div>
+      </div>
+
+      <div class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-sliders" style="color:var(--accent)"></i> Change provider / model</div>
+        <div class="docs-card-desc">Run <code>m config</code> at any time to switch providers or models interactively. Or set the <code>M_MODEL</code> environment variable for a one-off override:<br><br><code>M_MODEL=openai/gpt-4o m "explain this"</code></div>
+      </div>
+
+      <div class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-key" style="color:var(--accent)"></i> API keys via env vars</div>
+        <div class="docs-card-desc">Keys set as environment variables take precedence over the keychain. Useful for CI and Docker:<br><br>
+          <code>ANTHROPIC_API_KEY</code><br>
+          <code>OPENAI_API_KEY</code><br>
+          <code>GEMINI_API_KEY</code><br>
+          <code>DASHSCOPE_API_KEY</code> (Alibaba)<br>
+          <code>LITELLM_API_KEY</code>
+        </div>
+      </div>
+
+      <div class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-folder-open" style="color:var(--accent)"></i> Per-project config</div>
+        <div class="docs-card-desc">Drop a <code>.m/config.yaml</code> in any repo root to override the global agent and model just for that project. <code>m</code> walks up the directory tree and finds it automatically.<br><br>
+<pre style="font-size:0.78rem;margin:0.5rem 0 0"><code>agent: devops
+model: anthropic/claude-sonnet-4-5</code></pre></div>
+      </div>
+
+      <div class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-stethoscope" style="color:var(--accent)"></i> Health check</div>
+        <div class="docs-card-desc">Run <code>m doctor</code> to verify everything is wired up: config file, API key presence, model reachability, git availability, and more. Fix issues before they become cryptic errors mid-session.</div>
+      </div>
+
+      <div class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-plug" style="color:var(--accent)"></i> MCP servers</div>
+        <div class="docs-card-desc">Connect to GitHub, Jira, Confluence and other tools via MCP. Run <code>m mcp setup github</code> for automated install and config, or see the <a href="mcp.html">MCP docs</a> for manual setup.</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- Shell Completions -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Shell integration</div>
+      <h2>Shell completions</h2>
+    </div>
+    <div class="docs-card">
+      <p>Tab-completion for all <code>m</code> commands, flags, and agent names. Run once, reload your shell.</p>
+      <div class="platform-tabs" style="margin:1rem 0 1.25rem">
+        <button class="platform-tab active" onclick="showCompletion('comp-bash')">bash</button>
+        <button class="platform-tab" onclick="showCompletion('comp-zsh')">zsh</button>
+        <button class="platform-tab" onclick="showCompletion('comp-fish')">fish</button>
+        <button class="platform-tab" onclick="showCompletion('comp-ps')">PowerShell</button>
+      </div>
+      <div id="comp-bash" class="comp-block">
+        <div class="step-code"><span class="dim">$</span> m completion bash >> ~/.bashrc<br><span class="dim">$</span> source ~/.bashrc</div>
+      </div>
+      <div id="comp-zsh" class="comp-block" style="display:none">
+        <div class="step-code"><span class="dim">$</span> m completion zsh >> ~/.zshrc<br><span class="dim">$</span> source ~/.zshrc</div>
+        <p style="margin-top:0.5rem;font-size:0.85rem">Make sure <code>compinit</code> is loaded in your <code>.zshrc</code> (it usually is by default).</p>
+      </div>
+      <div id="comp-fish" class="comp-block" style="display:none">
+        <div class="step-code"><span class="dim">$</span> m completion fish > ~/.config/fish/completions/m.fish</div>
+      </div>
+      <div id="comp-ps" class="comp-block" style="display:none">
+        <div class="step-code"><span class="dim">PS&gt;</span> m completion powershell | Out-String | Invoke-Expression</div>
+        <p style="margin-top:0.5rem;font-size:0.85rem">To persist, add this line to your PowerShell profile (<code>$PROFILE</code>).</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- What's next -->
 <section class="section section-alt">
   <div class="section-inner">
     <div class="section-header">
@@ -198,27 +399,39 @@
       </a>
       <a href="agents.html" class="docs-card">
         <div class="docs-card-title"><i class="fa-solid fa-robot" style="color:var(--accent)"></i> Example Agents</div>
-        <div class="docs-card-desc">Browse 20+ ready-to-use agents for coding, DevOps, and more.</div>
+        <div class="docs-card-desc">Browse 42 ready-to-use agents for coding, DevOps, Jira, and more.</div>
       </a>
       <a href="mcp.html" class="docs-card">
         <div class="docs-card-title"><i class="fa-solid fa-plug" style="color:var(--accent)"></i> MCP Servers</div>
         <div class="docs-card-desc">Connect to Jira, GitHub, Confluence and other external tools.</div>
       </a>
+      <a href="sessions.html" class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-floppy-disk" style="color:var(--accent)"></i> Sessions</div>
+        <div class="docs-card-desc">Autosaved, encrypted, resumable. Never lose context mid-task.</div>
+      </a>
     </div>
   </div>
 </section>
 
+<!-- Staying current -->
 <section class="section">
   <div class="section-inner">
     <div class="section-header">
       <div class="section-label">Staying current</div>
-      <h2>Auto-update notifications</h2>
+      <h2>Updates</h2>
     </div>
-    <div class="docs-card">
-      <p>AgentCTL checks GitHub for new releases once per day. If a newer version exists, you'll see:</p>
-      <pre><code>↑ update available: v0.0.29 → v0.1.0 (brew upgrade subzone/tap/m)</code></pre>
-      <p>Non-blocking, cached, silent on errors. To upgrade:</p>
-      <pre><code>brew upgrade subzone/tap/m</code></pre>
+    <div class="docs-grid">
+      <div class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-bell" style="color:var(--accent)"></i> Auto-update notification</div>
+        <div class="docs-card-desc">AgentCTL checks GitHub for new releases once per day. If a newer version exists, you'll see:<br><br>
+          <code>↑ update available: v0.0.29 → v0.1.0 (brew upgrade subzone/tap/m)</code><br><br>
+          Non-blocking, cached, silent on errors.
+        </div>
+      </div>
+      <div class="docs-card">
+        <div class="docs-card-title"><i class="fa-solid fa-arrows-rotate" style="color:var(--accent)"></i> Self-update command</div>
+        <div class="docs-card-desc">Run <code>m upgrade</code> to update the CLI binary in place — no package manager needed. Works on Linux, macOS, and Windows.<br><br>Homebrew users can also run:<br><code>brew upgrade subzone/tap/m</code></div>
+      </div>
     </div>
   </div>
 </section>
@@ -231,19 +444,38 @@
 ██║╚██╔╝██║
 ██║ ╚═╝ ██║
 ╚═╝     ╚═╝</div><p>MD-driven agent CLI for code, infrastructure, and automation.</p></div>
-    <div class="footer-col"><h4>Product</h4><a href="https://github.com/subzone/Agentctl/releases/latest">Download</a><a href="install.html">Installation</a><a href="changelog.html">Changelog</a>
-      <a href="sessions.html">Sessions</a></div>
+    <div class="footer-col"><h4>Product</h4><a href="https://github.com/subzone/Agentctl/releases/latest">Download</a><a href="install.html">Installation</a><a href="changelog.html">Changelog</a><a href="sessions.html">Sessions</a></div>
     <div class="footer-col"><h4>Resources</h4><a href="agents.html">Example Agents</a><a href="mcp.html">MCP Servers</a><a href="architecture.html">Architecture</a></div>
     <div class="footer-col"><h4>Community</h4><a href="https://github.com/subzone/Agentctl">GitHub</a><a href="https://github.com/subzone/Agentctl/issues">Issues</a><a href="support.html">Support</a></div>
   </div>
-  <div class="footer-bottom"><span>© 2025 AgentCTL</span><span>Built with <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/Agentctl"><i class="fa-brands fa-github"></i> subzone/Agentctl</a></span></div>
+  <div class="footer-bottom"><span>© 2026 AgentCTL</span><span>Built with <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/Agentctl"><i class="fa-brands fa-github"></i> subzone/Agentctl</a></span></div>
 </div></footer>
 
 <script>
 function showPlatform(id) {
-  document.querySelectorAll('.platform-content').forEach(e => e.classList.remove('active'));
-  document.querySelectorAll('.platform-tab').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('#platform-macos, #platform-windows, #platform-linux, #platform-desktop, #platform-source').forEach(function(e) {
+    e.classList.remove('active');
+    e.style.display = '';
+  });
+  document.querySelectorAll('.platform-tab').forEach(function(e) { e.classList.remove('active'); });
   document.getElementById('platform-' + id).classList.add('active');
+  event.target.closest('.platform-tab').classList.add('active');
+}
+function showDesktop(id) {
+  document.querySelectorAll('#dt-macos, #dt-windows, #dt-linux').forEach(function(e) {
+    e.classList.remove('active');
+    e.style.display = 'none';
+  });
+  document.querySelectorAll('#platform-desktop .platform-tab').forEach(function(e) { e.classList.remove('active'); });
+  var el = document.getElementById(id);
+  el.style.display = '';
+  el.classList.add('active');
+  event.target.closest('.platform-tab').classList.add('active');
+}
+function showCompletion(id) {
+  document.querySelectorAll('.comp-block').forEach(function(e) { e.style.display = 'none'; });
+  document.querySelectorAll('.section .docs-card .platform-tab').forEach(function(e) { e.classList.remove('active'); });
+  document.getElementById(id).style.display = '';
   event.target.closest('.platform-tab').classList.add('active');
 }
 </script>
