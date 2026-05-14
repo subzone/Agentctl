@@ -240,11 +240,11 @@ func TestFuzzyMatch(t *testing.T) {
 		want          bool
 	}{
 		{"dev", "devops", true},
-		{"dvps", "devops", true},    // subsequence
+		{"dvps", "devops", true}, // subsequence
 		{"steva", "steva-djubre", true},
 		{"xyz", "devops", false},
-		{"", "anything", true},       // empty query matches all
-		{"devops", "dev", false},     // query longer than target
+		{"", "anything", true},   // empty query matches all
+		{"devops", "dev", false}, // query longer than target
 	}
 	for _, tt := range tests {
 		got := fuzzyMatch(tt.query, tt.target)
@@ -267,5 +267,18 @@ func TestCLIRunYesFlag(t *testing.T) {
 	// Should not say "unknown flag".
 	if strings.Contains(output, "unknown flag") {
 		t.Errorf("--yes flag not recognized: %s", output)
+	}
+}
+
+func TestCLIRunCIFlags(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("unix shell test")
+	}
+	bin := buildBinary(t)
+	// New CI flags should be accepted, even if run fails later (missing API key/provider setup).
+	out, _ := exec.Command(bin, "run", "--ci", "--output", "json", "--timeout", "1s", "../../examples/agents/hello.md", "test").CombinedOutput()
+	output := string(out)
+	if strings.Contains(output, "unknown flag") {
+		t.Fatalf("CI flags not recognized: %s", output)
 	}
 }

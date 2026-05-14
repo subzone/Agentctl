@@ -7,11 +7,11 @@ against your choice of LLM. Aimed at developers and DevOps people who live in
 the terminal and want to script agentic work without IDE lock-in or SDK
 sprawl.
 
-**Current version:** v0.1.0 | **Go version:** 1.26+ | **Binary size:** ~8.4 MB | **Docker image:** ~16 MB
+**Current version:** v0.1.1 | **Go version:** 1.26+ | **Binary size:** ~8.4 MB | **Docker image:** ~16 MB
 
 **Status:** alpha. ~1 month of evenings of work. Works for the author's daily
-use, but expect breaking changes until v0.1.0. Tagged releases (`v0.0.1` →
-`v0.1.0`) ship as macOS `.pkg` and Linux `.deb`.
+use, but expect breaking changes until v0.1.1. Tagged releases (`v0.0.1` →
+`v0.1.1`) ship as macOS `.pkg` and Linux `.deb`.
 
 ```text
 $ m
@@ -34,7 +34,7 @@ Full docs site (EN + SR): **<https://subzone.github.io/Agentctl/>**
 ```bash
 # 1. Install (macOS — pick one)
 brew tap subzone/tap && brew install subzone/tap/m
-# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.1.0_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
+# or: curl -sL https://github.com/subzone/Agentctl/releases/latest/download/m_0.1.1_macos.pkg -o m.pkg && sudo installer -pkg m.pkg -target /
 
 # 2. Run the setup wizard
 m
@@ -496,7 +496,10 @@ structured output mechanics), see the
 - `m session list/export/delete` for session management
 - Agent discovery (`m list`), search (`m search`), registry (`m install`), scaffold (`m new`)
 - `m run --yes` for CI/headless execution (dangerous commands still blocked)
+- `m run --ci --output json --timeout 15m` for CI pipelines with machine-readable events and strict exit codes
 - `m run --dry-run` to validate agents without calling the LLM
+- Inline policy enforcement (`policy.rules`) with hard deny (exit code 2)
+- Audit logging backends: `file` JSONL (with optional HMAC) and `splunk` HEC, with configurable batching
 - `m upgrade` self-update command (brew/go install/manual)
 - Trace spans and log file rotation (`~/.config/m/logs/`)
 - Fallback models (auto-switch on 429 rate limit)
@@ -517,8 +520,9 @@ These are real, not roadmap-ware. They affect what AgentCTL can be used for toda
   retrieval. For most codebases, `code_search` + `fs_read` is sufficient.
 - **No `/trust` for autonomous sessions.** Every `fs_write` and `shell`
   prompts. Fine for interactive use, blocks long-running headless runs.
-- **No team features.** No shared agent registry, no audit log, no RBAC,
-  no sandboxed execution. Single-developer use only for now.
+- **No full enterprise governance yet.** There is no RBAC, no SSO, and no
+  centrally managed policy distribution yet. Audit sinks exist (`file`,
+  `splunk`) but this is not a full fleet-control plane.
 - **No IDE integration.** Intentional — this is a CLI tool. Not planned.
 
 The internal UX backlog is in [`UX_IMPROVEMENTS_PLAN.md`](UX_IMPROVEMENTS_PLAN.md).
@@ -539,6 +543,44 @@ Not built in. Three reasonable paths if you need it:
    Bigger lift, only worth it if there's a commercial story behind it.
 
 If RAG matters for your use case, option 1 unblocks you today.
+
+---
+
+## CI mode and audit logging
+
+Use CI mode for deterministic, machine-readable runs:
+
+```bash
+m run --ci --output json --timeout 15m examples/agents/devops.md "review this PR"
+```
+
+CI mode behavior:
+
+- Enables auto-approval mode (`--yes`) while still blocking dangerous command patterns
+- Emits NDJSON events to stdout (`session_start`, `tool_call`, `tool_result`, `llm_response`, `session_end`)
+- Applies a default timeout of 15 minutes if none is provided
+- Uses explicit exit codes:
+  - `0` success
+  - `1` agent/runtime error
+  - `2` policy violation
+  - `4` timeout
+
+Audit logging can be configured in global or project config (`~/.config/m/config.yaml` or `.m/config.yaml`):
+
+```yaml
+audit:
+  backend: file            # none | file | splunk
+  path: ~/.config/m/audit.jsonl
+  hmac_secret: ${AUDIT_HMAC_SECRET}
+  batch_size: 50
+  flush_interval: 3s
+
+  # Splunk HEC (optional)
+  splunk:
+    endpoint: https://splunk.corp.com:8088/services/collector
+    token: ${SPLUNK_HEC_TOKEN}
+    tls_verify: true
+```
 
 ---
 

@@ -20,8 +20,9 @@ import (
 	"time"
 
 	"github.com/subzone/Agentctl/internal/llm"
-	"github.com/subzone/Agentctl/internal/tools"
 	"github.com/subzone/Agentctl/internal/logging"
+	"github.com/subzone/Agentctl/internal/ports"
+	"github.com/subzone/Agentctl/internal/tools"
 )
 
 // Default configuration values. These can be overridden via Config fields.
@@ -95,6 +96,10 @@ type Config struct {
 	// Return true to proceed, false to skip. Nil means auto-approve.
 	ToolConfirm func(ctx context.Context, toolName string, input json.RawMessage) (bool, error)
 
+	// PolicyCheck runs before any tool execution. Returning a non-empty
+	// deny reason blocks execution and fails the current step.
+	PolicyCheck func(ctx context.Context, toolName string, input json.RawMessage) (denyReason string, err error)
+
 	// ContinueConfirm is called when MaxTurns is reached. Return true
 	// to continue for another MaxTurns rounds, false to stop.
 	// Nil means stop immediately.
@@ -111,6 +116,27 @@ type Config struct {
 	// Zero uses DefaultMaxConcurrentTools. This prevents resource exhaustion
 	// when a model requests many tool calls in a single turn.
 	MaxConcurrentTools int
+
+	// Audit receives structured metadata events. Nil means disabled.
+	Audit ports.AuditSink
+	// AuditSessionID groups events for one run/chat session.
+	AuditSessionID string
+}
+
+// PolicyViolationError is returned when policy denies a tool call.
+type PolicyViolationError struct {
+	Tool   string
+	Reason string
+}
+
+func (e *PolicyViolationError) Error() string {
+	if e == nil {
+		return "policy violation"
+	}
+	if e.Reason == "" {
+		return fmt.Sprintf("policy violation: tool %s denied", e.Tool)
+	}
+	return fmt.Sprintf("policy violation: %s", e.Reason)
 }
 
 // Run executes one task to completion in a fresh conversation. It is a
@@ -124,16 +150,16 @@ func Run(ctx context.Context, cfg Config, task string) error {
 // user turn and runs the engine loop; the resulting message history is
 // retained on the Session and reused on subsequent Steps.
 type Session struct {
-	cfg              Config
-	out              io.Writer
-	status           io.Writer
-	maxTurns         int
-	maxConcurrent    int // max tools running at once
-	contextBudget    int // max input tokens before compaction (80% of model window)
-	schemas          []llm.ToolSchema
-	messages         []llm.Message
-	usage            llm.Usage // cumulative across all Steps
-	lastIn           int       // input_tokens from the most recent provider call
+	cfg           Config
+	out           io.Writer
+	status        io.Writer
+	maxTurns      int
+	maxConcurrent int // max tools running at once
+	contextBudget int // max input tokens before compaction (80% of model window)
+	schemas       []llm.ToolSchema
+	messages      []llm.Message
+	usage         llm.Usage // cumulative across all Steps
+	lastIn        int       // input_tokens from the most recent provider call
 }
 
 // Usage returns the cumulative token counts across all Steps in this session.
@@ -367,7 +393,7 @@ func (s *Session) Step(ctx context.Context, task string) error {
 				}
 				return nil
 			}
-			results, err := executeTools(ctx, s.cfg.Tools, s.cfg.ToolConfirm, s.cfg.ErrorIntervention, s.status, s.maxConcurrent, assistant.Content)
+			results, err := executeTools(ctx, s.cfg.Tools, s.cfg.PolicyCheck, s.cfg.ToolConfirm, s.cfg.ErrorIntervention, s.cfg.Audit, s.cfg.AuditSessionID, s.status, s.maxConcurrent, assistant.Content)
 			if err != nil {
 				return err
 			}
@@ -578,7 +604,7 @@ func tokenCompact(msgs []llm.Message, targetTokens int, system string) []llm.Mes
 // are requested in the same turn, they run concurrently (each tool call
 // is independent) but limited by maxConcurrent to prevent resource exhaustion.
 // Results are collected in order.
-func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), errIntervene func(context.Context, string, string) string, status io.Writer, maxConcurrent int, assistant []llm.ContentBlock) (llm.Message, error) {
+func executeTools(ctx context.Context, reg *tools.Registry, policyCheck func(context.Context, string, json.RawMessage) (string, error), confirm func(context.Context, string, json.RawMessage) (bool, error), errIntervene func(context.Context, string, string) string, auditSink ports.AuditSink, auditSessionID string, status io.Writer, maxConcurrent int, assistant []llm.ContentBlock) (llm.Message, error) {
 	var calls []llm.ContentBlock
 	for _, b := range assistant {
 		if b.Type == llm.BlockToolUse {
@@ -593,7 +619,10 @@ func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context
 	if len(calls) == 1 {
 		b := calls[0]
 		fmt.Fprintf(status, "→ %s %s\n", b.ToolName, summarizeInput(b.ToolInput))
-		result := runToolBlock(ctx, reg, confirm, errIntervene, status, b)
+		result, err := runToolBlock(ctx, reg, policyCheck, confirm, errIntervene, auditSink, auditSessionID, status, b)
+		if err != nil {
+			return llm.Message{}, err
+		}
 		return llm.Message{Role: llm.RoleUser, Content: []llm.ContentBlock{result}}, nil
 	}
 
@@ -602,13 +631,14 @@ func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context
 	type indexed struct {
 		idx    int
 		result llm.ContentBlock
+		err    error
 	}
 	ch := make(chan indexed, len(calls))
-	
+
 	// Semaphore to limit concurrent tool executions
 	sem := make(chan struct{}, maxConcurrent)
 	var wg sync.WaitGroup
-	
+
 	for i, b := range calls {
 		wg.Add(1)
 		fmt.Fprintf(status, "→ %s %s\n", b.ToolName, summarizeInput(b.ToolInput))
@@ -617,8 +647,9 @@ func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context
 			// Acquire semaphore
 			sem <- struct{}{}
 			defer func() { <-sem }() // Release semaphore
-			
-			ch <- indexed{idx: i, result: runToolBlock(ctx, reg, confirm, errIntervene, status, b)}
+
+			result, err := runToolBlock(ctx, reg, policyCheck, confirm, errIntervene, auditSink, auditSessionID, status, b)
+			ch <- indexed{idx: i, result: result, err: err}
 		}(i, b)
 	}
 
@@ -629,8 +660,15 @@ func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context
 	}()
 
 	results := make([]llm.ContentBlock, len(calls))
+	var firstErr error
 	for r := range ch {
 		results[r.idx] = r.result
+		if firstErr == nil && r.err != nil {
+			firstErr = r.err
+		}
+	}
+	if firstErr != nil {
+		return llm.Message{}, firstErr
 	}
 	return llm.Message{Role: llm.RoleUser, Content: results}, nil
 }
@@ -639,24 +677,40 @@ func executeTools(ctx context.Context, reg *tools.Registry, confirm func(context
 // because they only read data without making any changes.
 var readOnlyTools = map[string]bool{"fs_read": true, "fs_list": true, "web_fetch": true, "code_search": true}
 
-func runToolBlock(ctx context.Context, reg *tools.Registry, confirm func(context.Context, string, json.RawMessage) (bool, error), errIntervene func(context.Context, string, string) string, status io.Writer, b llm.ContentBlock) llm.ContentBlock {
+func runToolBlock(ctx context.Context, reg *tools.Registry, policyCheck func(context.Context, string, json.RawMessage) (string, error), confirm func(context.Context, string, json.RawMessage) (bool, error), errIntervene func(context.Context, string, string) string, auditSink ports.AuditSink, auditSessionID string, status io.Writer, b llm.ContentBlock) (llm.ContentBlock, error) {
 	// Read-only tools skip confirmation.
 	endTool := logging.Span("tool.exec", "tool", b.ToolName)
 	defer endTool()
 	logging.Debug("tool.call", "tool", b.ToolName, "input_size", len(b.ToolInput))
+	started := time.Now()
+	emitAuditEvent(ctx, auditSink, ports.AuditEvent{Type: "tool_call", SessionID: auditSessionID, Tool: b.ToolName, Args: b.ToolInput})
+	if policyCheck != nil {
+		denyReason, err := policyCheck(ctx, b.ToolName, b.ToolInput)
+		if err != nil {
+			emitAuditEvent(ctx, auditSink, ports.AuditEvent{Type: "tool_result", SessionID: auditSessionID, Tool: b.ToolName, Outcome: "policy_error", Error: err.Error(), DurationMS: time.Since(started).Milliseconds()})
+			return llm.ContentBlock{Type: llm.BlockToolResult, ToolUseID: b.ToolID, Output: "policy check failed", IsError: true}, err
+		}
+		if denyReason != "" {
+			fmt.Fprintf(status, "← policy deny: %s\n", denyReason)
+			emitAuditEvent(ctx, auditSink, ports.AuditEvent{Type: "tool_result", SessionID: auditSessionID, Tool: b.ToolName, Outcome: "policy_denied", Error: denyReason, DurationMS: time.Since(started).Milliseconds()})
+			return llm.ContentBlock{Type: llm.BlockToolResult, ToolUseID: b.ToolID, Output: "policy denied: " + denyReason, IsError: true}, &PolicyViolationError{Tool: b.ToolName, Reason: denyReason}
+		}
+	}
 	if confirm != nil && !readOnlyTools[b.ToolName] {
 		ok, err := confirm(ctx, b.ToolName, b.ToolInput)
 		if err != nil {
+			emitAuditEvent(ctx, auditSink, ports.AuditEvent{Type: "tool_result", SessionID: auditSessionID, Tool: b.ToolName, Outcome: "cancelled", Error: err.Error(), DurationMS: time.Since(started).Milliseconds()})
 			return llm.ContentBlock{
 				Type: llm.BlockToolResult, ToolUseID: b.ToolID,
 				Output: "user cancelled", IsError: true,
-			}
+			}, nil
 		}
 		if !ok {
+			emitAuditEvent(ctx, auditSink, ports.AuditEvent{Type: "tool_result", SessionID: auditSessionID, Tool: b.ToolName, Outcome: "declined", DurationMS: time.Since(started).Milliseconds()})
 			return llm.ContentBlock{
 				Type: llm.BlockToolResult, ToolUseID: b.ToolID,
 				Output: "user declined this action", IsError: false,
-			}
+			}, nil
 		}
 	}
 	// Run tool with progress indicator for long-running operations.
@@ -677,14 +731,25 @@ func runToolBlock(ctx context.Context, reg *tools.Registry, confirm func(context
 				content += "\nUser hint: " + hint
 			}
 		}
+		emitAuditEvent(ctx, auditSink, ports.AuditEvent{Type: "tool_result", SessionID: auditSessionID, Tool: b.ToolName, Outcome: "error", Error: err.Error(), DurationMS: time.Since(started).Milliseconds()})
 	} else {
 		fmt.Fprintf(status, "← %s\n", summarizeToolOutput(b.ToolName, output))
+		emitAuditEvent(ctx, auditSink, ports.AuditEvent{Type: "tool_result", SessionID: auditSessionID, Tool: b.ToolName, Outcome: "success", DurationMS: time.Since(started).Milliseconds()})
 	}
 	return llm.ContentBlock{
 		Type:      llm.BlockToolResult,
 		ToolUseID: b.ToolID,
 		Output:    content,
 		IsError:   isErr,
+	}, nil
+}
+
+func emitAuditEvent(ctx context.Context, sink ports.AuditSink, ev ports.AuditEvent) {
+	if sink == nil {
+		return
+	}
+	if err := sink.Emit(ctx, ev); err != nil {
+		logging.Warn("audit.emit.failed", "error", err)
 	}
 }
 

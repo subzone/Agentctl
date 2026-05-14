@@ -19,8 +19,8 @@ import (
 
 	"github.com/subzone/Agentctl/internal/config"
 	"github.com/subzone/Agentctl/internal/engine"
-	"github.com/subzone/Agentctl/internal/logging"
 	"github.com/subzone/Agentctl/internal/llm"
+	"github.com/subzone/Agentctl/internal/logging"
 	"github.com/subzone/Agentctl/internal/tools"
 	"github.com/subzone/Agentctl/internal/userconfig"
 )
@@ -125,7 +125,7 @@ func runChat(cmd *cobra.Command, args []string) error {
 // runChatWithDoc drives the chat REPL against a parsed agent document.
 // docs is the companion-doc set used to resolve MCP/subagent references;
 // pass nil when there is no project layout (e.g. the embedded default agent).
-func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Document) error {
+func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Document) (err error) {
 	agent, ok := doc.Spec.(*config.AgentSpec)
 	if !ok {
 		return fmt.Errorf("not an agent (type=%s)", doc.Meta().Type)
@@ -153,6 +153,25 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 
 	ctx, cancel := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	auditSink, err := buildAuditSink()
+	if err != nil {
+		return err
+	}
+	sessionID := fmt.Sprintf("chat_%d", time.Now().UTC().UnixNano())
+	auditSessionStart(ctx, auditSink, sessionID, agent.Name, model)
+	var auditSess *engine.Session
+	defer func() {
+		outcome := "success"
+		if err != nil {
+			outcome = "failure"
+		}
+		usage := llm.Usage{}
+		if auditSess != nil {
+			usage = auditSess.Usage()
+		}
+		auditSessionEnd(ctx, auditSink, sessionID, outcome, model, usage, estimateCost(usage, model), err)
+		_ = auditSink.Close()
+	}()
 
 	out := cmd.OutOrStdout()
 	stderr := cmd.ErrOrStderr()
@@ -170,6 +189,11 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 	maxTokens := defaultMaxTokens
 	if agent.MaxTokens != nil {
 		maxTokens = *agent.MaxTokens
+	}
+
+	policyCheck, err := buildPolicyCheck()
+	if err != nil {
+		return err
 	}
 
 	// Branch on tty: a real terminal gets the bubbletea TUI (banner +
@@ -223,6 +247,9 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 			FallbackModels:   agent.FallbackModels,
 			ResolveModel:     llm.Resolve,
 			ToolConfirm:      tuiToolConfirm,
+			PolicyCheck:      policyCheck,
+			Audit:            auditSink,
+			AuditSessionID:   sessionID,
 			ContinueConfirm: func(_ context.Context, turns int) (bool, error) {
 				streamCh <- streamMsg{chunk: fmt.Sprintf("→ Agent worked for %d turns. Continue? [y/n] ", turns)}
 				return <-confirmCh, nil
@@ -230,6 +257,7 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 			Out:    &streamWriter{ch: streamCh},
 			Status: &streamWriter{ch: streamCh},
 		})
+		auditSess = sess
 		return runTUI(ctx, sess, streamCh, agent.Name, providerName, model, undoStack, confirmCh, agent.ThinkingPhrases, tuiTrust)
 	}
 
@@ -256,6 +284,9 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 		FallbackModels:   agent.FallbackModels,
 		ResolveModel:     llm.Resolve,
 		ToolConfirm:      makeReplToolConfirm(stderr, cmd.InOrStdin(), state),
+		PolicyCheck:      policyCheck,
+		Audit:            auditSink,
+		AuditSessionID:   sessionID,
 		ContinueConfirm: func(_ context.Context, turns int) (bool, error) {
 			fmt.Fprintf(stderr, "Agent worked for %d turns. Continue? [Y/n]: ", turns)
 			sc := bufio.NewScanner(cmd.InOrStdin())
@@ -269,6 +300,7 @@ func runChatWithDoc(cmd *cobra.Command, doc *config.Document, docs []*config.Doc
 		Out:               out,
 		Status:            stderr,
 	})
+	auditSess = state.sess
 	return chatLoop(ctx, state, cmd.InOrStdin(), out, stderr, agent.Name)
 }
 

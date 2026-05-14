@@ -35,6 +35,18 @@
   <div class="section-inner">
     <div class="timeline">
 
+      <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-wand-magic-sparkles"></i></div><div class="timeline-body">
+        <div class="timeline-version">v0.1.1</div><div class="timeline-date">May 2026</div>
+        <ul>
+          <li><strong>CI mode upgrades</strong> — <code>m run --ci --output json --timeout</code> with machine-readable NDJSON events</li>
+          <li><strong>Run exit codes</strong> — explicit non-zero codes for policy violations and timeouts</li>
+          <li><strong>Inline policy engine</strong> — configurable hard-deny rules via <code>policy.rules</code></li>
+          <li><strong>Audit logging foundation</strong> — session/tool audit events with pluggable sinks</li>
+          <li><strong>Audit backends</strong> — <code>file</code> JSONL (+ optional HMAC) and <code>splunk</code> HEC</li>
+          <li><strong>Async audit batching</strong> — configurable <code>batch_size</code> and <code>flush_interval</code></li>
+        </ul>
+      </div></div>
+
       <div class="timeline-item"><div class="timeline-dot"><i class="fa-solid fa-trophy"></i></div><div class="timeline-body">
         <div class="timeline-version">v0.1.0</div><div class="timeline-date">May 2026</div>
         <ul>

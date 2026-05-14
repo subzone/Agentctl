@@ -5,6 +5,21 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.1] - 2026-05-14
+
+### Added
+- `m run --ci` mode with default 15m timeout and JSON event output support (`--output json`)
+- `m run --timeout` and `m run --output text|json` flags
+- Explicit `m run` exit codes for policy violations and timeout paths
+- Inline policy engine (`policy.rules`) with hard deny enforcement before tool execution
+- Audit sink interfaces and event model (`internal/ports/audit.go`)
+- Audit backends: no-op, file JSONL (+ optional per-event HMAC), Splunk HEC
+- Audit batching layer (`batch_size`, `flush_interval`) for async sink writes
+
+### Changed
+- Engine tool execution pipeline now emits audit events around tool calls/results
+- Chat and run session lifecycles emit audit `session_start` / `session_end` events
+
 ## [0.1.0] - 2026-05-09
 
 ### Added

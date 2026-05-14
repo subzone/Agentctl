@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"os"
 
@@ -43,7 +44,7 @@ func main() {
 		}
 		return
 	}
-	
+
 	// Continue with CLI mode
 	runCLI()
 }
@@ -83,7 +84,7 @@ func runCLI() {
 
 	// Shell completions: m completion bash/zsh/fish/powershell
 	root.AddCommand(newCompletionCmd())
-	
+
 	// Add GUI subcommand (only visible when GUI support is compiled in)
 	if hasGUISupport() {
 		guiCmd := &cobra.Command{
@@ -98,8 +99,13 @@ func runCLI() {
 	}
 
 	if err := root.Execute(); err != nil {
+		code := 1
+		var coded interface{ ExitCode() int }
+		if errors.As(err, &coded) {
+			code = coded.ExitCode()
+		}
 		fmt.Fprintln(os.Stderr, "error:", err)
-		os.Exit(1)
+		os.Exit(code)
 	}
 }
 

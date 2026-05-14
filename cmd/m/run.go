@@ -4,20 +4,28 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
 	"os/signal"
 	"path/filepath"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/spf13/cobra"
 
+	cmdoutput "github.com/subzone/Agentctl/cmd/m/output"
+	"github.com/subzone/Agentctl/internal/audit"
 	"github.com/subzone/Agentctl/internal/config"
 	"github.com/subzone/Agentctl/internal/engine"
 	"github.com/subzone/Agentctl/internal/llm"
+	"github.com/subzone/Agentctl/internal/policy"
+	"github.com/subzone/Agentctl/internal/ports"
 	"github.com/subzone/Agentctl/internal/tools"
+	"github.com/subzone/Agentctl/internal/userconfig"
 )
 
 // defaultMaxTokens is used when an agent's frontmatter doesn't specify one.
@@ -25,9 +33,19 @@ import (
 // OpenAI and Ollama use their server-side defaults).
 const defaultMaxTokens = 0
 
+const (
+	runExitAgentError      = 1
+	runExitPolicyViolation = 2
+	runExitBudgetExceeded  = 3
+	runExitTimeout         = 4
+)
+
 func newRunCmd() *cobra.Command {
 	var yes bool
 	var dryRun bool
+	var ciMode bool
+	var outputMode string
+	var timeout time.Duration
 	cmd := &cobra.Command{
 		Use:   "run <agent.md> [task...]",
 		Short: "Run an agent once and stream the reply to stdout",
@@ -42,67 +60,114 @@ Examples:
 			if dryRun {
 				return runDryRun(cmd, args)
 			}
-			return runAgent(cmd, args, yes)
+			return runAgent(cmd, args, yes, ciMode, outputMode, timeout)
 		},
 	}
 	cmd.Flags().BoolVarP(&yes, "yes", "y", false, "Auto-approve all tool calls (dangerous commands still blocked)")
 	cmd.Flags().BoolVar(&dryRun, "dry-run", false, "Validate agent and show config without calling the LLM")
+	cmd.Flags().BoolVar(&ciMode, "ci", false, "Enable CI mode (implies --yes and JSON output by default)")
+	cmd.Flags().StringVar(&outputMode, "output", "text", "Output mode: text|json")
+	cmd.Flags().DurationVar(&timeout, "timeout", 0, "Maximum run duration, e.g. 30s, 5m")
 	return cmd
 }
 
-func runAgent(cmd *cobra.Command, args []string, autoApprove bool) error {
+func runAgent(cmd *cobra.Command, args []string, autoApprove bool, ciMode bool, outputMode string, timeout time.Duration) error {
+	if ciMode {
+		autoApprove = true
+		if outputMode == "text" {
+			outputMode = "json"
+		}
+		if timeout == 0 {
+			timeout = 15 * time.Minute
+		}
+	}
+	if outputMode != "text" && outputMode != "json" {
+		return exitError(runExitAgentError, fmt.Errorf("invalid --output %q (expected text or json)", outputMode))
+	}
+	if timeout < 0 {
+		return exitError(runExitAgentError, fmt.Errorf("--timeout cannot be negative"))
+	}
+
 	path := resolveAgentPath(args[0])
 	doc, err := config.ParseFile(path)
 	if err != nil {
-		return err
+		return exitError(runExitAgentError, err)
 	}
 	agent, ok := doc.Spec.(*config.AgentSpec)
 	if !ok {
-		return fmt.Errorf("%s: not an agent (type=%s)", args[0], doc.Meta().Type)
+		return exitError(runExitAgentError, fmt.Errorf("%s: not an agent (type=%s)", args[0], doc.Meta().Type))
 	}
 	if issues := config.Validate(doc); len(issues) > 0 {
 		for _, iss := range issues {
 			fmt.Fprintln(cmd.ErrOrStderr(), iss.Error())
 		}
-		return fmt.Errorf("agent failed validation")
+		return exitError(runExitAgentError, fmt.Errorf("agent failed validation"))
 	}
 
 	task, err := readTask(cmd, args[1:])
 	if err != nil {
-		return err
+		return exitError(runExitAgentError, err)
 	}
 
 	provider, model, err := llm.Resolve(agent.Model)
 	if err != nil {
-		return err
+		return exitError(runExitAgentError, err)
 	}
 
 	ctx, cancel := signal.NotifyContext(cmd.Context(), os.Interrupt, syscall.SIGTERM)
 	defer cancel()
+	if timeout > 0 {
+		ctx, cancel = context.WithTimeout(ctx, timeout)
+		defer cancel()
+	}
 
-	out := cmd.OutOrStdout()
-	stderr := cmd.ErrOrStderr()
+	rawOut := cmd.OutOrStdout()
+	rawErr := cmd.ErrOrStderr()
+	out := rawOut
+	stderr := rawErr
+
+	sessionID := fmt.Sprintf("s%d", time.Now().UTC().UnixNano())
+	auditSink, err := buildAuditSink()
+	if err != nil {
+		return exitError(runExitAgentError, err)
+	}
+	defer auditSink.Close()
+	auditSessionStart(ctx, auditSink, sessionID, agent.Name, model)
+
+	var jsonEmitter *cmdoutput.JSONEmitter
+	var statusTap io.Writer
+	if outputMode == "json" {
+		jsonEmitter = cmdoutput.NewJSONEmitter(rawOut)
+		jsonEmitter.SessionStart(sessionID, agent.Name)
+		statusTap = cmdoutput.NewStatusEventWriter(jsonEmitter)
+		out = io.Discard
+		stderr = io.Discard
+	} else {
+		statusTap = io.Discard
+	}
+
+	statusOut := io.MultiWriter(stderr, statusTap)
 
 	docs := loadCompanionDocs(path)
 
 	hubSpawner := &spawner{
 		docs:       docs,
 		out:        out,
-		status:     stderr,
-		confirm:    stdinConfirm(stderr, os.Stdin),
+		status:     statusOut,
+		confirm:    stdinConfirm(statusOut, os.Stdin),
 		undo:       &tools.UndoStack{},
 		spawnDepth: 1, // children of the hub run at depth 1
 	}
 	if autoApprove {
 		hubSpawner.confirm = func(_ context.Context, prompt string) (bool, error) {
-			fmt.Fprintf(stderr, "→ %s [auto-approved]\n", prompt)
+			fmt.Fprintf(statusOut, "→ %s [auto-approved]\n", prompt)
 			return true, nil
 		}
 	}
 
-	rt, err := buildAgentRuntime(ctx, agent, docs, hubSpawner, stderr)
+	rt, err := buildAgentRuntime(ctx, agent, docs, hubSpawner, statusOut)
 	if err != nil {
-		return err
+		return exitError(runExitAgentError, err)
 	}
 	defer rt.close()
 
@@ -115,25 +180,161 @@ func runAgent(cmd *cobra.Command, args []string, autoApprove bool) error {
 	if autoApprove {
 		toolConfirm = func(_ context.Context, name string, input json.RawMessage) (bool, error) {
 			if pattern := isDangerousCommand(name, input); pattern != "" {
-				fmt.Fprintf(stderr, "\n⚠️  DANGEROUS: \"%s\" in %s — skipped in --yes mode\n", pattern, name)
+				fmt.Fprintf(statusOut, "\n⚠️  DANGEROUS: \"%s\" in %s — skipped in --yes mode\n", pattern, name)
 				return false, nil
 			}
-			fmt.Fprintf(stderr, "→ %s %s [auto-approved]\n", name, summarizeToolInput(input))
+			fmt.Fprintf(statusOut, "→ %s %s [auto-approved]\n", name, summarizeToolInput(input))
 			return true, nil
 		}
 	}
 
-	return engine.Run(ctx, engine.Config{
-		Provider:    provider,
-		Model:       model,
-		System:      systemWithCwd(doc.Body),
-		Tools:       rt.registry,
-		Temperature: agent.Temperature,
-		MaxTokens:   maxTokens,
-		ToolConfirm: toolConfirm,
-		Out:         out,
-		Status:      stderr,
-	}, task)
+	policyCheck, err := buildPolicyCheck()
+	if err != nil {
+		return exitError(runExitAgentError, err)
+	}
+
+	sess := engine.NewSession(engine.Config{
+		Provider:       provider,
+		Model:          model,
+		System:         systemWithCwd(doc.Body),
+		Tools:          rt.registry,
+		Temperature:    agent.Temperature,
+		MaxTokens:      maxTokens,
+		ToolConfirm:    toolConfirm,
+		PolicyCheck:    policyCheck,
+		Audit:          auditSink,
+		AuditSessionID: sessionID,
+		Out:            out,
+		Status:         statusOut,
+	})
+	err = sess.Step(ctx, task)
+	usage := sess.Usage()
+	cost := estimateCost(usage, model)
+	if jsonEmitter != nil {
+		jsonEmitter.LLMResponse(usage.InputTokens, usage.OutputTokens, cost)
+	}
+	if err != nil {
+		auditSessionEnd(ctx, auditSink, sessionID, "failure", model, usage, cost, err)
+		if jsonEmitter != nil {
+			jsonEmitter.SessionEnd(sessionID, "failure", len(sess.Messages()), cost)
+		}
+		if errors.Is(err, context.DeadlineExceeded) {
+			return exitError(runExitTimeout, err)
+		}
+		var pErr *engine.PolicyViolationError
+		if errors.As(err, &pErr) {
+			return exitError(runExitPolicyViolation, err)
+		}
+		return exitError(runExitAgentError, err)
+	}
+	auditSessionEnd(ctx, auditSink, sessionID, "success", model, usage, cost, nil)
+	if jsonEmitter != nil {
+		jsonEmitter.SessionEnd(sessionID, "success", len(sess.Messages()), cost)
+	}
+	return nil
+}
+
+func buildAuditSink() (ports.AuditSink, error) {
+	homeCfg, err := userconfig.Path()
+	if err != nil {
+		return nil, err
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	projectCfg := audit.FindProjectConfigPath(cwd)
+	cfg, err := audit.LoadConfig(homeCfg, projectCfg)
+	if err != nil {
+		return nil, fmt.Errorf("load audit config: %w", err)
+	}
+	if cfg.Backend == "" || cfg.Backend == "none" {
+		return audit.NewNoopSink(), nil
+	}
+	if cfg.Backend == "splunk" {
+		base, err := audit.NewSplunkSink(cfg.Endpoint, cfg.Token, cfg.TLSVerify)
+		if err != nil {
+			return nil, err
+		}
+		return audit.NewBatchSink(base, cfg.BatchSize, cfg.FlushInterval)
+	}
+	if cfg.Backend != "file" {
+		return nil, fmt.Errorf("unsupported audit backend %q", cfg.Backend)
+	}
+	path := cfg.Path
+	if path == "" {
+		base, err := os.UserConfigDir()
+		if err != nil {
+			return nil, err
+		}
+		path = filepath.Join(base, "m", "audit.jsonl")
+	}
+	base, err := audit.NewFileSink(path, cfg.HMACSecret)
+	if err != nil {
+		return nil, err
+	}
+	return audit.NewBatchSink(base, cfg.BatchSize, cfg.FlushInterval)
+}
+
+func auditSessionStart(ctx context.Context, sink ports.AuditSink, sessionID string, agent string, model string) {
+	if sink == nil {
+		return
+	}
+	_ = sink.Emit(ctx, ports.AuditEvent{
+		Type:      "session_start",
+		SessionID: sessionID,
+		Agent:     agent,
+		Model:     model,
+	})
+}
+
+func auditSessionEnd(ctx context.Context, sink ports.AuditSink, sessionID string, outcome string, model string, usage llm.Usage, cost float64, runErr error) {
+	if sink == nil {
+		return
+	}
+	ev := ports.AuditEvent{
+		Type:         "session_end",
+		SessionID:    sessionID,
+		Model:        model,
+		Outcome:      outcome,
+		InputTokens:  usage.InputTokens,
+		OutputTokens: usage.OutputTokens,
+		CostUSD:      cost,
+	}
+	if runErr != nil {
+		ev.Error = runErr.Error()
+	}
+	_ = sink.Emit(ctx, ev)
+	_ = sink.Flush(ctx)
+}
+
+func buildPolicyCheck() (func(context.Context, string, json.RawMessage) (string, error), error) {
+	homeCfg, err := userconfig.Path()
+	if err != nil {
+		return nil, err
+	}
+	cwd, err := os.Getwd()
+	if err != nil {
+		return nil, err
+	}
+	projectCfg := policy.FindProjectConfigPath(cwd)
+	rules, err := policy.LoadRules(homeCfg, projectCfg)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			return nil, nil
+		}
+		return nil, fmt.Errorf("load policy rules: %w", err)
+	}
+	if len(rules) == 0 {
+		return nil, nil
+	}
+	eng, err := policy.NewInlineEngine(rules)
+	if err != nil {
+		return nil, err
+	}
+	return func(_ context.Context, toolName string, input json.RawMessage) (string, error) {
+		return eng.Check(toolName, input), nil
+	}, nil
 }
 
 // loadCompanionDocs returns every parseable MD doc in the agent's project
