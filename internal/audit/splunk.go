@@ -36,6 +36,7 @@ func NewSplunkSink(endpoint string, token string, tlsVerify bool) (ports.AuditSi
 
 	tr := &http.Transport{}
 	if !tlsVerify {
+		//nolint:gosec // Optional opt-out for self-signed/local Splunk endpoints via config.
 		tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 
