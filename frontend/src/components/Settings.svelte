@@ -2,6 +2,7 @@
   import { onMount, createEventDispatcher } from 'svelte';
   const dispatch = createEventDispatcher();
 
+  let tab = 'general';
   let provider = '';
   let model = '';
   let baseURL = '';
@@ -11,11 +12,19 @@
   let error = '';
   let themes = [];
   let activeTheme = localStorage.getItem('theme') || 'default';
+  let uiMode = localStorage.getItem('agentctl_ui_mode') || 'pro';
+  let health = { ok: true, checks: [] };
+  let paths = [];
+  let healthLoading = false;
 
   const providers = ['groq', 'gemini', 'cerebras', 'mistral', 'anthropic', 'openai', 'ollama', 'alibaba', 'litellm'];
+  const tabs = [
+    { id: 'general', label: 'General' },
+    { id: 'api', label: 'API & models' },
+    { id: 'health', label: 'Health' },
+    { id: 'paths', label: 'Paths' },
+  ];
 
-  // Free-tier providers used by the default MoE agent. Each has a generous
-  // free API tier; paste any subset and routing/fallback uses whatever exists.
   const freeProviders = [
     { id: 'groq',     label: 'Groq',     model: 'llama-3.3-70b-versatile', signup: 'https://console.groq.com/keys' },
     { id: 'gemini',   label: 'Gemini',   model: 'gemini-2.5-flash',        signup: 'https://aistudio.google.com/apikey' },
@@ -31,8 +40,21 @@
       const cfg = await window.go.desktop.App.GetConfig();
       if (cfg) { provider = cfg.Provider || ''; model = cfg.Model || ''; baseURL = cfg.BaseURL || ''; }
       themes = await window.go.desktop.App.GetThemes();
+      paths = await window.go.desktop.App.ConfigPaths() || [];
     } catch (e) { error = String(e); }
+    await loadHealth();
   });
+
+  async function loadHealth() {
+    healthLoading = true;
+    try {
+      health = await window.go.desktop.App.GetHealth();
+    } catch (e) {
+      health = { ok: false, checks: [{ id: 'health', label: 'Health', status: 'error', detail: String(e) }] };
+    } finally {
+      healthLoading = false;
+    }
+  }
 
   async function enableFreeMoE() {
     moeSaving = true; moeSaved = false; error = '';
@@ -42,14 +64,13 @@
       for (const p of entered) {
         await window.go.desktop.App.SaveAPIKey(p.id, moeKeys[p.id].trim());
       }
-      // Use the first provided provider as the base default; the "m" agent
-      // routes across every key that's present.
       const primary = entered[0];
       await window.go.desktop.App.SaveConfig(primary.id, primary.model, '');
       provider = primary.id; model = primary.model; baseURL = '';
       moeKeys = { groq: '', gemini: '', cerebras: '', mistral: '' };
       moeSaved = true;
       setTimeout(() => moeSaved = false, 2500);
+      await loadHealth();
     } catch (e) { error = String(e); }
     finally { moeSaving = false; }
   }
@@ -64,6 +85,7 @@
       }
       saved = true;
       setTimeout(() => saved = false, 2000);
+      await loadHealth();
     } catch (e) { error = String(e); }
     finally { saving = false; }
   }
@@ -73,6 +95,29 @@
     localStorage.setItem('theme', theme.name);
     dispatch('theme', theme);
   }
+
+  function setUiMode(mode) {
+    uiMode = mode;
+    localStorage.setItem('agentctl_ui_mode', mode);
+    dispatch('uiMode', mode);
+  }
+
+  function statusIcon(s) {
+    if (s === 'ok') return '✓';
+    if (s === 'warn') return '!';
+    return '✗';
+  }
+  function statusClass(s) {
+    if (s === 'ok') return 'ok';
+    if (s === 'warn') return 'warn';
+    return 'err';
+  }
+
+  async function copyPath(p) {
+    try {
+      await navigator.clipboard.writeText(p);
+    } catch (_) {}
+  }
 </script>
 
 <div class="settings">
@@ -81,77 +126,135 @@
     <button class="close" on:click={() => dispatch('close')}>✕</button>
   </div>
 
-  <div class="body">
-    <div class="section moe">
-      <h3>Free MoE — recommended</h3>
-      <p class="hint">Paste a key for any of these free-tier providers. The default <code>m</code> agent routes each task to the best available model and falls back across the rest. At least one key is required.</p>
-      <div class="moe-grid">
-        {#each freeProviders as p}
-          <label>
-            <span class="moe-label">{p.label}<a class="moe-link" href={p.signup} target="_blank" rel="noreferrer">get key ↗</a></span>
-            <input type="password" bind:value={moeKeys[p.id]} placeholder={'Paste ' + p.label + ' key (optional)'} autocomplete="off" />
-          </label>
-        {/each}
-      </div>
-      <button class="moe-btn" on:click={enableFreeMoE} disabled={moeSaving}>
-        {moeSaving ? 'Saving…' : moeSaved ? '✓ Free MoE enabled' : 'Enable Free MoE'}
-      </button>
-    </div>
+  <div class="layout">
+    <nav class="tabs">
+      {#each tabs as t}
+        <button class="tab" class:active={tab === t.id} on:click={() => tab = t.id}>{t.label}</button>
+      {/each}
+    </nav>
 
-    <div class="section">
-      <h3>Theme</h3>
-      <div class="theme-grid">
-        {#each themes as t}
-          <button
-            class="theme-btn"
-            class:active={activeTheme === t.name}
-            style="--bg:{t.bg};--accent:{t.accent};--text:{t.text}"
-            on:click={() => applyTheme(t)}
-          >
-            <div class="theme-preview">
-              <div class="preview-bar" style="background:{t.bgPanel}"></div>
-              <div class="preview-msg user" style="background:{t.user}22;border-color:{t.user}44"></div>
-              <div class="preview-msg asst" style="background:{t.bgInput}"></div>
-            </div>
-            <span class="theme-name">{t.name}</span>
-          </button>
-        {/each}
-      </div>
-    </div>
+    <div class="body">
+      {#if tab === 'general'}
+        <div class="section">
+          <h3>Interface mode</h3>
+          <p class="hint">Simple mode hides advanced rails (Extensions, Persona) for a cleaner chat-first layout.</p>
+          <div class="mode-row">
+            <button class="mode-btn" class:active={uiMode === 'simple'} on:click={() => setUiMode('simple')}>Simple</button>
+            <button class="mode-btn" class:active={uiMode === 'pro'} on:click={() => setUiMode('pro')}>Pro</button>
+          </div>
+        </div>
 
-    <div class="section">
-      <h3>Provider & Model</h3>
-      <label>Provider
-        <select bind:value={provider}>
-          <option value="">Select provider...</option>
-          {#each providers as p}<option value={p}>{p}</option>{/each}
-        </select>
-      </label>
-      <label>Model
-        <input type="text" bind:value={model} placeholder="e.g. llama-3.3-70b-versatile, gemini-2.5-flash" />
-      </label>
-      {#if provider === 'ollama' || provider === 'litellm' || provider === 'alibaba'}
-        <label>Base URL
-          <input type="text" bind:value={baseURL} placeholder="e.g. https://dashscope-intl.aliyuncs.com/compatible-mode" />
-        </label>
+        <div class="section">
+          <h3>Theme</h3>
+          <div class="theme-grid">
+            {#each themes as t}
+              <button
+                class="theme-btn"
+                class:active={activeTheme === t.name}
+                style="--bg:{t.bg};--accent:{t.accent};--text:{t.text}"
+                on:click={() => applyTheme(t)}
+              >
+                <div class="theme-preview">
+                  <div class="preview-bar" style="background:{t.bgPanel}"></div>
+                  <div class="preview-msg user" style="background:{t.user}22;border-color:{t.user}44"></div>
+                  <div class="preview-msg asst" style="background:{t.bgInput}"></div>
+                </div>
+                <span class="theme-name">{t.name}</span>
+              </button>
+            {/each}
+          </div>
+        </div>
       {/if}
-    </div>
 
-    <div class="section">
-      <h3>API Key</h3>
-      <p class="hint">Stored in OS keychain. Leave blank to keep existing.</p>
-      <label>API Key
-        <input type="password" bind:value={apiKey} placeholder="Paste new key to update..." />
-      </label>
-    </div>
+      {#if tab === 'api'}
+        <div class="section moe">
+          <h3>Free MoE — recommended</h3>
+          <p class="hint">Paste a key for any free-tier provider. The default <code>m</code> agent routes each task to the best model and falls back across the rest.</p>
+          <div class="moe-grid">
+            {#each freeProviders as p}
+              <label>
+                <span class="moe-label">{p.label}<a class="moe-link" href={p.signup} target="_blank" rel="noreferrer">get key ↗</a></span>
+                <input type="password" bind:value={moeKeys[p.id]} placeholder={'Paste ' + p.label + ' key (optional)'} autocomplete="off" />
+              </label>
+            {/each}
+          </div>
+          <button class="moe-btn" on:click={enableFreeMoE} disabled={moeSaving}>
+            {moeSaving ? 'Saving…' : moeSaved ? '✓ Free MoE enabled' : 'Enable Free MoE'}
+          </button>
+        </div>
 
-    {#if error}<div class="err">⚠ {error}</div>{/if}
+        <div class="section">
+          <h3>Provider & model</h3>
+          <label>Provider
+            <select bind:value={provider}>
+              <option value="">Select provider...</option>
+              {#each providers as p}<option value={p}>{p}</option>{/each}
+            </select>
+          </label>
+          <label>Model
+            <input type="text" bind:value={model} placeholder="e.g. llama-3.3-70b-versatile" />
+          </label>
+          {#if provider === 'ollama' || provider === 'litellm' || provider === 'alibaba'}
+            <label>Base URL
+              <input type="text" bind:value={baseURL} placeholder="e.g. https://dashscope-intl.aliyuncs.com/compatible-mode" />
+            </label>
+          {/if}
+        </div>
 
-    <div class="actions">
-      <button class="cancel" on:click={() => dispatch('close')}>Cancel</button>
-      <button class="save-btn" on:click={save} disabled={saving}>
-        {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save'}
-      </button>
+        <div class="section">
+          <h3>API key</h3>
+          <p class="hint">Stored in OS keychain. Leave blank to keep existing.</p>
+          <label>API key
+            <input type="password" bind:value={apiKey} placeholder="Paste new key to update..." />
+          </label>
+        </div>
+
+        <div class="actions">
+          <button class="save-btn" on:click={save} disabled={saving}>
+            {saving ? 'Saving...' : saved ? '✓ Saved' : 'Save provider settings'}
+          </button>
+        </div>
+      {/if}
+
+      {#if tab === 'health'}
+        <div class="section">
+          <div class="health-head">
+            <h3>Setup health</h3>
+            <button class="link-btn" on:click={loadHealth} disabled={healthLoading}>{healthLoading ? 'Checking…' : 'Re-run checks'}</button>
+          </div>
+          <span class="badge" class:ok={health.ok} class:bad={!health.ok}>{health.ok ? 'All good' : 'Needs attention'}</span>
+          <div class="checks">
+            {#each health.checks as c}
+              <button class="check" class:clickable={!!c.fixTab} on:click={() => c.fixTab && dispatch('nav', c.fixTab)}>
+                <span class="ico {statusClass(c.status)}">{statusIcon(c.status)}</span>
+                <div class="check-body">
+                  <div class="check-lbl">{c.label}</div>
+                  <div class="check-detail">{c.detail}</div>
+                </div>
+                {#if c.fixTab}<span class="fix">Fix →</span>{/if}
+              </button>
+            {/each}
+          </div>
+        </div>
+      {/if}
+
+      {#if tab === 'paths'}
+        <div class="section">
+          <h3>Config directories</h3>
+          <p class="hint">AgentCTL stores custom agents, tools, skills, MCP, personas, and saved sessions under your user config folder.</p>
+          <div class="path-list">
+            {#each paths as p}
+              <div class="path-row">
+                <div class="path-lbl">{p.label}</div>
+                <code class="path-val">{p.path}</code>
+                <button class="copy-btn" on:click={() => copyPath(p.path)} title="Copy path">⧉</button>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {/if}
+
+      {#if error}<div class="err">⚠ {error}</div>{/if}
     </div>
   </div>
 </div>
@@ -167,9 +270,19 @@
   .close{background:none;border:none;color:var(--muted,#64748b);font-size:18px;cursor:pointer;-webkit-app-region:no-drag;padding:4px 8px;border-radius:4px}
   .close:hover{background:var(--border,#334155);color:var(--text,#e2e8f0)}
 
-  .body{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:20px;max-width:600px}
+  .layout{flex:1;display:flex;min-height:0}
+  .tabs{width:160px;flex-shrink:0;border-right:1px solid var(--border,#334155);padding:12px 8px;display:flex;flex-direction:column;gap:4px}
+  .tab{padding:10px 12px;border:none;border-radius:8px;background:none;color:var(--muted,#94a3b8);font-size:13px;text-align:left;cursor:pointer}
+  .tab:hover{background:var(--bg-input,#1e293b);color:var(--text,#e2e8f0)}
+  .tab.active{background:color-mix(in srgb,var(--accent,#3b82f6) 15%,transparent);color:var(--text,#f1f5f9);font-weight:600}
+
+  .body{flex:1;overflow-y:auto;padding:20px 24px;display:flex;flex-direction:column;gap:20px;max-width:640px}
   .section{display:flex;flex-direction:column;gap:10px}
-  .section h3{font-size:11px;font-weight:600;color:var(--muted,#94a3b8);text-transform:uppercase;letter-spacing:0.5px}
+  .section h3{font-size:11px;font-weight:600;color:var(--muted,#94a3b8);text-transform:uppercase;letter-spacing:0.5px;margin:0}
+
+  .mode-row{display:flex;gap:8px}
+  .mode-btn{flex:1;padding:10px;border:1px solid var(--border,#334155);border-radius:8px;background:var(--bg-input,#1e293b);color:var(--text,#e2e8f0);cursor:pointer;font-size:13px;font-weight:600}
+  .mode-btn.active{border-color:var(--accent,#3b82f6);background:color-mix(in srgb,var(--accent,#3b82f6) 12%,transparent)}
 
   .theme-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
   .theme-btn{
@@ -204,11 +317,33 @@
   .moe-btn{margin-top:12px;width:100%;padding:11px;background:var(--accent,#3b82f6);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer}
   .moe-btn:hover:not(:disabled){filter:brightness(1.1)}
   .moe-btn:disabled{opacity:0.7;cursor:not-allowed}
-  .err{background:#2d1111;border:1px solid #ef444433;color:#fca5a5;padding:10px 14px;border-radius:7px;font-size:13px}
 
+  .health-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+  .link-btn{background:none;border:none;color:var(--accent,#3b82f6);font-size:12px;cursor:pointer;padding:0}
+  .badge{align-self:flex-start;font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:#7f1d1d;color:#fca5a5}
+  .badge.ok{background:#14532d;color:#86efac}
+  .checks{display:flex;flex-direction:column;gap:6px;margin-top:8px}
+  .check{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:8px;background:#080d18;border:1px solid transparent;width:100%;text-align:left;color:inherit}
+  .check.clickable{cursor:pointer}
+  .check.clickable:hover{border-color:var(--border,#334155)}
+  .ico{width:22px;height:22px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0}
+  .ico.ok{background:#14532d;color:#86efac}
+  .ico.warn{background:#713f12;color:#fcd34d}
+  .ico.err{background:#7f1d1d;color:#fca5a5}
+  .check-body{flex:1;min-width:0}
+  .check-lbl{font-size:13px;font-weight:600}
+  .check-detail{font-size:11px;color:var(--muted,#64748b);margin-top:2px}
+  .fix{font-size:11px;color:var(--accent,#3b82f6);flex-shrink:0}
+
+  .path-list{display:flex;flex-direction:column;gap:8px}
+  .path-row{display:grid;grid-template-columns:120px 1fr auto;gap:8px;align-items:center;padding:10px 12px;background:#080d18;border-radius:8px;border:1px solid var(--border,#334155)}
+  .path-lbl{font-size:12px;font-weight:600;color:var(--text,#e2e8f0)}
+  .path-val{font-size:11px;color:var(--muted,#94a3b8);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .copy-btn{background:none;border:1px solid var(--border,#334155);border-radius:6px;color:var(--muted,#94a3b8);cursor:pointer;padding:4px 8px;font-size:12px}
+  .copy-btn:hover{color:var(--text,#e2e8f0);border-color:var(--accent,#3b82f6)}
+
+  .err{background:#2d1111;border:1px solid #ef444433;color:#fca5a5;padding:10px 14px;border-radius:7px;font-size:13px}
   .actions{display:flex;gap:10px;justify-content:flex-end;padding-top:4px}
-  .cancel{padding:9px 20px;background:none;border:1px solid var(--border,#334155);border-radius:7px;color:var(--muted,#94a3b8);font-size:13px;cursor:pointer}
-  .cancel:hover{background:var(--bg-input,#1e293b)}
   .save-btn{padding:9px 24px;background:var(--accent,#3b82f6);border:none;border-radius:7px;color:white;font-size:13px;font-weight:600;cursor:pointer}
   .save-btn:hover:not(:disabled){filter:brightness(1.1)}
   .save-btn:disabled{opacity:0.6;cursor:not-allowed}

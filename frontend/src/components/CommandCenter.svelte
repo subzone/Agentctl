@@ -7,6 +7,13 @@
   export let stats = { tools: 0, skills: 0, mcp: 0, km: false };
   export let moeRoute = null;
   export let sessions = [];
+  export let savedSessions = [];
+
+  function fmtSaved(ts) {
+    if (!ts) return '';
+    const d = new Date(ts * 1000);
+    return d.toLocaleString([], { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
 
   function fmtTime(ts) {
     if (!ts) return '';
@@ -84,6 +91,24 @@
     </div>
   {/if}
 
+  {#if savedSessions.length > 0}
+    <section class="sessions">
+      <h2>Saved sessions</h2>
+      <div class="sess-list">
+        {#each savedSessions.slice(0, 8) as s}
+          <div class="sess-row saved">
+            <button class="sess-main" on:click={() => dispatch('resume', s.id)}>
+              <span class="sess-agent">{s.model || s.provider || 'session'}</span>
+              <span class="sess-preview">{s.preview || 'Saved chat'}</span>
+              <span class="sess-meta">{s.messages} msg · {fmtSaved(s.savedAt)}</span>
+            </button>
+            <button class="sess-del" title="Delete saved session" on:click={() => dispatch('deleteSaved', s.id)}>✕</button>
+          </div>
+        {/each}
+      </div>
+    </section>
+  {/if}
+
   {#if sessions.length > 0}
     <section class="sessions">
       <h2>Active sessions</h2>
@@ -143,8 +168,14 @@
   .sessions{margin-bottom:20px}
   .sessions h2{margin:0 0 10px;font-size:14px;font-weight:700;color:var(--text)}
   .sess-list{display:flex;flex-direction:column;gap:6px}
-  .sess-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;padding:10px 12px;background:#0c1322;border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:left;color:inherit;width:100%}
-  .sess-row:hover{border-color:var(--accent)}
+  .sess-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;padding:10px 12px;background:#0c1322;border:1px solid var(--border);border-radius:8px;text-align:left;color:inherit;width:100%}
+  .sess-row.saved{flex-wrap:nowrap;align-items:stretch;gap:6px;padding:0;overflow:hidden}
+  .sess-main{flex:1;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;padding:10px 12px;background:none;border:none;cursor:pointer;text-align:left;color:inherit}
+  .sess-main:hover{background:#111c30}
+  .sess-del{flex-shrink:0;width:36px;border:none;border-left:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-size:12px}
+  .sess-del:hover{background:#2d1111;color:#fca5a5}
+  .sess-row:not(.saved){cursor:pointer}
+  .sess-row:not(.saved):hover{border-color:var(--accent)}
   .sess-agent{font-size:12px;font-weight:700;color:#c4b5fd}
   .sess-preview{flex:1;font-size:12px;color:var(--text);min-width:120px}
   .sess-meta{font-size:10px;color:var(--muted)}

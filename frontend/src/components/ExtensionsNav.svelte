@@ -14,6 +14,9 @@
   <button class:active={active === 'mcp'} on:click={() => dispatch('select', 'mcp')}>
     <span class="ico">🔌</span> MCP
   </button>
+  <button class:active={active === 'agents'} on:click={() => dispatch('select', 'agents')}>
+    <span class="ico">⬡</span> Agents
+  </button>
 </div>
 
 <style>

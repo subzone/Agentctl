@@ -269,3 +269,19 @@ jobs:
           gh release upload "${GITHUB_REF_NAME}" \
             "dist/m_${VERSION}_macos_universal.pkg" \
             --clobber
+
+  homebrew-bump:
+    name: Bump Homebrew formula
+    needs: [linux, macos]
+    runs-on: ubuntu-latest
+    if: startsWith(github.ref, 'refs/tags/v')
+    steps:
+      - name: Update formula in subzone/homebrew-tap
+        uses: mislav/bump-homebrew-formula-action@v4
+        with:
+          formula-name: m
+          homebrew-tap: subzone/homebrew-tap
+          tag-name: ${{ github.ref_name }}
+          download-url: https://github.com/subzone/Agentctl/archive/refs/tags/${{ github.ref_name }}.tar.gz
+        env:
+          COMMITTER_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}

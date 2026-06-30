@@ -18,6 +18,9 @@
   import MCPFormEditor from './components/MCPFormEditor.svelte';
   import TestBench from './components/TestBench.svelte';
   import Onboarding from './components/Onboarding.svelte';
+  import ApplyBar from './components/ApplyBar.svelte';
+  import AgentsSidebar from './components/AgentsSidebar.svelte';
+  import AgentFormEditor from './components/AgentFormEditor.svelte';
   import TopBar from './components/TopBar.svelte';
   import Settings from './components/Settings.svelte';
 
@@ -37,6 +40,7 @@
   let kmIndexing = null;
   let kmLoaded = false;
   let kmSelectedId = '';
+  let kmSelectedNode = null;
   let graphRef;
 
   // Custom tools (Tools tab).
@@ -82,6 +86,20 @@
   let mcpSaved = false;
   let mcpAdvanced = false;
 
+  // Agent Studio (Extensions → Agents).
+  let agentDocsList = [];
+  let agentsStudioLoaded = false;
+  let activeAgentDoc = null;
+  let agentContent = '';
+  let agentError = '';
+  let agentSaving = false;
+  let agentSaved = false;
+  let agentAdvanced = false;
+  let builtinToolNames = [];
+
+  let configDirty = false;
+  let configDirtyReason = '';
+
   // Per-agent personality overlay (Personality tab).
   let persona = { instructions: '', tone: '', verbosity: '', temperature: null };
   let personaSaved = false;
@@ -96,9 +114,11 @@
   let healthReport = { ok: true, checks: [] };
   let homeStats = { tools: 0, skills: 0, mcp: 0, km: false };
   let homeSessions = [];
+  let savedSessions = [];
   let contextPreview = null;
   let contextLoading = false;
   let showInspector = true;
+  let proMode = localStorage.getItem('agentctl_ui_mode') !== 'simple';
   let activityEvents = [];
   let activitySeq = 0;
   let toasts = [];
@@ -113,7 +133,10 @@
       const saved = localStorage.getItem('theme') || 'default';
       const t = themes.find(x => x.name === saved) || themes[0];
       if (t) applyTheme(t);
+      proMode = localStorage.getItem('agentctl_ui_mode') !== 'simple';
+      showInspector = proMode;
       agents = await window.go.desktop.App.ListAgents();
+      builtinToolNames = await window.go.desktop.App.BuiltinToolNames();
       await refreshHomeData();
       // Auto-activate the default MoE agent so the app is usable immediately.
       const def = agents.find(a => a.category === 'default') || agents.find(a => a.name === 'm');
@@ -166,6 +189,7 @@
       cost = { inputTokens: data.inputTokens || 0, outputTokens: data.outputTokens || 0, cost: data.cost || 0 };
       if (data.contextUsage) contextUsage = data.contextUsage;
       pushActivity('assistant', 'response complete', { tokens: (data.outputTokens || 0) });
+      refreshSavedSessions();
       scrollToBottom();
     });
     window.runtime.EventsOn('error', (data) => {
@@ -264,6 +288,97 @@
     if (sub === 'tools' && !toolsLoaded) { toolsLoaded = true; loadTools(); }
     if (sub === 'skills' && !skillsLoaded) { skillsLoaded = true; loadSkills(); }
     if (sub === 'mcp' && !mcpLoaded) { mcpLoaded = true; loadMCP(); }
+    if (sub === 'agents' && !agentsStudioLoaded) {
+      agentsStudioLoaded = true;
+      if (!toolsLoaded) { toolsLoaded = true; loadTools(); }
+      if (!skillsLoaded) { skillsLoaded = true; loadSkills(); }
+      if (!mcpLoaded) { mcpLoaded = true; loadMCP(); }
+      loadAgentDocs();
+    }
+  }
+
+  async function loadAgentDocs() {
+    try { agentDocsList = await window.go.desktop.App.ListAgentDocs(); }
+    catch (e) { errorBanner = 'Agents: ' + String(e); }
+  }
+
+  function selectAgentDoc(ad) {
+    activeAgentDoc = { name: ad.name, isNew: false, builtin: ad.builtin };
+    agentContent = ad.content;
+    agentError = ad.error || '';
+    agentSaved = false;
+  }
+
+  async function newAgentDoc() {
+    try {
+      const tpl = await window.go.desktop.App.NewAgentTemplate();
+      const existing = new Set(agentDocsList.filter(a => !a.builtin).map(a => a.name));
+      let name = 'my_agent';
+      for (let i = 2; existing.has(name); i++) name = 'my_agent_' + i;
+      agentContent = tpl.replace(/^name:.*$/m, 'name: ' + name);
+      activeAgentDoc = { name: '', isNew: true, builtin: false };
+      agentError = ''; agentSaved = false;
+    } catch (e) { errorBanner = String(e); }
+  }
+
+  async function duplicateAgentDoc() {
+    if (!activeAgentDoc || !agentContent) return;
+    try {
+      const f = await window.go.desktop.App.ParseAgentForm(agentContent);
+      const existing = new Set(agentDocsList.filter(a => !a.builtin).map(a => a.name));
+      let name = f.name + '_copy';
+      for (let i = 2; existing.has(name); i++) name = f.name + '_copy_' + i;
+      f.name = name;
+      f.hasRouting = false;
+      agentContent = await window.go.desktop.App.ComposeAgentForm(f);
+      activeAgentDoc = { name: '', isNew: true, builtin: false };
+      agentError = ''; agentSaved = false;
+      extensionsSubTab = 'agents';
+    } catch (e) { agentError = String(e); }
+  }
+
+  async function saveAgentDoc() {
+    if (!activeAgentDoc || activeAgentDoc.builtin) return;
+    agentSaving = true; agentError = ''; agentSaved = false;
+    try {
+      await window.go.desktop.App.SaveAgent(activeAgentDoc.isNew ? '' : activeAgentDoc.name, agentContent);
+      activeAgentDoc = { name: agentNameFromContent(agentContent), isNew: false, builtin: false };
+      agentSaved = true;
+      markConfigDirty('Agent saved — start a New Chat to use it');
+      await loadAgentDocs();
+      agents = await window.go.desktop.App.ListAgents();
+      setTimeout(() => agentSaved = false, 2000);
+    } catch (e) { agentError = String(e); }
+    finally { agentSaving = false; }
+  }
+
+  async function deleteAgentDoc() {
+    if (!activeAgentDoc || activeAgentDoc.builtin) return;
+    if (activeAgentDoc.isNew) { activeAgentDoc = null; agentContent = ''; return; }
+    try {
+      await window.go.desktop.App.DeleteAgent(activeAgentDoc.name);
+      activeAgentDoc = null; agentContent = ''; agentError = '';
+      await loadAgentDocs();
+      agents = await window.go.desktop.App.ListAgents();
+    } catch (e) { agentError = String(e); }
+  }
+
+  function agentNameFromContent(c) {
+    const m = c.match(/^name:\s*(.+)$/m);
+    return m ? m[1].trim() : '';
+  }
+
+  async function askAboutNode(node) {
+    if (!node) return;
+    leftTab = 'agents';
+    if (!currentAgent && agents.length) {
+      const def = agents.find(a => a.category === 'default') || agents[0];
+      await selectAgent(def);
+    }
+    const label = node.label || node.id;
+    const src = node.source ? ` Source: ${node.source}.` : '';
+    inputValue = `Tell me about "${label}" (${node.type || 'node'}) in my knowledge graph.${src} What is it and how does it relate to my project?`;
+    await tick();
   }
 
   async function loadTools() {
@@ -315,7 +430,7 @@
       await window.go.desktop.App.SaveTool(activeTool.isNew ? '' : activeTool.name, toolContent);
       activeTool = { name: toolNameFromContent(toolContent) || activeTool.name, isNew: false };
       toolSaved = true;
-      toast('Tool saved — New Chat to apply', 'info');
+      markConfigDirty('Tool saved — apply to activate in chat');
       await loadTools();
       setTimeout(() => toolSaved = false, 2000);
     } catch (e) { toolError = String(e); }
@@ -376,7 +491,7 @@
       await window.go.desktop.App.SaveSkill(activeSkill.isNew ? '' : activeSkill.name, skillContent);
       activeSkill = { name: skillNameFromContent(skillContent) || activeSkill.name, isNew: false };
       skillSaved = true;
-      toast('Skill saved — New Chat to apply', 'info');
+      markConfigDirty('Skill saved — apply to activate in chat');
       await loadSkills();
       setTimeout(() => skillSaved = false, 2000);
     } catch (e) { skillError = String(e); }
@@ -436,7 +551,7 @@
       await window.go.desktop.App.SaveMCP(activeMCP.isNew ? '' : activeMCP.name, mcpContent);
       activeMCP = { name: mcpNameFromContent(mcpContent) || activeMCP.name, isNew: false };
       mcpSaved = true;
-      toast('MCP server saved — New Chat to apply', 'info');
+      markConfigDirty('MCP server saved — apply to activate in chat');
       await loadMCP();
       setTimeout(() => mcpSaved = false, 2000);
     } catch (e) { mcpError = String(e); }
@@ -481,10 +596,15 @@
       await window.go.desktop.App.SavePersona(currentAgent.name, e.detail);
       persona = e.detail;
       personaSaved = true;
-      toast('Personality saved — New Chat to apply', 'info');
+      markConfigDirty('Personality saved — apply to activate in chat');
       await loadContextPreview();
       setTimeout(() => personaSaved = false, 2000);
     } catch (err) { errorBanner = 'Personality: ' + String(err); }
+  }
+
+  function markConfigDirty(reason = 'Configuration saved — not active in this chat yet.') {
+    configDirty = true;
+    configDirtyReason = reason;
   }
 
   function toast(message, type = 'info') {
@@ -500,6 +620,14 @@
       kind, label, detail,
       ts: ts || Date.now(),
     }].slice(-80);
+  }
+
+  async function refreshSavedSessions() {
+    try {
+      savedSessions = await window.go.desktop.App.ListSavedSessions() || [];
+    } catch (_) {
+      savedSessions = [];
+    }
   }
 
   async function refreshHomeData() {
@@ -527,6 +655,53 @@
     } catch (_) {
       homeSessions = [];
     }
+    await refreshSavedSessions();
+  }
+
+  async function resumeSaved(savedID) {
+    if (!savedID) return;
+    errorBanner = '';
+    try {
+      if (currentSession) {
+        try { await window.go.desktop.App.CloseSession(currentSession); } catch (_) {}
+      }
+      const agentName = currentAgent?.name || 'm';
+      const result = await window.go.desktop.App.ResumeSavedSession(savedID, agentName);
+      currentSession = result.session.id;
+      messages = (result.messages || []).map(m => ({ role: m.role, content: m.content }));
+      streamBuffer = '';
+      activityEvents = [];
+      cost = { inputTokens: 0, outputTokens: 0, cost: 0 };
+      moeRoute = null;
+      contextUsage = 0;
+      pendingApproval = null;
+      pendingContinue = null;
+      configDirty = false;
+      configDirtyReason = '';
+      leftTab = 'agents';
+      await loadContextPreview();
+      toast('Session restored', 'ok');
+    } catch (e) {
+      errorBanner = String(e);
+      toast(String(e), 'error');
+    }
+  }
+
+  async function deleteSaved(savedID) {
+    if (!savedID) return;
+    try {
+      await window.go.desktop.App.DeleteSavedSession(savedID);
+      savedSessions = savedSessions.filter(s => s.id !== savedID);
+      toast('Saved session deleted', 'ok');
+    } catch (e) {
+      toast(String(e), 'error');
+    }
+  }
+
+  function setProMode(mode) {
+    proMode = mode !== 'simple';
+    localStorage.setItem('agentctl_ui_mode', proMode ? 'pro' : 'simple');
+    if (!proMode) showInspector = false;
   }
 
   function personaLabel() {
@@ -546,6 +721,7 @@
     if (tab === 'ext-tools') { openExtensions('tools'); return; }
     if (tab === 'ext-skills') { openExtensions('skills'); return; }
     if (tab === 'ext-mcp') { openExtensions('mcp'); return; }
+    if (tab === 'ext-agents') { openExtensions('agents'); return; }
     leftTab = tab;
     if (tab === 'knowledge') ensureKnowledge();
     if (tab === 'personality') loadPersona();
@@ -572,7 +748,9 @@
     { label: 'Extensions — tools', icon: '🛠', action: 'ext-tools', hint: '' },
     { label: 'Extensions — skills', icon: '✦', action: 'ext-skills', hint: '' },
     { label: 'Extensions — MCP', icon: '🔌', action: 'ext-mcp', hint: '' },
+    { label: 'Extensions — agents', icon: '⬡', action: 'ext-agents', hint: '' },
     { label: 'Personality', icon: '🎭', action: 'personality', hint: currentAgent?.name || '' },
+    { label: 'Export chat', icon: '⤓', action: 'exportChat', hint: '' },
     { label: 'Settings', icon: '⚙', action: 'settings', hint: '' },
     { label: 'Refresh health', icon: '↻', action: 'refreshHealth', hint: '' },
     { label: 'Toggle context inspector', icon: '◧', action: 'toggleInspector', hint: '' },
@@ -582,6 +760,7 @@
     if (action === 'home') openHome();
     else if (action === 'newChat') newChat();
     else if (action === 'settings') showSettings = true;
+    else if (action === 'exportChat') exportChat();
     else if (action === 'refreshHealth') refreshHomeData();
     else if (action === 'toggleInspector') { showInspector = !showInspector; if (showInspector) loadContextPreview(); }
     else navTab(action);
@@ -591,6 +770,35 @@
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
       e.preventDefault();
       paletteOpen = true;
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === 'n') {
+      e.preventDefault();
+      newChat();
+    }
+    if ((e.metaKey || e.ctrlKey) && e.key === ',') {
+      e.preventDefault();
+      showSettings = true;
+    }
+  }
+
+  async function exportChat() {
+    if (!currentSession) {
+      toast('No active chat to export', 'error');
+      return;
+    }
+    try {
+      const md = await window.go.desktop.App.ExportSessionMarkdown(currentSession);
+      const blob = new Blob([md], { type: 'text/markdown' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const stamp = new Date().toISOString().slice(0, 10);
+      a.href = url;
+      a.download = `agentctl-${currentAgent?.name || 'chat'}-${stamp}.md`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast('Chat exported', 'ok');
+    } catch (e) {
+      toast(String(e), 'error');
     }
   }
 
@@ -686,7 +894,10 @@
       cost = { inputTokens: 0, outputTokens: 0, cost: 0 };
       moeRoute = null; contextUsage = 0; pendingApproval = null; pendingContinue = null;
       await loadContextPreview();
+      configDirty = false;
+      configDirtyReason = '';
       toast('New chat started with latest config', 'ok');
+      refreshHomeData();
     } catch (e) { errorBanner = String(e); }
   }
 
@@ -774,11 +985,16 @@
   <Settings
     on:close={() => showSettings = false}
     on:theme={e => applyTheme(e.detail)}
+    on:uiMode={e => setProMode(e.detail)}
+    on:nav={e => { showSettings = false; navTab(e.detail); }}
   />
 {:else}
   <div class="app">
     <TopBar agent={currentAgent} {cost} {moeRoute} {contextUsage}
       on:settings={() => showSettings = true} on:persona={openPersonality} />
+
+    <ApplyBar visible={configDirty} reason={configDirtyReason}
+      on:apply={newChat} on:dismiss={() => { configDirty = false; configDirtyReason = ''; }} />
 
     <div class="body">
       <nav class="rail">
@@ -791,12 +1007,14 @@
         <button class="rail-btn" class:active={leftTab === 'knowledge'} on:click={openKnowledge} title="Knowledge graph">
           <span class="rail-ico">◆</span><span class="rail-lbl">Knowledge</span>
         </button>
+        {#if proMode}
         <button class="rail-btn" class:active={leftTab === 'extensions'} on:click={() => openExtensions('tools')} title="Extensions">
           <span class="rail-ico">🧩</span><span class="rail-lbl">Extensions</span>
         </button>
         <button class="rail-btn" class:active={leftTab === 'personality'} on:click={openPersonality} title="Personality">
           <span class="rail-ico">🎭</span><span class="rail-lbl">Persona</span>
         </button>
+        {/if}
         <div class="rail-spacer"></div>
         <button class="rail-btn" on:click={() => showSettings = true} title="Settings">
           <span class="rail-ico">⚙</span><span class="rail-lbl">Settings</span>
@@ -806,7 +1024,10 @@
       {#if leftTab !== 'home' && leftTab !== 'knowledge'}
       <div class="sidecol">
         {#if leftTab === 'agents'}
-          <Sidebar {agents} active={currentAgent} on:select={e => selectAgent(e.detail)} on:settings={() => showSettings = true} />
+          <Sidebar {agents} active={currentAgent} {savedSessions}
+            on:select={e => selectAgent(e.detail)}
+            on:resume={e => resumeSaved(e.detail)}
+            on:settings={() => showSettings = true} />
         {:else if leftTab === 'extensions'}
           <ExtensionsNav active={extensionsSubTab} on:select={e => openExtensions(e.detail)} />
           {#if extensionsSubTab === 'tools'}
@@ -818,9 +1039,15 @@
           {:else if extensionsSubTab === 'mcp'}
             <MCPSidebar servers={mcpList} activeName={activeMCP?.name}
               on:select={e => selectMCP(e.detail)} on:new={newMCP} on:settings={() => showSettings = true} />
+          {:else if extensionsSubTab === 'agents'}
+            <AgentsSidebar agents={agentDocsList} activeName={activeAgentDoc?.name}
+              on:select={e => selectAgentDoc(e.detail)} on:new={newAgentDoc} />
           {/if}
         {:else if leftTab === 'personality'}
-          <Sidebar {agents} active={currentAgent} on:select={e => selectAgent(e.detail)} on:settings={() => showSettings = true} />
+          <Sidebar {agents} active={currentAgent} {savedSessions}
+            on:select={e => selectAgent(e.detail)}
+            on:resume={e => resumeSaved(e.detail)}
+            on:settings={() => showSettings = true} />
         {/if}
       </div>
       {/if}
@@ -831,10 +1058,12 @@
         {/if}
 
         {#if leftTab === 'home'}
-          <CommandCenter agent={currentAgent} health={healthReport} stats={homeStats} {moeRoute} sessions={homeSessions}
+          <CommandCenter agent={currentAgent} health={healthReport} stats={homeStats} {moeRoute} sessions={homeSessions} {savedSessions}
             on:nav={e => navTab(e.detail)}
             on:newChat={newChat}
-            on:refresh={refreshHomeData} />
+            on:refresh={refreshHomeData}
+            on:resume={e => resumeSaved(e.detail)}
+            on:deleteSaved={e => deleteSaved(e.detail)} />
         {:else if leftTab === 'extensions' && extensionsSubTab === 'tools'}
           <div class="tools-main">
             {#if activeTool}
@@ -908,6 +1137,35 @@
               </div>
             {/if}
           </div>
+        {:else if leftTab === 'extensions' && extensionsSubTab === 'agents'}
+          <div class="tools-main">
+            {#if activeAgentDoc}
+              {#if !activeAgentDoc.isNew && !activeAgentDoc.builtin}
+                <div class="tool-bar slim">
+                  <button class="tbtn delete" on:click={deleteAgentDoc}>Delete agent</button>
+                </div>
+              {/if}
+              <AgentFormEditor bind:content={agentContent} bind:advanced={agentAdvanced}
+                builtin={activeAgentDoc.builtin}
+                builtinTools={builtinToolNames}
+                customToolNames={toolsList.filter(t => !t.error).map(t => t.name)}
+                skillNames={skillsList.filter(s => !s.error).map(s => s.name)}
+                mcpNames={mcpList.filter(m => !m.error).map(m => m.name)}
+                saving={agentSaving} saved={agentSaved} error={agentError}
+                on:change={e => { agentContent = e.detail; agentSaved = false; }}
+                on:save={saveAgentDoc}
+                on:duplicate={duplicateAgentDoc} />
+            {:else}
+              <div class="tools-empty">
+                <div class="tools-empty-card">
+                  <h2>Agent Studio</h2>
+                  <p>View built-in agents or create a custom agent in <code>~/.config/m/agents</code>.
+                  Pick one on the left, duplicate a built-in, or start fresh.</p>
+                  <button on:click={newAgentDoc}>＋ New agent</button>
+                </div>
+              </div>
+            {/if}
+          </div>
         {:else if leftTab === 'personality'}
           {#if currentAgent}
             {#key personaKey}
@@ -943,7 +1201,8 @@
                 nodes={kmNodes} selectedId={kmSelectedId}
                 on:index={kmIndexFolder} on:refresh={refreshKnowledge}
                 on:toggle={e => toggleKMType(e.detail)}
-                on:select={e => kmSelectedId = e.detail} />
+                on:select={e => kmSelectedId = e.detail}
+                on:ask={e => askAboutNode(e.detail)} />
             {:else}
               <div class="km-empty">
                 <div class="km-empty-card">
@@ -978,11 +1237,14 @@ km serve</pre>
               <div class="chat-toolbar">
                 <span class="chat-title">◆ {currentAgent?.name}</span>
                 {#if moeRoute}<span class="moe-pill">{moeRoute.category}</span>{/if}
+                {#if proMode}
                 <button class="tb-btn persona-pill" on:click={openPersonality} title="Edit personality">
                   🎭 {personaLabel()}
                 </button>
                 <button class="tb-btn" class:on={showInspector} on:click={() => { showInspector = !showInspector; if (showInspector) loadContextPreview(); }} title="Context inspector">◧ Context</button>
+                {/if}
                 <button class="tb-btn" on:click={() => paletteOpen = true} title="Command palette (⌘K)">⌘K</button>
+                <button class="tb-btn" on:click={exportChat} title="Export chat as Markdown">⤓ Export</button>
               </div>
               <ActivityTimeline events={activityEvents} />
 

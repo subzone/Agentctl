@@ -28,6 +28,20 @@ type SkillForm struct {
 	Body        string `json:"body"`
 }
 
+// AgentForm is a form-friendly view of an agent MD document (routing stays in Advanced MD).
+type AgentForm struct {
+	Name           string   `json:"name"`
+	Description    string   `json:"description"`
+	Model          string   `json:"model"`
+	FallbackLines  string   `json:"fallbackLines"` // one model per line
+	Tools          []string `json:"tools"`
+	Skills         []string `json:"skills"`
+	MCP            []string `json:"mcp"`
+	Temperature    *float64 `json:"temperature"`
+	Body           string   `json:"body"`
+	HasRouting     bool     `json:"hasRouting"` // true when MoE routing block exists — edit in Advanced MD
+}
+
 // ParseToolForm extracts editable fields from tool MD content.
 func (a *App) ParseToolForm(content string) (ToolForm, error) {
 	doc, err := config.Parse([]byte(content))
@@ -141,6 +155,67 @@ func trimCommand(cmd []string) []string {
 		}
 	}
 	return out
+}
+
+// ParseAgentForm extracts editable fields from agent MD content.
+func (a *App) ParseAgentForm(content string) (AgentForm, error) {
+	doc, err := config.Parse([]byte(content))
+	if err != nil {
+		return AgentForm{}, fmt.Errorf("parse: %w", err)
+	}
+	spec, ok := doc.Spec.(*config.AgentSpec)
+	if !ok {
+		return AgentForm{}, errors.New("document type is not 'agent'")
+	}
+	fb := strings.Join(spec.FallbackModels, "\n")
+	var temp *float64
+	if spec.Temperature != nil {
+		v := *spec.Temperature
+		temp = &v
+	}
+	return AgentForm{
+		Name:          spec.Name,
+		Description:   spec.Description,
+		Model:         spec.Model,
+		FallbackLines: fb,
+		Tools:         append([]string(nil), spec.Tools...),
+		Skills:        append([]string(nil), spec.Skills...),
+		MCP:           append([]string(nil), spec.MCP...),
+		Temperature:   temp,
+		Body:          doc.Body,
+		HasRouting:    spec.Routing != nil && len(spec.Routing.Experts) > 0,
+	}, nil
+}
+
+// ComposeAgentForm builds agent MD from form fields (does not preserve MoE routing blocks).
+func (a *App) ComposeAgentForm(form AgentForm) (string, error) {
+	if form.HasRouting {
+		return "", errors.New("this agent has MoE routing — edit with Advanced MD to preserve it")
+	}
+	name := strings.TrimSpace(form.Name)
+	if name == "" {
+		return "", errors.New("name is required")
+	}
+	var fallback []string
+	for _, line := range strings.Split(form.FallbackLines, "\n") {
+		if t := strings.TrimSpace(line); t != "" {
+			fallback = append(fallback, t)
+		}
+	}
+	spec := &config.AgentSpec{
+		Meta: config.Meta{
+			Name:        name,
+			Type:        config.TypeAgent,
+			Description: strings.TrimSpace(form.Description),
+		},
+		Model:          strings.TrimSpace(form.Model),
+		FallbackModels: fallback,
+		Tools:          form.Tools,
+		Skills:         form.Skills,
+		MCP:            form.MCP,
+		Temperature:    form.Temperature,
+	}
+	return composeYAML(spec, strings.TrimSpace(form.Body)), nil
 }
 
 // MCPForm is a form-friendly view of an MCP server MD document.

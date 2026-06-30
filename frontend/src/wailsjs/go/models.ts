@@ -62,6 +62,60 @@ export namespace desktop {
 		    return a;
 		}
 	}
+	export class AgentDoc {
+	    name: string;
+	    description: string;
+	    model: string;
+	    path: string;
+	    content: string;
+	    builtin: boolean;
+	    error?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentDoc(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.model = source["model"];
+	        this.path = source["path"];
+	        this.content = source["content"];
+	        this.builtin = source["builtin"];
+	        this.error = source["error"];
+	    }
+	}
+	export class AgentForm {
+	    name: string;
+	    description: string;
+	    model: string;
+	    fallbackLines: string;
+	    tools: string[];
+	    skills: string[];
+	    mcp: string[];
+	    temperature?: number;
+	    body: string;
+	    hasRouting: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentForm(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.model = source["model"];
+	        this.fallbackLines = source["fallbackLines"];
+	        this.tools = source["tools"];
+	        this.skills = source["skills"];
+	        this.mcp = source["mcp"];
+	        this.temperature = source["temperature"];
+	        this.body = source["body"];
+	        this.hasRouting = source["hasRouting"];
+	    }
+	}
 	export class AgentInfo {
 	    name: string;
 	    description: string;
@@ -82,6 +136,22 @@ export namespace desktop {
 	        this.path = source["path"];
 	        this.builtin = source["builtin"];
 	        this.category = source["category"];
+	    }
+	}
+	export class ConfigPath {
+	    id: string;
+	    label: string;
+	    path: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ConfigPath(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.label = source["label"];
+	        this.path = source["path"];
 	    }
 	}
 	export class CostInfo {
@@ -352,6 +422,68 @@ export namespace desktop {
 	        this.error = source["error"];
 	    }
 	}
+	export class ToolCall {
+	    id: string;
+	    name: string;
+	    input: string;
+	    output?: string;
+	    error?: string;
+	    duration: number;
+	    status: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ToolCall(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.name = source["name"];
+	        this.input = source["input"];
+	        this.output = source["output"];
+	        this.error = source["error"];
+	        this.duration = source["duration"];
+	        this.status = source["status"];
+	    }
+	}
+	export class Message {
+	    id: string;
+	    role: string;
+	    content: string;
+	    timestamp: number;
+	    toolCalls?: ToolCall[];
+	
+	    static createFrom(source: any = {}) {
+	        return new Message(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.role = source["role"];
+	        this.content = source["content"];
+	        this.timestamp = source["timestamp"];
+	        this.toolCalls = this.convertValues(source["toolCalls"], ToolCall);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	
 	export class SessionInfo {
 	    id: string;
@@ -375,6 +507,65 @@ export namespace desktop {
 	        this.preview = source["preview"];
 	    }
 	}
+	export class ResumeResult {
+	    session: SessionInfo;
+	    messages: Message[];
+	
+	    static createFrom(source: any = {}) {
+	        return new ResumeResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.session = this.convertValues(source["session"], SessionInfo);
+	        this.messages = this.convertValues(source["messages"], Message);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
+	export class SavedSessionSummary {
+	    id: string;
+	    provider: string;
+	    model: string;
+	    messages: number;
+	    preview: string;
+	    inputTokens: number;
+	    outputTokens: number;
+	    savedAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new SavedSessionSummary(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.provider = source["provider"];
+	        this.model = source["model"];
+	        this.messages = source["messages"];
+	        this.preview = source["preview"];
+	        this.inputTokens = source["inputTokens"];
+	        this.outputTokens = source["outputTokens"];
+	        this.savedAt = source["savedAt"];
+	    }
+	}
+	
 	export class SkillDoc {
 	    name: string;
 	    description: string;
@@ -465,6 +656,7 @@ export namespace desktop {
 	        this.muted = source["muted"];
 	    }
 	}
+	
 	export class ToolDoc {
 	    name: string;
 	    description: string;

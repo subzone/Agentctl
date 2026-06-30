@@ -3,7 +3,11 @@
 import {desktop} from '../models';
 import {userconfig} from '../models';
 
+export function BuiltinToolNames():Promise<Array<string>>;
+
 export function CloseSession(arg1:string):Promise<void>;
+
+export function ComposeAgentForm(arg1:desktop.AgentForm):Promise<string>;
 
 export function ComposeMCPForm(arg1:desktop.MCPForm):Promise<string>;
 
@@ -11,13 +15,21 @@ export function ComposeSkillForm(arg1:desktop.SkillForm):Promise<string>;
 
 export function ComposeToolForm(arg1:desktop.ToolForm):Promise<string>;
 
+export function ConfigPaths():Promise<Array<desktop.ConfigPath>>;
+
 export function CreateSession(arg1:string):Promise<desktop.SessionInfo>;
 
+export function DeleteAgent(arg1:string):Promise<void>;
+
 export function DeleteMCP(arg1:string):Promise<void>;
+
+export function DeleteSavedSession(arg1:string):Promise<void>;
 
 export function DeleteSkill(arg1:string):Promise<void>;
 
 export function DeleteTool(arg1:string):Promise<void>;
+
+export function ExportSessionMarkdown(arg1:string):Promise<string>;
 
 export function GetConfig():Promise<userconfig.Config>;
 
@@ -45,13 +57,19 @@ export function KMSearch(arg1:string,arg2:number):Promise<string>;
 
 export function KMStatus():Promise<desktop.KMStats>;
 
+export function ListAgentDocs():Promise<Array<desktop.AgentDoc>>;
+
 export function ListAgents():Promise<Array<desktop.AgentInfo>>;
 
 export function ListMCP():Promise<Array<desktop.MCPDoc>>;
 
+export function ListSavedSessions():Promise<Array<desktop.SavedSessionSummary>>;
+
 export function ListSkills():Promise<Array<desktop.SkillDoc>>;
 
 export function ListTools():Promise<Array<desktop.ToolDoc>>;
+
+export function NewAgentTemplate():Promise<string>;
 
 export function NewMCPTemplate():Promise<string>;
 
@@ -60,6 +78,8 @@ export function NewSkillTemplate():Promise<string>;
 export function NewToolTemplate():Promise<string>;
 
 export function OpenFile():Promise<desktop.FileResult>;
+
+export function ParseAgentForm(arg1:string):Promise<desktop.AgentForm>;
 
 export function ParseMCPForm(arg1:string):Promise<desktop.MCPForm>;
 
@@ -71,7 +91,11 @@ export function PreviewContext(arg1:string):Promise<desktop.AgentContextPreview>
 
 export function RespondToolApproval(arg1:string,arg2:boolean):Promise<void>;
 
+export function ResumeSavedSession(arg1:string,arg2:string):Promise<desktop.ResumeResult>;
+
 export function SaveAPIKey(arg1:string,arg2:string):Promise<void>;
+
+export function SaveAgent(arg1:string,arg2:string):Promise<void>;
 
 export function SaveConfig(arg1:string,arg2:string,arg3:string):Promise<void>;
 

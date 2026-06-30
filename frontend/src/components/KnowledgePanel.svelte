@@ -10,6 +10,7 @@
   export let typeColors = {};
   export let nodes = [];
   export let selectedId = '';
+  export let selectedNode = null;
 
   let filter = '';
   let searchQuery = '';
@@ -51,7 +52,13 @@
   }
 
   function pickNode(n) {
+    selectedNode = n;
     dispatch('select', n.id);
+  }
+
+  function askAbout() {
+    if (!selectedNode) return;
+    dispatch('ask', selectedNode);
   }
 </script>
 
@@ -108,6 +115,9 @@ km serve</pre>
         <button class="link" on:click={() => dispatch('refresh')}>↻</button>
       </div>
       <input class="filter" bind:value={filter} placeholder="Filter by label, type, source…" />
+      {#if selectedNode}
+        <button class="ask-btn" on:click={askAbout}>💬 Ask in chat about “{selectedNode.label || selectedNode.id}”</button>
+      {/if}
       <div class="types">
         {#each types as t}
           <label class="type" class:off={!visibleTypes.has(t)}>
@@ -152,6 +162,8 @@ km serve</pre>
   .search-row{display:flex;gap:6px}
   .search,.filter{width:100%;box-sizing:border-box;padding:8px 10px;background:#0c1322;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:12px}
   .filter{margin-bottom:8px}
+  .ask-btn{width:100%;margin-bottom:8px;padding:8px 10px;border-radius:6px;border:1px solid #4338ca;background:#1e1b4b;color:#c4b5fd;font-size:11px;font-weight:600;cursor:pointer;text-align:left}
+  .ask-btn:hover{background:#312e81}
   .results{margin:8px 0 0;padding:8px;background:#0c1322;border:1px solid #1e293b;border-radius:6px;font-size:10px;color:#cbd5e1;max-height:120px;overflow:auto;white-space:pre-wrap;word-break:break-word}
   .prog{margin-top:8px}
   .bar{height:5px;background:#1e293b;border-radius:4px;overflow:hidden}

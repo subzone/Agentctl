@@ -53,6 +53,27 @@ func TestComposeSkillForm(t *testing.T) {
 	}
 }
 
+func TestComposeAgentForm(t *testing.T) {
+	a := &App{}
+	out, err := a.ComposeAgentForm(AgentForm{
+		Name:        "helper",
+		Description: "A helper agent",
+		Model:       "groq/llama-3.3-70b-versatile",
+		Tools:       []string{"shell", "fs_read"},
+		Body:        "Be helpful.",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	form, err := a.ParseAgentForm(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if form.Name != "helper" || form.Model == "" {
+		t.Fatalf("parse: %+v", form)
+	}
+}
+
 func TestComposeMCPForm(t *testing.T) {
 	a := &App{}
 	form, err := a.ParseMCPForm(a.NewMCPTemplate())

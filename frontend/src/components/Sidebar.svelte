@@ -2,6 +2,7 @@
   import { createEventDispatcher } from 'svelte';
   export let agents = [];
   export let active = null;
+  export let savedSessions = [];
   const dispatch = createEventDispatcher();
 
   let search = '';
@@ -13,13 +14,10 @@
     return !search || a.name.toLowerCase().includes(search.toLowerCase());
   }
 
-  // Session history (stored in localStorage)
-  let sessionHistory = JSON.parse(localStorage.getItem('agentctl-sessions') || '[]');
-
-  export function addSession(name) {
-    const entry = { name, ts: Date.now() };
-    sessionHistory = [entry, ...sessionHistory.slice(0, 9)];
-    localStorage.setItem('agentctl-sessions', JSON.stringify(sessionHistory));
+  function fmtSaved(ts) {
+    if (!ts) return '';
+    const d = new Date(ts * 1000);
+    return d.toLocaleDateString([], { month: 'short', day: 'numeric' });
   }
 </script>
 
@@ -68,20 +66,22 @@
       {/each}
     {/if}
 
-    {#if hubAgents.length === 0 && standaloneAgents.length === 0}
+    {#if hubAgents.length === 0 && standaloneAgents.length === 0 && defaultAgents.length === 0}
       <div class="empty">No agents found</div>
     {/if}
   </div>
 
-  {#if sessionHistory.length > 0}
+  {#if savedSessions.length > 0}
     <div class="history">
-      <div class="group-label">Recent Sessions</div>
-      {#each sessionHistory as s}
-        <div class="history-item">{s.name} <span class="ts">{new Date(s.ts).toLocaleDateString()}</span></div>
+      <div class="group-label">Saved chats</div>
+      {#each savedSessions.slice(0, 8) as s}
+        <button class="history-item" on:click={() => dispatch('resume', s.id)} title={s.preview}>
+          <span class="hist-preview">{s.preview || 'Saved chat'}</span>
+          <span class="ts">{s.messages} · {fmtSaved(s.savedAt)}</span>
+        </button>
       {/each}
     </div>
   {/if}
-
 </aside>
 
 <style>
@@ -96,7 +96,7 @@
   }
   .search-box input:focus { border-color: #3b82f6; }
 
-  .agent-list { flex: 1; overflow-y: auto; padding: 0 8px 8px; }
+  .agent-list { flex: 1; overflow-y: auto; padding: 0 8px 8px; min-height: 0; }
 
   .group-label{font-size:10px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.5px;padding:10px 10px 4px;margin-top:4px}
 
@@ -116,11 +116,12 @@
   .desc { font-size: 11px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .empty { padding: 20px; text-align: center; color: #475569; font-size: 13px; }
 
-  .history{padding:0 8px 8px;border-top:1px solid #1e293b;max-height:120px;overflow-y:auto}
-  .history-item{font-size:11px;color:#64748b;padding:4px 10px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .history-item .ts{float:right;color:#334155;font-size:10px}
-
-  .footer{padding:12px;border-top:1px solid #1e293b;flex-shrink:0}
-  .settings-btn{width:100%;padding:8px;background:none;border:1px solid #334155;border-radius:6px;color:#64748b;font-size:13px;cursor:pointer}
-  .settings-btn:hover{background:#1e293b;color:#e2e8f0}
+  .history{padding:0 8px 10px;border-top:1px solid #1e293b;max-height:160px;overflow-y:auto;flex-shrink:0}
+  .history-item{
+    display:flex;align-items:center;gap:6px;width:100%;padding:6px 10px;
+    background:none;border:none;border-radius:6px;cursor:pointer;text-align:left;color:#94a3b8;
+  }
+  .history-item:hover{background:#1e293b;color:#e2e8f0}
+  .hist-preview{flex:1;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .history-item .ts{flex-shrink:0;color:#334155;font-size:10px}
 </style>

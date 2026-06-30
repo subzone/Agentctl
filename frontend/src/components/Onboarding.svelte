@@ -78,10 +78,10 @@
       <h2>You're ready</h2>
       <p>Try these next:</p>
       <ul>
-        <li>Open <strong>Home</strong> to check setup health</li>
+        <li>Open <strong>Home</strong> to check setup health and resume saved chats</li>
         <li>Start a <strong>Chat</strong> with the default MoE agent</li>
-        <li>Press <strong>⌘K</strong> for the command palette</li>
-        <li>Toggle <strong>◧ Context</strong> to see what the agent reads</li>
+        <li>Press <strong>⌘K</strong> for the command palette · <strong>⌘N</strong> for new chat</li>
+        <li>Use <strong>Settings → General → Simple</strong> for a minimal chat-first UI</li>
       </ul>
       <div class="actions">
         <button class="primary" on:click={finish}>Open AgentCTL</button>

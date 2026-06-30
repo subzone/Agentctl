@@ -465,6 +465,7 @@ func (a *App) SendMessage(sessionID, message string) error {
 			"outputTokens": usage.OutputTokens,
 			"cost":         cost,
 		})
+		a.persistSessionToDisk(sess)
 	}()
 
 	return nil
@@ -588,8 +589,8 @@ func (a *App) OpenFile() (*FileResult, error) {
 
 func (a *App) CloseSession(sessionID string) {
 	a.mu.Lock()
-	defer a.mu.Unlock()
-	if s, ok := a.sessions[sessionID]; ok {
+	s, ok := a.sessions[sessionID]
+	if ok {
 		if s.cancel != nil {
 			s.cancel()
 		}
@@ -598,6 +599,10 @@ func (a *App) CloseSession(sessionID string) {
 		}
 	}
 	delete(a.sessions, sessionID)
+	a.mu.Unlock()
+	if ok {
+		a.persistSessionToDisk(s)
+	}
 }
 
 func (a *App) SwitchAgent(sessionID, agentName string) error {
