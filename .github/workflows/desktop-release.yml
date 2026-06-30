@@ -79,7 +79,7 @@ jobs:
           tar -czf m-macos-universal.app.tar.gz AgentCTL.app
       
       - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: desktop-${{ matrix.os }}
           path: |
@@ -109,7 +109,7 @@ jobs:
           docker save agentctl:${{ github.ref_name || inputs.version }} | gzip > agentctl-docker.tar.gz
       
       - name: Upload Docker image
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: docker-image
           path: agentctl-docker.tar.gz
