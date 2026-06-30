@@ -7,17 +7,47 @@ export function CloseSession(arg1:string):Promise<void>;
 
 export function CreateSession(arg1:string):Promise<desktop.SessionInfo>;
 
+export function DeleteMCP(arg1:string):Promise<void>;
+
+export function DeleteSkill(arg1:string):Promise<void>;
+
+export function DeleteTool(arg1:string):Promise<void>;
+
 export function GetConfig():Promise<userconfig.Config>;
 
 export function GetCost(arg1:string):Promise<desktop.CostInfo>;
 
 export function GetMCPStatus():Promise<Array<desktop.MCPStatus>>;
 
+export function GetPersona(arg1:string):Promise<desktop.Persona>;
+
 export function GetSessions():Promise<Array<desktop.SessionInfo>>;
 
 export function GetThemes():Promise<Array<desktop.ThemeInfo>>;
 
+export function KMGraph():Promise<desktop.KMGraphData>;
+
+export function KMHealth():Promise<desktop.KMHealth>;
+
+export function KMIndex(arg1:string,arg2:string):Promise<void>;
+
+export function KMPickDirectory():Promise<string>;
+
+export function KMStatus():Promise<desktop.KMStats>;
+
 export function ListAgents():Promise<Array<desktop.AgentInfo>>;
+
+export function ListMCP():Promise<Array<desktop.MCPDoc>>;
+
+export function ListSkills():Promise<Array<desktop.SkillDoc>>;
+
+export function ListTools():Promise<Array<desktop.ToolDoc>>;
+
+export function NewMCPTemplate():Promise<string>;
+
+export function NewSkillTemplate():Promise<string>;
+
+export function NewToolTemplate():Promise<string>;
 
 export function OpenFile():Promise<desktop.FileResult>;
 
@@ -26,6 +56,14 @@ export function RespondToolApproval(arg1:string,arg2:boolean):Promise<void>;
 export function SaveAPIKey(arg1:string,arg2:string):Promise<void>;
 
 export function SaveConfig(arg1:string,arg2:string,arg3:string):Promise<void>;
+
+export function SaveMCP(arg1:string,arg2:string):Promise<void>;
+
+export function SavePersona(arg1:string,arg2:desktop.Persona):Promise<void>;
+
+export function SaveSkill(arg1:string,arg2:string):Promise<void>;
+
+export function SaveTool(arg1:string,arg2:string):Promise<void>;
 
 export function SendMessage(arg1:string,arg2:string):Promise<void>;
 

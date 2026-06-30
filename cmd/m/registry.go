@@ -29,6 +29,15 @@ func mcpRegistryDir() string {
 	return filepath.Join(base, "m", "mcp")
 }
 
+// toolsRegistryDir returns ~/.config/m/tools/ (user-authored tool MD files).
+func toolsRegistryDir() string {
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(base, "m", "tools")
+}
+
 // resolveAgentPath resolves an agent reference to a file path.
 // Checks in order:
 //  1. Literal path (if file exists)

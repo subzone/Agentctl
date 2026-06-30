@@ -82,14 +82,11 @@
     </div>
   {/if}
 
-  <div class="footer">
-    <button class="settings-btn" on:click={() => dispatch('settings')}>⚙ Settings</button>
-  </div>
 </aside>
 
 <style>
   .sidebar {
-    width: 240px; background: #0c1322; border-right: 1px solid #1e293b;
+    width: 100%; flex: 1; min-height: 0; background: #0c1322;
     display: flex; flex-direction: column; overflow: hidden;
   }
   .search-box { padding: 12px; }

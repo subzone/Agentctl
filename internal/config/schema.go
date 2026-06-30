@@ -105,6 +105,25 @@ type ToolSpec struct {
 	Runtime ToolRuntime       `yaml:"runtime"`
 	Command []string          `yaml:"command,omitempty"`
 	Env     map[string]string `yaml:"env,omitempty"`
+	// Parameters is a JSON-Schema "object" describing the tool's inputs,
+	// advertised to the model. The model-provided JSON is delivered to a
+	// shell tool on stdin. Optional; omit for tools that take no input.
+	Parameters any `yaml:"parameters,omitempty"`
+	// TimeoutSec bounds a shell tool's execution. Zero uses a default.
+	TimeoutSec int `yaml:"timeout_sec,omitempty"`
+}
+
+// ParametersJSON returns the parameters as a JSON-Schema object suitable for
+// advertising to the model. Falls back to an empty object schema when unset.
+func (t *ToolSpec) ParametersJSON() json.RawMessage {
+	if t.Parameters == nil {
+		return json.RawMessage(`{"type":"object","properties":{}}`)
+	}
+	b, err := json.Marshal(t.Parameters)
+	if err != nil {
+		return json.RawMessage(`{"type":"object","properties":{}}`)
+	}
+	return b
 }
 
 // MCPTransport identifies how the MCP client connects to the server.

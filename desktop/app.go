@@ -51,6 +51,7 @@ type Session struct {
 	Messages  []Message `json:"messages"`
 	engine    *engine.Session
 	cancel    context.CancelFunc
+	cleanups  []func() error // e.g. MCP managers to close on session end
 	mu        sync.RWMutex
 }
 
@@ -310,8 +311,36 @@ func (a *App) CreateSession(agentName string) (*SessionInfo, error) {
 
 	// Build tools. Pass a nil confirm func: the engine-level ToolConfirm
 	// below is the single authoritative approval gate, so fs_write must not
-	// prompt a second time.
-	reg := tools.Builtins(nil, &tools.UndoStack{})
+	// prompt a second time. knowledge-master tools (km_search, km_index,
+	// km_blast_radius, km_status) are merged in so the chat agent can query
+	// and grow the same knowledge graph shown in the Knowledge tab.
+	reg := tools.Merge(
+		tools.Builtins(nil, &tools.UndoStack{}),
+		tools.NewRegistry(tools.KMTools()...),
+	)
+	// User-authored tools (MD files in ~/.config/m/tools) are loaded fresh
+	// each session so edits take effect on the next New Chat without a restart.
+	if custom, errs := tools.LoadCommandTools(userToolsDir()); len(custom) > 0 {
+		reg = tools.Merge(reg, tools.NewRegistry(custom...))
+		_ = errs
+	}
+
+	// User-authored skills (MD files in ~/.config/m/skills) are composed into
+	// the system prompt fresh each session, so authoring/editing a skill takes
+	// effect on the next New Chat without a restart.
+	system := composeUserSkills(body)
+
+	// Per-agent personality overlay: free-form instructions, tone/verbosity
+	// presets, and an optional temperature override that tweak how this agent
+	// behaves without editing its (possibly bundled) MD file.
+	persona := loadPersona(agentName)
+	if blk := persona.compose(); blk != "" {
+		system += "\n\n" + blk
+	}
+	temperature := spec.Temperature
+	if persona.Temperature != nil {
+		temperature = persona.Temperature
+	}
 
 	maxTokens := 0
 	if spec.MaxTokens != nil {
@@ -325,12 +354,21 @@ func (a *App) CreateSession(agentName string) (*SessionInfo, error) {
 	sw := &streamWriter{ctx: a.ctx, sessionID: id}
 	stw := &statusWriter{ctx: a.ctx, sessionID: id}
 
+	// User-configured MCP servers (~/.config/m/mcp/*.md) are opened and their
+	// tools (namespaced by tool_prefix) merged in, so the agent can use them
+	// just like builtins. They're torn down when the session is closed.
+	var cleanups []func() error
+	if mgr := a.openUserMCP(agentName, stw); mgr != nil {
+		reg = tools.Merge(reg, mgr.Registry())
+		cleanups = append(cleanups, mgr.Close)
+	}
+
 	sess := engine.NewSession(engine.Config{
 		Provider:    provider,
 		Model:       resolvedModel,
-		System:      body,
+		System:      system,
 		Tools:       reg,
-		Temperature: spec.Temperature,
+		Temperature: temperature,
 		MaxTokens:   maxTokens,
 		// Wire MoE routing and the fallback chain so the default "m" agent
 		// behaves like it does in the CLI: each turn is routed to the best
@@ -339,8 +377,20 @@ func (a *App) CreateSession(agentName string) (*SessionInfo, error) {
 		Routing:        spec.Routing,
 		FallbackModels: spec.FallbackModels,
 		ResolveModel:   llm.Resolve,
+		// Interactive desktop sessions explore more than one-shot CLI runs, so
+		// give the tool loop more headroom before pausing, and ask the user
+		// whether to keep going instead of hard-stopping at the cap.
+		MaxTurns: 40,
 		ToolConfirm: func(ctx context.Context, name string, input json.RawMessage) (bool, error) {
+			// Read-only tools (search/read/list/status) run without prompting;
+			// only mutating or shell-executing tools need explicit approval.
+			if readOnlyTools[name] {
+				return true, nil
+			}
 			return a.requestToolApproval(ctx, id, name, input)
+		},
+		ContinueConfirm: func(ctx context.Context, turns int) (bool, error) {
+			return a.requestContinue(ctx, id, turns)
 		},
 		Out:    sw,
 		Status: stw,
@@ -352,6 +402,7 @@ func (a *App) CreateSession(agentName string) (*SessionInfo, error) {
 		Model:     model,
 		CreatedAt: time.Now().Unix(),
 		engine:    sess,
+		cleanups:  cleanups,
 	}
 	a.sessions[id] = session
 
@@ -533,8 +584,13 @@ func (a *App) OpenFile() (*FileResult, error) {
 func (a *App) CloseSession(sessionID string) {
 	a.mu.Lock()
 	defer a.mu.Unlock()
-	if s, ok := a.sessions[sessionID]; ok && s.cancel != nil {
-		s.cancel()
+	if s, ok := a.sessions[sessionID]; ok {
+		if s.cancel != nil {
+			s.cancel()
+		}
+		for _, c := range s.cleanups {
+			_ = c()
+		}
 	}
 	delete(a.sessions, sessionID)
 }
@@ -557,10 +613,17 @@ func (a *App) SwitchAgent(sessionID, agentName string) error {
 		return err
 	}
 
+	// Recompose the system prompt with user skills and this agent's persona so
+	// switching agents in-place behaves like a fresh session would.
+	system := composeUserSkills(body)
+	if blk := loadPersona(agentName).compose(); blk != "" {
+		system += "\n\n" + blk
+	}
+
 	sess.mu.Lock()
 	defer sess.mu.Unlock()
 	sess.engine.SetModel(provider, model)
-	sess.engine.SetSystem(body)
+	sess.engine.SetSystem(system)
 	sess.engine.SetRouting(spec.Routing)
 	sess.engine.SetFallbacks(spec.FallbackModels, llm.Resolve)
 	sess.Agent = spec.Name
@@ -578,6 +641,21 @@ func (a *App) GetMCPStatus() []MCPStatus {
 	})
 	// For now return empty — MCP definitions are on disk not embedded.
 	return statuses
+}
+
+// readOnlyTools are auto-approved in the desktop: they only read state
+// (filesystem reads, searches, knowledge lookups, web GETs) so prompting for
+// each one is pure friction. Mutating tools (fs_write, shell, git, km_index),
+// custom shell tools, and MCP tools are NOT listed here and always prompt.
+var readOnlyTools = map[string]bool{
+	"fs_read":         true,
+	"fs_list":         true,
+	"code_search":     true,
+	"knowledge":       true,
+	"web_fetch":       true,
+	"km_search":       true,
+	"km_status":       true,
+	"km_blast_radius": true,
 }
 
 // --- Tool Confirmation ---
@@ -605,6 +683,38 @@ func (a *App) requestToolApproval(ctx context.Context, sessionID, name string, i
 		"requestId": reqID,
 		"tool":      name,
 		"input":     string(input),
+	})
+
+	select {
+	case ok := <-ch:
+		return ok, nil
+	case <-ctx.Done():
+		return false, ctx.Err()
+	}
+}
+
+// requestContinue is invoked when a Step exhausts its tool-turn budget. It
+// asks the frontend whether to keep going (another full batch of turns) or
+// stop, reusing the same pending-channel plumbing as tool approvals so the
+// frontend answers both via RespondToolApproval.
+func (a *App) requestContinue(ctx context.Context, sessionID string, turns int) (bool, error) {
+	reqID := fmt.Sprintf("cont_%d", time.Now().UnixNano())
+	ch := make(chan bool, 1)
+
+	a.pendingMu.Lock()
+	a.pending[reqID] = ch
+	a.pendingMu.Unlock()
+
+	defer func() {
+		a.pendingMu.Lock()
+		delete(a.pending, reqID)
+		a.pendingMu.Unlock()
+	}()
+
+	runtime.EventsEmit(a.ctx, "continueConfirm", map[string]any{
+		"sessionId": sessionID,
+		"requestId": reqID,
+		"turns":     turns,
 	})
 
 	select {
@@ -667,6 +777,16 @@ func userAgentsDir() string {
 		return ""
 	}
 	return filepath.Join(base, "m", "agents")
+}
+
+// userToolsDir is where user-authored tool MD files live. Each file (type:
+// tool, runtime: shell) becomes a callable tool available to every session.
+func userToolsDir() string {
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(base, "m", "tools")
 }
 
 // streamWriter emits Wails events for each Write call.

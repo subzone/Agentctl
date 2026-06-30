@@ -96,3 +96,9 @@ TOOLS — use them, don't ask:
 - git: Commit verified work.
 - test_run: Always verify.
 - web_fetch: Look things up.
+
+KNOWLEDGE (when knowledge-master is connected):
+- km_search: Recall how the user's projects work before answering — search the graph first.
+- km_blast_radius: Check what a change breaks before proposing it.
+- km_index: When asked to remember code/docs/a folder, index it so it's searchable later.
+- km_status: Check what's already indexed.

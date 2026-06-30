@@ -147,6 +147,15 @@ func buildAgentRuntime(
 	}
 	combined := tools.Builtins(confirm, undo)
 
+	// User-authored tools (~/.config/m/tools/*.md) are available to agents
+	// that list them in `tools:`, same as builtins.
+	if custom, errs := tools.LoadCommandTools(toolsRegistryDir()); len(custom) > 0 {
+		combined = tools.Merge(combined, tools.NewRegistry(custom...))
+		for _, e := range errs {
+			fmt.Fprintf(status, "warning: %v\n", e)
+		}
+	}
+
 	if len(spec.MCP) > 0 {
 		specs, missing := mcp.Resolve(docs, spec.MCP)
 		for _, m := range missing {

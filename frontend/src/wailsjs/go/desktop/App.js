@@ -10,6 +10,18 @@ export function CreateSession(arg1) {
   return window['go']['desktop']['App']['CreateSession'](arg1);
 }
 
+export function DeleteMCP(arg1) {
+  return window['go']['desktop']['App']['DeleteMCP'](arg1);
+}
+
+export function DeleteSkill(arg1) {
+  return window['go']['desktop']['App']['DeleteSkill'](arg1);
+}
+
+export function DeleteTool(arg1) {
+  return window['go']['desktop']['App']['DeleteTool'](arg1);
+}
+
 export function GetConfig() {
   return window['go']['desktop']['App']['GetConfig']();
 }
@@ -22,6 +34,10 @@ export function GetMCPStatus() {
   return window['go']['desktop']['App']['GetMCPStatus']();
 }
 
+export function GetPersona(arg1) {
+  return window['go']['desktop']['App']['GetPersona'](arg1);
+}
+
 export function GetSessions() {
   return window['go']['desktop']['App']['GetSessions']();
 }
@@ -30,8 +46,52 @@ export function GetThemes() {
   return window['go']['desktop']['App']['GetThemes']();
 }
 
+export function KMGraph() {
+  return window['go']['desktop']['App']['KMGraph']();
+}
+
+export function KMHealth() {
+  return window['go']['desktop']['App']['KMHealth']();
+}
+
+export function KMIndex(arg1, arg2) {
+  return window['go']['desktop']['App']['KMIndex'](arg1, arg2);
+}
+
+export function KMPickDirectory() {
+  return window['go']['desktop']['App']['KMPickDirectory']();
+}
+
+export function KMStatus() {
+  return window['go']['desktop']['App']['KMStatus']();
+}
+
 export function ListAgents() {
   return window['go']['desktop']['App']['ListAgents']();
+}
+
+export function ListMCP() {
+  return window['go']['desktop']['App']['ListMCP']();
+}
+
+export function ListSkills() {
+  return window['go']['desktop']['App']['ListSkills']();
+}
+
+export function ListTools() {
+  return window['go']['desktop']['App']['ListTools']();
+}
+
+export function NewMCPTemplate() {
+  return window['go']['desktop']['App']['NewMCPTemplate']();
+}
+
+export function NewSkillTemplate() {
+  return window['go']['desktop']['App']['NewSkillTemplate']();
+}
+
+export function NewToolTemplate() {
+  return window['go']['desktop']['App']['NewToolTemplate']();
 }
 
 export function OpenFile() {
@@ -48,6 +108,22 @@ export function SaveAPIKey(arg1, arg2) {
 
 export function SaveConfig(arg1, arg2, arg3) {
   return window['go']['desktop']['App']['SaveConfig'](arg1, arg2, arg3);
+}
+
+export function SaveMCP(arg1, arg2) {
+  return window['go']['desktop']['App']['SaveMCP'](arg1, arg2);
+}
+
+export function SavePersona(arg1, arg2) {
+  return window['go']['desktop']['App']['SavePersona'](arg1, arg2);
+}
+
+export function SaveSkill(arg1, arg2) {
+  return window['go']['desktop']['App']['SaveSkill'](arg1, arg2);
+}
+
+export function SaveTool(arg1, arg2) {
+  return window['go']['desktop']['App']['SaveTool'](arg1, arg2);
 }
 
 export function SendMessage(arg1, arg2) {

@@ -1,8 +1,50 @@
 <script>
   import { onMount, tick } from 'svelte';
   import Sidebar from './components/Sidebar.svelte';
+  import KnowledgeSidebar from './components/KnowledgeSidebar.svelte';
+  import KnowledgeGraph from './components/KnowledgeGraph.svelte';
+  import ToolsSidebar from './components/ToolsSidebar.svelte';
+  import SkillsSidebar from './components/SkillsSidebar.svelte';
+  import MCPSidebar from './components/MCPSidebar.svelte';
+  import PersonaPanel from './components/PersonaPanel.svelte';
   import TopBar from './components/TopBar.svelte';
   import Settings from './components/Settings.svelte';
+
+  const KM_COLORS = {
+    Repo: '#818cf8', Document: '#38bdf8', Person: '#fbbf24', Tech: '#34d399',
+    Service: '#f472b6', Convention: '#c084fc', Chunk: '#64748b', default: '#94a3b8',
+  };
+
+  // Left column: 'agents' (chat) or 'knowledge' (graph).
+  let leftTab = 'agents';
+  let kmHealth = { available: false, error: '' };
+  let kmStats = null;
+  let kmNodes = [];
+  let kmLinks = [];
+  let kmNodeCounts = {};
+  let kmVisibleTypes = new Set();
+  let kmIndexing = null;
+  let kmLoaded = false;
+  let graphRef;
+
+  // Custom tools (Tools tab).
+  let toolsList = [];
+  let toolsLoaded = false;
+  let activeTool = null; // { name, isNew }
+  let toolContent = '';
+  let toolError = '';
+  let toolSaving = false;
+  let toolSaved = false;
+
+  // Skills (Skills tab). Authored skill bodies are composed into every new
+  // chat's system prompt, so they take effect on the next New Chat.
+  let skillsList = [];
+  let skillsLoaded = false;
+  let activeSkill = null; // { name, isNew }
+  let skillContent = '';
+  let skillError = '';
+  let skillSaving = false;
+  let skillSaved = false;
 
   let agents = [];
   let currentSession = null;
@@ -15,10 +57,25 @@
   let messagesEl;
   let errorBanner = '';
   let showSettings = false;
+
+  // MCP servers (MCP tab).
+  let mcpList = [];
+  let mcpLoaded = false;
+  let activeMCP = null; // { name, isNew }
+  let mcpContent = '';
+  let mcpError = '';
+  let mcpSaving = false;
+  let mcpSaved = false;
+
+  // Per-agent personality overlay (Personality tab).
+  let persona = { instructions: '', tone: '', verbosity: '', temperature: null };
+  let personaSaved = false;
+  let personaKey = 0; // bumped after persona loads to remount the panel
   let attachedFiles = [];
   let moeRoute = null;
   let contextUsage = 0;
   let pendingApproval = null;
+  let pendingContinue = null;
 
   onMount(async () => {
     await waitForWails();
@@ -92,6 +149,304 @@
       messages = [...messages, { role: 'system', content: '◆ routed → ' + data.category + ' (' + data.model + ')' }];
       scrollToBottom();
     });
+
+    window.runtime.EventsOn('continueConfirm', (data) => {
+      if (data.sessionId !== currentSession) return;
+      pendingContinue = { requestId: data.requestId, turns: data.turns };
+      scrollToBottom();
+    });
+
+    window.runtime.EventsOn('kmIndexProgress', (d) => {
+      kmIndexing = { active: true, current: d.current || 0, total: d.total || 0, file: d.file || '' };
+    });
+    window.runtime.EventsOn('kmIndexDone', (d) => {
+      kmIndexing = { active: false, message: d.message || 'Indexing complete' };
+      refreshKnowledge();
+    });
+    window.runtime.EventsOn('kmIndexError', (d) => {
+      kmIndexing = { active: false, error: d.error || 'Indexing failed' };
+    });
+  }
+
+  async function ensureKnowledge() {
+    if (kmLoaded) return;
+    kmLoaded = true;
+    await refreshKnowledge();
+  }
+
+  async function refreshKnowledge() {
+    try {
+      kmHealth = await window.go.desktop.App.KMHealth();
+    } catch (e) {
+      kmHealth = { available: false, error: String(e) };
+    }
+    if (!kmHealth.available) { kmStats = null; kmNodes = []; kmLinks = []; return; }
+    try {
+      kmStats = await window.go.desktop.App.KMStatus();
+      const g = await window.go.desktop.App.KMGraph();
+      kmNodes = g.nodes || [];
+      kmLinks = g.links || [];
+      const counts = {};
+      for (const n of kmNodes) counts[n.type] = (counts[n.type] || 0) + 1;
+      kmNodeCounts = counts;
+      // Default view shows everything except low-signal Chunk nodes.
+      kmVisibleTypes = new Set(Object.keys(counts).filter(t => t !== 'Chunk'));
+    } catch (e) {
+      errorBanner = 'Knowledge graph: ' + String(e);
+    }
+  }
+
+  function toggleKMType(t) {
+    const next = new Set(kmVisibleTypes);
+    if (next.has(t)) next.delete(t); else next.add(t);
+    kmVisibleTypes = next;
+  }
+
+  async function kmIndexFolder() {
+    try {
+      const path = await window.go.desktop.App.KMPickDirectory();
+      if (!path) return;
+      kmIndexing = { active: true, current: 0, total: 0, file: '' };
+      await window.go.desktop.App.KMIndex(path, 'auto');
+    } catch (e) {
+      kmIndexing = { active: false, error: String(e) };
+    }
+  }
+
+  function openKnowledge() {
+    leftTab = 'knowledge';
+    ensureKnowledge();
+  }
+
+  function openTools() {
+    leftTab = 'tools';
+    if (!toolsLoaded) { toolsLoaded = true; loadTools(); }
+  }
+
+  async function loadTools() {
+    try { toolsList = await window.go.desktop.App.ListTools(); }
+    catch (e) { errorBanner = 'Tools: ' + String(e); }
+  }
+
+  function selectTool(td) {
+    activeTool = { name: td.name, isNew: false };
+    toolContent = td.content;
+    toolError = td.error || '';
+    toolSaved = false;
+  }
+
+  async function newTool() {
+    try {
+      const tpl = await window.go.desktop.App.NewToolTemplate();
+      // Give each new tool a unique default name so saving several in a row
+      // doesn't silently overwrite the first (all templates start "my_tool").
+      const existing = new Set(toolsList.map(t => t.name));
+      let name = 'my_tool';
+      for (let i = 2; existing.has(name); i++) name = 'my_tool_' + i;
+      toolContent = tpl.replace(/^name:.*$/m, 'name: ' + name);
+      activeTool = { name: '', isNew: true };
+      toolError = ''; toolSaved = false;
+    } catch (e) { errorBanner = String(e); }
+  }
+
+  function toolNameFromContent(c) {
+    const m = c.match(/^name:\s*(.+)$/m);
+    return m ? m[1].trim() : '';
+  }
+
+  // Two-way bridge between the dedicated Name field and the frontmatter
+  // `name:` line, so renaming is obvious without editing raw YAML. Function
+  // replacement avoids `$` in the value being treated as a backreference.
+  function setToolName(n) {
+    if (/^name:.*$/m.test(toolContent)) {
+      toolContent = toolContent.replace(/^name:.*$/m, () => 'name: ' + n);
+    } else {
+      toolContent = 'name: ' + n + '\n' + toolContent;
+    }
+  }
+
+  async function saveTool() {
+    if (!activeTool) return;
+    toolSaving = true; toolError = ''; toolSaved = false;
+    try {
+      await window.go.desktop.App.SaveTool(activeTool.isNew ? '' : activeTool.name, toolContent);
+      activeTool = { name: toolNameFromContent(toolContent) || activeTool.name, isNew: false };
+      toolSaved = true;
+      await loadTools();
+      setTimeout(() => toolSaved = false, 2000);
+    } catch (e) { toolError = String(e); }
+    finally { toolSaving = false; }
+  }
+
+  async function deleteTool() {
+    if (!activeTool) return;
+    if (activeTool.isNew) { activeTool = null; toolContent = ''; return; }
+    try {
+      await window.go.desktop.App.DeleteTool(activeTool.name);
+      activeTool = null; toolContent = ''; toolError = '';
+      await loadTools();
+    } catch (e) { toolError = String(e); }
+  }
+
+  function openSkills() {
+    leftTab = 'skills';
+    if (!skillsLoaded) { skillsLoaded = true; loadSkills(); }
+  }
+
+  async function loadSkills() {
+    try { skillsList = await window.go.desktop.App.ListSkills(); }
+    catch (e) { errorBanner = 'Skills: ' + String(e); }
+  }
+
+  function selectSkill(sd) {
+    activeSkill = { name: sd.name, isNew: false };
+    skillContent = sd.content;
+    skillError = sd.error || '';
+    skillSaved = false;
+  }
+
+  async function newSkill() {
+    try {
+      const tpl = await window.go.desktop.App.NewSkillTemplate();
+      const existing = new Set(skillsList.map(s => s.name));
+      let name = 'my_skill';
+      for (let i = 2; existing.has(name); i++) name = 'my_skill_' + i;
+      skillContent = tpl.replace(/^name:.*$/m, 'name: ' + name);
+      activeSkill = { name: '', isNew: true };
+      skillError = ''; skillSaved = false;
+    } catch (e) { errorBanner = String(e); }
+  }
+
+  function skillNameFromContent(c) {
+    const m = c.match(/^name:\s*(.+)$/m);
+    return m ? m[1].trim() : '';
+  }
+
+  function setSkillName(n) {
+    if (/^name:.*$/m.test(skillContent)) {
+      skillContent = skillContent.replace(/^name:.*$/m, () => 'name: ' + n);
+    } else {
+      skillContent = 'name: ' + n + '\n' + skillContent;
+    }
+  }
+
+  async function saveSkill() {
+    if (!activeSkill) return;
+    skillSaving = true; skillError = ''; skillSaved = false;
+    try {
+      await window.go.desktop.App.SaveSkill(activeSkill.isNew ? '' : activeSkill.name, skillContent);
+      activeSkill = { name: skillNameFromContent(skillContent) || activeSkill.name, isNew: false };
+      skillSaved = true;
+      await loadSkills();
+      setTimeout(() => skillSaved = false, 2000);
+    } catch (e) { skillError = String(e); }
+    finally { skillSaving = false; }
+  }
+
+  async function deleteSkill() {
+    if (!activeSkill) return;
+    if (activeSkill.isNew) { activeSkill = null; skillContent = ''; return; }
+    try {
+      await window.go.desktop.App.DeleteSkill(activeSkill.name);
+      activeSkill = null; skillContent = ''; skillError = '';
+      await loadSkills();
+    } catch (e) { skillError = String(e); }
+  }
+
+  function openMCP() {
+    leftTab = 'mcp';
+    if (!mcpLoaded) { mcpLoaded = true; loadMCP(); }
+  }
+
+  async function loadMCP() {
+    try { mcpList = await window.go.desktop.App.ListMCP(); }
+    catch (e) { errorBanner = 'MCP: ' + String(e); }
+  }
+
+  function selectMCP(sd) {
+    activeMCP = { name: sd.name, isNew: false };
+    mcpContent = sd.content;
+    mcpError = sd.error || '';
+    mcpSaved = false;
+  }
+
+  async function newMCP() {
+    try {
+      const tpl = await window.go.desktop.App.NewMCPTemplate();
+      const existing = new Set(mcpList.map(s => s.name));
+      let name = 'my_server';
+      for (let i = 2; existing.has(name); i++) name = 'my_server_' + i;
+      mcpContent = tpl.replace(/^name:.*$/m, 'name: ' + name);
+      activeMCP = { name: '', isNew: true };
+      mcpError = ''; mcpSaved = false;
+    } catch (e) { errorBanner = String(e); }
+  }
+
+  function mcpNameFromContent(c) {
+    const m = c.match(/^name:\s*(.+)$/m);
+    return m ? m[1].trim() : '';
+  }
+  function setMCPName(n) {
+    if (/^name:.*$/m.test(mcpContent)) {
+      mcpContent = mcpContent.replace(/^name:.*$/m, () => 'name: ' + n);
+    } else {
+      mcpContent = 'name: ' + n + '\n' + mcpContent;
+    }
+  }
+
+  async function saveMCP() {
+    if (!activeMCP) return;
+    mcpSaving = true; mcpError = ''; mcpSaved = false;
+    try {
+      await window.go.desktop.App.SaveMCP(activeMCP.isNew ? '' : activeMCP.name, mcpContent);
+      activeMCP = { name: mcpNameFromContent(mcpContent) || activeMCP.name, isNew: false };
+      mcpSaved = true;
+      await loadMCP();
+      setTimeout(() => mcpSaved = false, 2000);
+    } catch (e) { mcpError = String(e); }
+    finally { mcpSaving = false; }
+  }
+
+  async function deleteMCP() {
+    if (!activeMCP) return;
+    if (activeMCP.isNew) { activeMCP = null; mcpContent = ''; return; }
+    try {
+      await window.go.desktop.App.DeleteMCP(activeMCP.name);
+      activeMCP = null; mcpContent = ''; mcpError = '';
+      await loadMCP();
+    } catch (e) { mcpError = String(e); }
+  }
+
+  async function openPersonality() {
+    leftTab = 'personality';
+    await loadPersona();
+  }
+
+  async function loadPersona() {
+    personaSaved = false;
+    if (!currentAgent) { persona = { instructions: '', tone: '', verbosity: '', temperature: null }; personaKey++; return; }
+    try {
+      const p = await window.go.desktop.App.GetPersona(currentAgent.name);
+      persona = {
+        instructions: p.instructions || '',
+        tone: p.tone || '',
+        verbosity: p.verbosity || '',
+        temperature: (p.temperature === undefined ? null : p.temperature),
+      };
+    } catch (e) {
+      persona = { instructions: '', tone: '', verbosity: '', temperature: null };
+    }
+    personaKey++;
+  }
+
+  async function savePersona(e) {
+    if (!currentAgent) { errorBanner = 'Select an agent first.'; return; }
+    try {
+      await window.go.desktop.App.SavePersona(currentAgent.name, e.detail);
+      persona = e.detail;
+      personaSaved = true;
+      setTimeout(() => personaSaved = false, 2000);
+    } catch (err) { errorBanner = 'Personality: ' + String(err); }
   }
 
   function renderMarkdown(text) {
@@ -168,19 +523,22 @@
         currentAgent = agent;
         messages = []; streamBuffer = '';
         cost = { inputTokens: 0, outputTokens: 0, cost: 0 };
-        moeRoute = null; contextUsage = 0; pendingApproval = null;
+        moeRoute = null; contextUsage = 0; pendingApproval = null; pendingContinue = null;
       }
+      if (leftTab === 'personality') await loadPersona();
     } catch (e) { errorBanner = String(e); }
   }
 
   async function newChat() {
     if (!currentAgent) return;
     try {
+      // Close the previous session so its MCP subprocesses are torn down.
+      if (currentSession) { try { await window.go.desktop.App.CloseSession(currentSession); } catch (_) {} }
       const session = await window.go.desktop.App.CreateSession(currentAgent.name);
       currentSession = session.id;
       messages = []; streamBuffer = '';
       cost = { inputTokens: 0, outputTokens: 0, cost: 0 };
-      moeRoute = null; contextUsage = 0; pendingApproval = null;
+      moeRoute = null; contextUsage = 0; pendingApproval = null; pendingContinue = null;
     } catch (e) { errorBanner = String(e); }
   }
 
@@ -219,6 +577,7 @@
   async function stopGen() {
     try { await window.go.desktop.App.StopGeneration(currentSession); } catch (_) {}
     pendingApproval = null;
+    pendingContinue = null;
     streaming = false;
     if (streamBuffer) {
       messages = [...messages, { role: 'assistant', content: streamBuffer + '\n[stopped]' }];
@@ -235,6 +594,17 @@
       content: (approved ? '✓ approved ' : '✕ denied ') + tool + ' ' + input.substring(0, 80),
     }];
     try { await window.go.desktop.App.RespondToolApproval(requestId, approved); } catch (e) { errorBanner = String(e); }
+    scrollToBottom();
+  }
+
+  async function respondContinue(keepGoing) {
+    if (!pendingContinue) return;
+    const { requestId } = pendingContinue;
+    pendingContinue = null;
+    if (!keepGoing) {
+      messages = [...messages, { role: 'system', content: '■ stopped after tool-step limit' }];
+    }
+    try { await window.go.desktop.App.RespondToolApproval(requestId, keepGoing); } catch (e) { errorBanner = String(e); }
     scrollToBottom();
   }
 
@@ -257,17 +627,217 @@
   />
 {:else}
   <div class="app">
-    <TopBar agent={currentAgent} {cost} {moeRoute} {contextUsage} on:settings={() => showSettings = true} />
+    <TopBar agent={currentAgent} {cost} {moeRoute} {contextUsage}
+      on:settings={() => showSettings = true} on:persona={openPersonality} />
 
     <div class="body">
-      <Sidebar {agents} active={currentAgent} on:select={e => selectAgent(e.detail)} on:settings={() => showSettings = true} />
+      <nav class="rail">
+        <button class="rail-btn" class:active={leftTab === 'agents'} on:click={() => leftTab = 'agents'} title="Agents">
+          <span class="rail-ico">⬡</span><span class="rail-lbl">Chat</span>
+        </button>
+        <button class="rail-btn" class:active={leftTab === 'knowledge'} on:click={openKnowledge} title="Knowledge graph">
+          <span class="rail-ico">◆</span><span class="rail-lbl">Knowledge</span>
+        </button>
+        <button class="rail-btn" class:active={leftTab === 'tools'} on:click={openTools} title="Custom tools">
+          <span class="rail-ico">🛠</span><span class="rail-lbl">Tools</span>
+        </button>
+        <button class="rail-btn" class:active={leftTab === 'skills'} on:click={openSkills} title="Skills">
+          <span class="rail-ico">✦</span><span class="rail-lbl">Skills</span>
+        </button>
+        <button class="rail-btn" class:active={leftTab === 'mcp'} on:click={openMCP} title="MCP servers">
+          <span class="rail-ico">🔌</span><span class="rail-lbl">MCP</span>
+        </button>
+        <button class="rail-btn" class:active={leftTab === 'personality'} on:click={openPersonality} title="Personality">
+          <span class="rail-ico">🎭</span><span class="rail-lbl">Persona</span>
+        </button>
+        <div class="rail-spacer"></div>
+        <button class="rail-btn" on:click={() => showSettings = true} title="Settings">
+          <span class="rail-ico">⚙</span><span class="rail-lbl">Settings</span>
+        </button>
+      </nav>
+
+      <div class="sidecol">
+        {#if leftTab === 'agents'}
+          <Sidebar {agents} active={currentAgent} on:select={e => selectAgent(e.detail)} on:settings={() => showSettings = true} />
+        {:else if leftTab === 'knowledge'}
+          <KnowledgeSidebar health={kmHealth} stats={kmStats} indexing={kmIndexing}
+            visibleTypes={kmVisibleTypes} nodeCounts={kmNodeCounts} typeColors={KM_COLORS}
+            on:index={kmIndexFolder} on:refresh={refreshKnowledge}
+            on:toggle={e => toggleKMType(e.detail)} on:settings={() => showSettings = true} />
+        {:else if leftTab === 'tools'}
+          <ToolsSidebar tools={toolsList} activeName={activeTool?.name}
+            on:select={e => selectTool(e.detail)} on:new={newTool} on:settings={() => showSettings = true} />
+        {:else if leftTab === 'skills'}
+          <SkillsSidebar skills={skillsList} activeName={activeSkill?.name}
+            on:select={e => selectSkill(e.detail)} on:new={newSkill} on:settings={() => showSettings = true} />
+        {:else if leftTab === 'mcp'}
+          <MCPSidebar servers={mcpList} activeName={activeMCP?.name}
+            on:select={e => selectMCP(e.detail)} on:new={newMCP} on:settings={() => showSettings = true} />
+        {:else if leftTab === 'personality'}
+          <Sidebar {agents} active={currentAgent} on:select={e => selectAgent(e.detail)} on:settings={() => showSettings = true} />
+        {/if}
+      </div>
 
       <div class="main">
         {#if errorBanner}
           <div class="err-banner">⚠ {errorBanner} <button on:click={() => errorBanner = ''}>✕</button></div>
         {/if}
 
-        {#if !currentSession}
+        {#if leftTab === 'tools'}
+          <div class="tools-main">
+            {#if activeTool}
+              <div class="tool-bar">
+                <label class="tool-name-field">
+                  <span class="tool-name-lbl">Name</span>
+                  <input class="tool-name-input" value={toolNameFromContent(toolContent)}
+                    on:input={e => setToolName(e.target.value)} placeholder="my_tool" spellcheck="false" autocomplete="off" />
+                </label>
+                <div class="tool-actions">
+                  {#if !activeTool.isNew}
+                    <button class="tbtn delete" on:click={deleteTool}>Delete</button>
+                  {/if}
+                  <button class="tbtn save" on:click={saveTool} disabled={toolSaving}>
+                    {toolSaving ? 'Saving…' : toolSaved ? '✓ Saved' : 'Save'}
+                  </button>
+                </div>
+              </div>
+              {#if toolError}<div class="tool-err">⚠ {toolError}</div>{/if}
+              <textarea class="tool-edit" bind:value={toolContent} spellcheck="false"
+                placeholder="Tool MD (frontmatter + body)"></textarea>
+              <div class="tool-hint">
+                MD with <code>type: tool</code>, <code>runtime: shell</code>. The model's JSON arguments
+                arrive on the command's <strong>stdin</strong>; whatever it prints to <strong>stdout</strong> is
+                returned. Changes apply on your next <strong>New Chat</strong>.
+              </div>
+            {:else}
+              <div class="tools-empty">
+                <div class="tools-empty-card">
+                  <h2>Custom tools</h2>
+                  <p>Define a tool in an MD file — a script, CLI, or HTTP shim the agent can call.
+                  Pick one on the left, or create a new tool.</p>
+                  <button on:click={newTool}>＋ New tool</button>
+                </div>
+              </div>
+            {/if}
+          </div>
+        {:else if leftTab === 'skills'}
+          <div class="tools-main">
+            {#if activeSkill}
+              <div class="tool-bar">
+                <label class="tool-name-field">
+                  <span class="tool-name-lbl">Name</span>
+                  <input class="tool-name-input" value={skillNameFromContent(skillContent)}
+                    on:input={e => setSkillName(e.target.value)} placeholder="my_skill" spellcheck="false" autocomplete="off" />
+                </label>
+                <div class="tool-actions">
+                  {#if !activeSkill.isNew}
+                    <button class="tbtn delete" on:click={deleteSkill}>Delete</button>
+                  {/if}
+                  <button class="tbtn save" on:click={saveSkill} disabled={skillSaving}>
+                    {skillSaving ? 'Saving…' : skillSaved ? '✓ Saved' : 'Save'}
+                  </button>
+                </div>
+              </div>
+              {#if skillError}<div class="tool-err">⚠ {skillError}</div>{/if}
+              <textarea class="tool-edit" bind:value={skillContent} spellcheck="false"
+                placeholder="Skill MD (frontmatter + body)"></textarea>
+              <div class="tool-hint">
+                MD with <code>type: skill</code>. The body is reusable instructions composed into the
+                agent's system prompt, so it applies these guidelines automatically. Changes apply on
+                your next <strong>New Chat</strong>.
+              </div>
+            {:else}
+              <div class="tools-empty">
+                <div class="tools-empty-card">
+                  <h2>Skills</h2>
+                  <p>Capture reusable instructions, conventions, or domain knowledge in an MD file.
+                  Every skill's body is added to the agent's system prompt, so it follows them on every task.
+                  Pick one on the left, or create a new skill.</p>
+                  <button on:click={newSkill}>＋ New skill</button>
+                </div>
+              </div>
+            {/if}
+          </div>
+        {:else if leftTab === 'mcp'}
+          <div class="tools-main">
+            {#if activeMCP}
+              <div class="tool-bar">
+                <label class="tool-name-field">
+                  <span class="tool-name-lbl">Name</span>
+                  <input class="tool-name-input" value={mcpNameFromContent(mcpContent)}
+                    on:input={e => setMCPName(e.target.value)} placeholder="my_server" spellcheck="false" autocomplete="off" />
+                </label>
+                <div class="tool-actions">
+                  {#if !activeMCP.isNew}
+                    <button class="tbtn delete" on:click={deleteMCP}>Delete</button>
+                  {/if}
+                  <button class="tbtn save" on:click={saveMCP} disabled={mcpSaving}>
+                    {mcpSaving ? 'Saving…' : mcpSaved ? '✓ Saved' : 'Save'}
+                  </button>
+                </div>
+              </div>
+              {#if mcpError}<div class="tool-err">⚠ {mcpError}</div>{/if}
+              <textarea class="tool-edit" bind:value={mcpContent} spellcheck="false"
+                placeholder="MCP server MD (frontmatter + notes)"></textarea>
+              <div class="tool-hint">
+                MD with <code>type: mcp_server</code> and a <code>transport</code> (<code>stdio</code> with a
+                <code>command</code>, or <code>sse</code>/<code>http</code> with a <code>url</code>). The server's tools are
+                namespaced by <code>tool_prefix</code> and merged into the agent. Changes apply on your next <strong>New Chat</strong>.
+              </div>
+            {:else}
+              <div class="tools-empty">
+                <div class="tools-empty-card">
+                  <h2>MCP servers</h2>
+                  <p>Connect external tool servers via the Model Context Protocol. Define one in an MD file —
+                  a local stdio command or a remote http/sse endpoint — and its tools become available to the agent.
+                  Pick one on the left, or add a new server.</p>
+                  <button on:click={newMCP}>＋ New MCP server</button>
+                </div>
+              </div>
+            {/if}
+          </div>
+        {:else if leftTab === 'personality'}
+          {#if currentAgent}
+            {#key personaKey}
+              <PersonaPanel agentName={currentAgent.name} {persona} saved={personaSaved}
+                on:save={savePersona} />
+            {/key}
+          {:else}
+            <div class="tools-main">
+              <div class="tools-empty">
+                <div class="tools-empty-card">
+                  <h2>Personality</h2>
+                  <p>Select an agent on the left to customize its tone, verbosity, creativity, and custom instructions.</p>
+                </div>
+              </div>
+            </div>
+          {/if}
+        {:else if leftTab === 'knowledge'}
+          <div class="km-main">
+            {#if kmHealth.available}
+              <div class="km-graphbar">
+                <span class="km-title">◆ Knowledge graph</span>
+                <span class="km-sub">{kmNodes.length} nodes · {kmLinks.length} links</span>
+                <button class="km-fit" on:click={() => graphRef?.fit()}>⊡ Fit</button>
+              </div>
+              <div class="km-canvas">
+                <KnowledgeGraph bind:this={graphRef} nodes={kmNodes} links={kmLinks}
+                  visibleTypes={kmVisibleTypes} typeColors={KM_COLORS} />
+              </div>
+            {:else}
+              <div class="km-empty">
+                <div class="km-empty-card">
+                  <h2>Knowledge graph unavailable</h2>
+                  <p>knowledge-master isn't reachable at <code>127.0.0.1:9999</code>. Start the local backend:</p>
+                  <pre>km start
+km serve</pre>
+                  {#if kmHealth.error}<div class="km-err">{kmHealth.error}</div>{/if}
+                  <button on:click={refreshKnowledge}>↻ Retry</button>
+                </div>
+              </div>
+            {/if}
+          </div>
+        {:else if !currentSession}
           <div class="welcome">
             <svg viewBox="0 0 32 32" width="80" height="80">
               <rect width="32" height="32" rx="6" fill="#4f46e5"/>
@@ -324,6 +894,19 @@
             </div>
           {/if}
 
+          {#if pendingContinue}
+            <div class="approval continue">
+              <div class="approval-info">
+                <span class="approval-tool">↻ Tool-step limit reached</span>
+                <span class="continue-sub">M ran {pendingContinue.turns} tool steps without finishing. Keep going?</span>
+              </div>
+              <div class="approval-actions">
+                <button class="appr deny" on:click={() => respondContinue(false)}>Stop</button>
+                <button class="appr allow" on:click={() => respondContinue(true)}>Continue</button>
+              </div>
+            </div>
+          {/if}
+
           {#if attachedFiles.length > 0}
             <div class="attachments">
               {#each attachedFiles as f}
@@ -355,6 +938,7 @@
         {/if}
       </div>
     </div>
+
   </div>
 {/if}
 
@@ -370,6 +954,61 @@
   .app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
   .body{display:flex;flex:1;overflow:hidden;min-height:0}
   .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0}
+
+  .rail{width:62px;flex-shrink:0;display:flex;flex-direction:column;align-items:stretch;gap:2px;padding:8px 6px;background:#080d18;border-right:1px solid #1e293b;overflow:hidden}
+  .rail-spacer{flex:1}
+  .rail-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;background:none;border:none;border-radius:8px;color:#64748b;cursor:pointer;position:relative}
+  .rail-btn:hover{background:#111c30;color:#cbd5e1}
+  .rail-btn.active{background:#1e293b;color:#e2e8f0}
+  .rail-btn.active::before{content:'';position:absolute;left:-6px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:#6366f1}
+  .rail-ico{font-size:17px;line-height:1}
+  .rail-lbl{font-size:9px;font-weight:600;letter-spacing:-0.1px}
+
+  .sidecol{width:240px;flex-shrink:0;display:flex;flex-direction:column;background:#0c1322;border-right:1px solid #1e293b;overflow:hidden}
+
+  .km-main{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  .km-graphbar{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+  .km-title{font-size:13px;font-weight:600;color:var(--text)}
+  .km-sub{font-size:12px;color:var(--muted);flex:1}
+  .km-fit{background:var(--bg-input);border:1px solid var(--border);border-radius:6px;color:var(--text);font-size:12px;padding:5px 12px;cursor:pointer}
+  .km-fit:hover{background:var(--border)}
+  .km-canvas{flex:1;min-height:0;position:relative}
+
+  .tools-main{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  .tool-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+  .tool-title{font-size:14px;font-weight:600;color:var(--text);font-family:'SF Mono',Menlo,monospace}
+  .tool-name-field{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
+  .tool-name-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;flex-shrink:0}
+  .tool-name-input{flex:1;min-width:0;max-width:280px;padding:6px 10px;background:#0c1322;border:1px solid var(--border);border-radius:6px;color:#e2e8f0;font-family:'SF Mono',Menlo,monospace;font-size:13px;outline:none}
+  .tool-name-input:focus{border-color:var(--accent)}
+  .tool-actions{display:flex;gap:8px;flex-shrink:0}
+  .tbtn{padding:7px 16px;border-radius:7px;font-size:13px;font-weight:600;cursor:pointer;border:1px solid var(--border)}
+  .tbtn.save{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .tbtn.save:hover:not(:disabled){filter:brightness(1.1)}
+  .tbtn.save:disabled{opacity:0.6;cursor:not-allowed}
+  .tbtn.delete{background:var(--bg-panel);color:var(--err);border-color:color-mix(in srgb,var(--err) 40%,transparent)}
+  .tbtn.delete:hover{background:color-mix(in srgb,var(--err) 15%,transparent)}
+  .tool-err{margin:10px 16px 0;padding:8px 12px;background:color-mix(in srgb,var(--err) 14%,transparent);border:1px solid color-mix(in srgb,var(--err) 35%,transparent);border-radius:7px;color:#fca5a5;font-size:12px;word-break:break-word}
+  .tool-edit{flex:1;min-height:0;margin:12px 16px;padding:14px;background:#0c1322;border:1px solid var(--border);border-radius:8px;color:#e2e8f0;font-family:'SF Mono',Menlo,monospace;font-size:13px;line-height:1.55;resize:none;outline:none;tab-size:2}
+  .tool-edit:focus{border-color:var(--accent)}
+  .tool-hint{padding:0 16px 14px;font-size:12px;color:var(--muted);line-height:1.5}
+  .tool-hint code{background:var(--bg-panel);padding:1px 5px;border-radius:4px;font-size:11px}
+  .tools-empty{flex:1;display:flex;align-items:center;justify-content:center;padding:24px}
+  .tools-empty-card{max-width:420px;text-align:center;background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:28px}
+  .tools-empty-card h2{font-size:18px;color:var(--text);margin-bottom:8px}
+  .tools-empty-card p{font-size:13px;color:var(--muted);line-height:1.6;margin-bottom:16px}
+  .tools-empty-card button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-weight:600;font-size:13px;cursor:pointer}
+  .tools-empty-card button:hover{filter:brightness(1.1)}
+
+  .km-empty{flex:1;display:flex;align-items:center;justify-content:center;padding:24px}
+  .km-empty-card{max-width:420px;text-align:center;background:var(--bg-panel);border:1px solid var(--border);border-radius:12px;padding:28px}
+  .km-empty-card h2{font-size:18px;color:var(--text);margin-bottom:8px}
+  .km-empty-card p{font-size:13px;color:var(--muted);line-height:1.6}
+  .km-empty-card code{background:var(--bg);padding:1px 6px;border-radius:4px;font-size:12px}
+  .km-empty-card pre{text-align:left;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px 14px;margin:14px 0;font-size:13px;color:#cbd5e1;font-family:'SF Mono',Menlo,monospace}
+  .km-empty-card .km-err{font-size:12px;color:#fca5a5;margin-bottom:12px;word-break:break-word}
+  .km-empty-card button{background:var(--accent);color:#fff;border:none;border-radius:8px;padding:9px 22px;font-weight:600;font-size:13px;cursor:pointer}
+  .km-empty-card button:hover{filter:brightness(1.1)}
 
   .err-banner{background:#7f1d1d;color:#fca5a5;padding:8px 16px;font-size:13px;display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
   .err-banner button{background:none;border:none;color:#fca5a5;cursor:pointer;font-size:16px;padding:0 4px}
@@ -438,6 +1077,9 @@
   .approval-info{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
   .approval-tool{font-size:12px;font-weight:600;color:var(--tool);text-transform:uppercase;letter-spacing:0.3px}
   .approval-input{font-family:'SF Mono',Menlo,monospace;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--bg);padding:4px 8px;border-radius:4px}
+  .approval.continue{background:color-mix(in srgb,var(--accent) 12%,transparent);border-color:color-mix(in srgb,var(--accent) 40%,transparent)}
+  .approval.continue .approval-tool{color:var(--accent)}
+  .continue-sub{font-size:13px;color:var(--text)}
   .approval-actions{display:flex;gap:8px;flex-shrink:0}
   .appr{padding:8px 18px;border:none;border-radius:6px;font-weight:600;font-size:13px;cursor:pointer}
   .appr.allow{background:var(--accent);color:#fff}
