@@ -142,3 +142,59 @@ func trimCommand(cmd []string) []string {
 	}
 	return out
 }
+
+// MCPForm is a form-friendly view of an MCP server MD document.
+type MCPForm struct {
+	Name        string   `json:"name"`
+	Description string   `json:"description"`
+	Transport   string   `json:"transport"`
+	Command     []string `json:"command"`
+	URL         string   `json:"url"`
+	ToolPrefix  string   `json:"toolPrefix"`
+	Body        string   `json:"body"`
+}
+
+// ParseMCPForm extracts editable fields from MCP server MD content.
+func (a *App) ParseMCPForm(content string) (MCPForm, error) {
+	doc, err := config.Parse([]byte(content))
+	if err != nil {
+		return MCPForm{}, fmt.Errorf("parse: %w", err)
+	}
+	spec, ok := doc.Spec.(*config.MCPServerSpec)
+	if !ok {
+		return MCPForm{}, errors.New("document type is not 'mcp_server'")
+	}
+	return MCPForm{
+		Name:        spec.Name,
+		Description: spec.Description,
+		Transport:   string(spec.Transport),
+		Command:     append([]string(nil), spec.Command...),
+		URL:         spec.URL,
+		ToolPrefix:  spec.ToolPrefix,
+		Body:        doc.Body,
+	}, nil
+}
+
+// ComposeMCPForm builds MCP server MD from form fields.
+func (a *App) ComposeMCPForm(form MCPForm) (string, error) {
+	transport := config.MCPTransport(strings.TrimSpace(form.Transport))
+	if transport == "" {
+		transport = config.TransportStdio
+	}
+	name := strings.TrimSpace(form.Name)
+	if name == "" {
+		return "", errors.New("name is required")
+	}
+	spec := &config.MCPServerSpec{
+		Meta: config.Meta{
+			Name:        name,
+			Type:        config.TypeMCPServer,
+			Description: strings.TrimSpace(form.Description),
+		},
+		Transport:  transport,
+		Command:    trimCommand(form.Command),
+		URL:        strings.TrimSpace(form.URL),
+		ToolPrefix: strings.TrimSpace(form.ToolPrefix),
+	}
+	return composeYAML(spec, strings.TrimSpace(form.Body)), nil
+}

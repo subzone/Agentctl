@@ -57,15 +57,16 @@ func (a *App) GetHealth() HealthReport {
 			freeFound++
 		}
 	}
-	if freeFound > 0 {
+	switch {
+	case freeFound > 0:
 		add("free_moe", "Free MoE providers", "ok", "API keys found for "+strconv.Itoa(freeFound)+" free tier(s)", "")
-	} else if cfg != nil {
+	case cfg != nil:
 		if k, _ := userconfig.GetAPIKeyWithFallback(cfg.Provider); k != "" {
 			add("api_key", "API key", "ok", "Key found for "+string(cfg.Provider), "")
 		} else {
 			add("api_key", "API key", "error", "No API key for "+string(cfg.Provider), "settings")
 		}
-	} else {
+	default:
 		add("free_moe", "Free MoE providers", "warn", "No free-tier keys — add Groq/Cerebras/Mistral in Settings", "settings")
 	}
 
@@ -87,11 +88,12 @@ func (a *App) GetHealth() HealthReport {
 			toolErrs++
 		}
 	}
-	if toolErrs > 0 {
+	switch {
+	case toolErrs > 0:
 		add("tools", "Custom tools", "warn", strconv.Itoa(len(tools))+" defined, "+strconv.Itoa(toolErrs)+" with parse errors", "ext-tools")
-	} else if len(tools) > 0 {
+	case len(tools) > 0:
 		add("tools", "Custom tools", "ok", strconv.Itoa(len(tools))+" tool(s) in ~/.config/m/tools", "ext-tools")
-	} else {
+	default:
 		add("tools", "Custom tools", "ok", "None yet (optional)", "ext-tools")
 	}
 
@@ -102,11 +104,12 @@ func (a *App) GetHealth() HealthReport {
 			skillErrs++
 		}
 	}
-	if skillErrs > 0 {
+	switch {
+	case skillErrs > 0:
 		add("skills", "Skills", "warn", strconv.Itoa(len(skills))+" defined, "+strconv.Itoa(skillErrs)+" with parse errors", "ext-skills")
-	} else if len(skills) > 0 {
+	case len(skills) > 0:
 		add("skills", "Skills", "ok", strconv.Itoa(len(skills))+" skill(s) active on New Chat", "ext-skills")
-	} else {
+	default:
 		add("skills", "Skills", "ok", "None yet (optional)", "ext-skills")
 	}
 
@@ -117,11 +120,12 @@ func (a *App) GetHealth() HealthReport {
 			mcpErrs++
 		}
 	}
-	if mcpErrs > 0 {
+	switch {
+	case mcpErrs > 0:
 		add("mcp", "MCP servers", "warn", strconv.Itoa(len(mcps))+" defined, "+strconv.Itoa(mcpErrs)+" with parse errors", "ext-mcp")
-	} else if len(mcps) > 0 {
+	case len(mcps) > 0:
 		add("mcp", "MCP servers", "ok", strconv.Itoa(len(mcps))+" server(s) — open on New Chat", "ext-mcp")
-	} else {
+	default:
 		add("mcp", "MCP servers", "ok", "None yet (optional)", "ext-mcp")
 	}
 

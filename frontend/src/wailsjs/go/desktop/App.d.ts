@@ -5,6 +5,8 @@ import {userconfig} from '../models';
 
 export function CloseSession(arg1:string):Promise<void>;
 
+export function ComposeMCPForm(arg1:desktop.MCPForm):Promise<string>;
+
 export function ComposeSkillForm(arg1:desktop.SkillForm):Promise<string>;
 
 export function ComposeToolForm(arg1:desktop.ToolForm):Promise<string>;
@@ -58,6 +60,8 @@ export function NewSkillTemplate():Promise<string>;
 export function NewToolTemplate():Promise<string>;
 
 export function OpenFile():Promise<desktop.FileResult>;
+
+export function ParseMCPForm(arg1:string):Promise<desktop.MCPForm>;
 
 export function ParseSkillForm(arg1:string):Promise<desktop.SkillForm>;
 

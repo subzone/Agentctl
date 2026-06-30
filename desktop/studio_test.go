@@ -52,3 +52,22 @@ func TestComposeSkillForm(t *testing.T) {
 		t.Fatalf("parse: %+v", form)
 	}
 }
+
+func TestComposeMCPForm(t *testing.T) {
+	a := &App{}
+	form, err := a.ParseMCPForm(a.NewMCPTemplate())
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, err := a.ComposeMCPForm(form)
+	if err != nil {
+		t.Fatal(err)
+	}
+	form2, err := a.ParseMCPForm(out)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if form2.Name != form.Name || form2.Transport != form.Transport {
+		t.Fatalf("round trip: %+v vs %+v", form, form2)
+	}
+}

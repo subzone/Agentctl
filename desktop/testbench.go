@@ -62,12 +62,14 @@ func (a *App) TestTool(name, inputJSON string) TestResult {
 		spec.ParametersJSON(), time.Duration(spec.TimeoutSec)*time.Second,
 	)
 	var input json.RawMessage
-	if strings.TrimSpace(inputJSON) == "" {
+	trimmed := strings.TrimSpace(inputJSON)
+	switch {
+	case trimmed == "":
 		input = json.RawMessage(`{}`)
-	} else if !json.Valid([]byte(inputJSON)) {
+	case !json.Valid([]byte(trimmed)):
 		return TestResult{Error: "input is not valid JSON"}
-	} else {
-		input = json.RawMessage(inputJSON)
+	default:
+		input = json.RawMessage(trimmed)
 	}
 	ctx, cancel := context.WithTimeout(a.ctx, 90*time.Second)
 	defer cancel()

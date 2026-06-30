@@ -294,6 +294,30 @@ export namespace desktop {
 	        this.error = source["error"];
 	    }
 	}
+	export class MCPForm {
+	    name: string;
+	    description: string;
+	    transport: string;
+	    command: string[];
+	    url: string;
+	    toolPrefix: string;
+	    body: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new MCPForm(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.transport = source["transport"];
+	        this.command = source["command"];
+	        this.url = source["url"];
+	        this.toolPrefix = source["toolPrefix"];
+	        this.body = source["body"];
+	    }
+	}
 	export class MCPStatus {
 	    name: string;
 	    transport: string;

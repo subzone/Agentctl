@@ -6,6 +6,13 @@
   export let health = { ok: true, checks: [] };
   export let stats = { tools: 0, skills: 0, mcp: 0, km: false };
   export let moeRoute = null;
+  export let sessions = [];
+
+  function fmtTime(ts) {
+    if (!ts) return '';
+    const d = new Date(ts * 1000);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
 
   function statusIcon(s) {
     if (s === 'ok') return '✓';
@@ -77,6 +84,21 @@
     </div>
   {/if}
 
+  {#if sessions.length > 0}
+    <section class="sessions">
+      <h2>Active sessions</h2>
+      <div class="sess-list">
+        {#each sessions.slice(0, 5) as s}
+          <button class="sess-row" on:click={() => dispatch('nav', 'agents')}>
+            <span class="sess-agent">{s.agent}</span>
+            <span class="sess-preview">{s.preview || 'New session'}</span>
+            <span class="sess-meta">{s.messages} msg · {fmtTime(s.createdAt)}</span>
+          </button>
+        {/each}
+      </div>
+    </section>
+  {/if}
+
   <section class="health">
     <div class="health-head">
       <h2>Setup health</h2>
@@ -117,6 +139,15 @@
   .card-sub{font-size:11px;color:var(--muted)}
 
   .moe-banner{padding:10px 14px;background:#1e1b4b;border:1px solid #4338ca;border-radius:8px;font-size:12px;color:#c4b5fd;margin-bottom:20px}
+
+  .sessions{margin-bottom:20px}
+  .sessions h2{margin:0 0 10px;font-size:14px;font-weight:700;color:var(--text)}
+  .sess-list{display:flex;flex-direction:column;gap:6px}
+  .sess-row{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;padding:10px 12px;background:#0c1322;border:1px solid var(--border);border-radius:8px;cursor:pointer;text-align:left;color:inherit;width:100%}
+  .sess-row:hover{border-color:var(--accent)}
+  .sess-agent{font-size:12px;font-weight:700;color:#c4b5fd}
+  .sess-preview{flex:1;font-size:12px;color:var(--text);min-width:120px}
+  .sess-meta{font-size:10px;color:var(--muted)}
 
   .health{background:#0c1322;border:1px solid var(--border);border-radius:12px;padding:16px 18px}
   .health-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}

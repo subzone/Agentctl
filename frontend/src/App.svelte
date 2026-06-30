@@ -15,6 +15,7 @@
   import ExtensionsNav from './components/ExtensionsNav.svelte';
   import ToolFormEditor from './components/ToolFormEditor.svelte';
   import SkillFormEditor from './components/SkillFormEditor.svelte';
+  import MCPFormEditor from './components/MCPFormEditor.svelte';
   import TestBench from './components/TestBench.svelte';
   import Onboarding from './components/Onboarding.svelte';
   import TopBar from './components/TopBar.svelte';
@@ -79,6 +80,7 @@
   let mcpError = '';
   let mcpSaving = false;
   let mcpSaved = false;
+  let mcpAdvanced = false;
 
   // Per-agent personality overlay (Personality tab).
   let persona = { instructions: '', tone: '', verbosity: '', temperature: null };
@@ -93,6 +95,7 @@
   // Command Center + observability
   let healthReport = { ok: true, checks: [] };
   let homeStats = { tools: 0, skills: 0, mcp: 0, km: false };
+  let homeSessions = [];
   let contextPreview = null;
   let contextLoading = false;
   let showInspector = true;
@@ -519,6 +522,19 @@
     } catch (_) {
       homeStats = { tools: toolsList.length, skills: skillsList.length, mcp: mcpList.length, km: false };
     }
+    try {
+      homeSessions = await window.go.desktop.App.GetSessions() || [];
+    } catch (_) {
+      homeSessions = [];
+    }
+  }
+
+  function personaLabel() {
+    const parts = [];
+    if (persona.tone) parts.push(persona.tone);
+    if (persona.verbosity) parts.push(persona.verbosity);
+    if (persona.instructions?.trim()) parts.push('custom');
+    return parts.length ? parts.join(' · ') : 'default';
   }
 
   function openHome() {
@@ -654,7 +670,7 @@
         cost = { inputTokens: 0, outputTokens: 0, cost: 0 };
         moeRoute = null; contextUsage = 0; pendingApproval = null; pendingContinue = null;
       }
-      if (leftTab === 'personality') await loadPersona();
+      await loadPersona();
       await loadContextPreview();
     } catch (e) { errorBanner = String(e); }
   }
@@ -815,7 +831,7 @@
         {/if}
 
         {#if leftTab === 'home'}
-          <CommandCenter agent={currentAgent} health={healthReport} stats={homeStats} {moeRoute}
+          <CommandCenter agent={currentAgent} health={healthReport} stats={homeStats} {moeRoute} sessions={homeSessions}
             on:nav={e => navTab(e.detail)}
             on:newChat={newChat}
             on:refresh={refreshHomeData} />
@@ -870,29 +886,15 @@
         {:else if leftTab === 'extensions' && extensionsSubTab === 'mcp'}
           <div class="tools-main">
             {#if activeMCP}
-              <div class="tool-bar">
-                <label class="tool-name-field">
-                  <span class="tool-name-lbl">Name</span>
-                  <input class="tool-name-input" value={mcpNameFromContent(mcpContent)}
-                    on:input={e => setMCPName(e.target.value)} placeholder="my_server" spellcheck="false" autocomplete="off" />
-                </label>
-                <div class="tool-actions">
-                  {#if !activeMCP.isNew}
-                    <button class="tbtn delete" on:click={deleteMCP}>Delete</button>
-                  {/if}
-                  <button class="tbtn save" on:click={saveMCP} disabled={mcpSaving}>
-                    {mcpSaving ? 'Saving…' : mcpSaved ? '✓ Saved' : 'Save'}
-                  </button>
+              {#if !activeMCP.isNew}
+                <div class="tool-bar slim">
+                  <button class="tbtn delete" on:click={deleteMCP}>Delete server</button>
                 </div>
-              </div>
-              {#if mcpError}<div class="tool-err">⚠ {mcpError}</div>{/if}
-              <textarea class="tool-edit" bind:value={mcpContent} spellcheck="false"
-                placeholder="MCP server MD (frontmatter + notes)"></textarea>
-              <div class="tool-hint">
-                MD with <code>type: mcp_server</code> and a <code>transport</code> (<code>stdio</code> with a
-                <code>command</code>, or <code>sse</code>/<code>http</code> with a <code>url</code>). The server's tools are
-                namespaced by <code>tool_prefix</code> and merged into the agent. Changes apply on your next <strong>New Chat</strong>.
-              </div>
+              {/if}
+              <MCPFormEditor bind:content={mcpContent} bind:advanced={mcpAdvanced}
+                saving={mcpSaving} saved={mcpSaved} error={mcpError}
+                on:change={e => { mcpContent = e.detail; mcpSaved = false; }}
+                on:save={saveMCP} />
               <TestBench mode="mcp" name={mcpNameFromContent(mcpContent)} disabled={!!mcpError || activeMCP.isNew} />
             {:else}
               <div class="tools-empty">
@@ -976,6 +978,9 @@ km serve</pre>
               <div class="chat-toolbar">
                 <span class="chat-title">◆ {currentAgent?.name}</span>
                 {#if moeRoute}<span class="moe-pill">{moeRoute.category}</span>{/if}
+                <button class="tb-btn persona-pill" on:click={openPersonality} title="Edit personality">
+                  🎭 {personaLabel()}
+                </button>
                 <button class="tb-btn" class:on={showInspector} on:click={() => { showInspector = !showInspector; if (showInspector) loadContextPreview(); }} title="Context inspector">◧ Context</button>
                 <button class="tb-btn" on:click={() => paletteOpen = true} title="Command palette (⌘K)">⌘K</button>
               </div>
@@ -1101,6 +1106,7 @@ km serve</pre>
   .chat-toolbar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0;background:#080d18}
   .chat-title{font-size:13px;font-weight:600;color:var(--text);flex:1}
   .moe-pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:#4c1d95;color:#c4b5fd}
+  .persona-pill{font-size:10px;max-width:140px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .tb-btn{padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer}
   .tb-btn:hover{color:var(--text)}
   .tb-btn.on{border-color:var(--accent);color:#93c5fd}

@@ -6,6 +6,10 @@ export function CloseSession(arg1) {
   return window['go']['desktop']['App']['CloseSession'](arg1);
 }
 
+export function ComposeMCPForm(arg1) {
+  return window['go']['desktop']['App']['ComposeMCPForm'](arg1);
+}
+
 export function ComposeSkillForm(arg1) {
   return window['go']['desktop']['App']['ComposeSkillForm'](arg1);
 }
@@ -112,6 +116,10 @@ export function NewToolTemplate() {
 
 export function OpenFile() {
   return window['go']['desktop']['App']['OpenFile']();
+}
+
+export function ParseMCPForm(arg1) {
+  return window['go']['desktop']['App']['ParseMCPForm'](arg1);
 }
 
 export function ParseSkillForm(arg1) {
