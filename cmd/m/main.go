@@ -14,8 +14,11 @@ import (
 	// Side-effect: register LLM providers.
 	_ "github.com/subzone/Agentctl/internal/llm/alibaba"
 	_ "github.com/subzone/Agentctl/internal/llm/anthropic"
+	_ "github.com/subzone/Agentctl/internal/llm/cerebras"
 	_ "github.com/subzone/Agentctl/internal/llm/gemini"
+	_ "github.com/subzone/Agentctl/internal/llm/groq"
 	_ "github.com/subzone/Agentctl/internal/llm/litellm"
+	_ "github.com/subzone/Agentctl/internal/llm/mistral"
 	_ "github.com/subzone/Agentctl/internal/llm/ollama"
 	_ "github.com/subzone/Agentctl/internal/llm/openai"
 )
@@ -69,6 +72,7 @@ func runCLI() {
 	root.AddCommand(newInitCmd())
 	root.AddCommand(newConfigCmd())
 	root.AddCommand(newListCmd())
+	root.AddCommand(newPackagesCmd())
 	root.AddCommand(newSearchCmd())
 	root.AddCommand(newInstallCmd())
 	root.AddCommand(newChangelogCmd())
@@ -77,6 +81,7 @@ func runCLI() {
 	root.AddCommand(newDoctorCmd())
 	root.AddCommand(newUpgradeCmd())
 	root.AddCommand(newMCPCmd())
+	root.AddCommand(newA2ACmd())
 	root.AddCommand(newSessionCmd())
 	root.AddCommand(newPipeCmd())
 	root.AddCommand(newCostCmd())
@@ -247,8 +252,35 @@ func applyConfig(cfg *userconfig.Config) error {
 		if cfg.BaseURL != "" {
 			os.Setenv("LITELLM_BASE_URL", cfg.BaseURL)
 		}
+	case userconfig.ProviderGroq, userconfig.ProviderCerebras, userconfig.ProviderMistral:
+		// Free-tier providers. The default MoE agent routes across several of
+		// these, so hydrate every free key we can find — not just the one the
+		// user picked as their primary provider — otherwise routing/fallback
+		// to a sibling free provider fails with "<KEY> is not set".
+		hydrateFreeProviderKeys()
 	default:
 		return fmt.Errorf("unknown provider %q in config", cfg.Provider)
 	}
 	return nil
+}
+
+// hydrateFreeProviderKeys loads any stored keys for the free-tier providers
+// (Groq, Cerebras, Mistral) into the process env. The default MoE agent and
+// its routing table span all three, so a single primary provider is not
+// enough — we best-effort export whatever keys exist and stay silent about
+// the ones that don't.
+func hydrateFreeProviderKeys() {
+	free := map[userconfig.Provider]string{
+		userconfig.ProviderGroq:     "GROQ_API_KEY",
+		userconfig.ProviderCerebras: "CEREBRAS_API_KEY",
+		userconfig.ProviderMistral:  "MISTRAL_API_KEY",
+	}
+	for provider, env := range free {
+		if os.Getenv(env) != "" {
+			continue
+		}
+		if key, err := userconfig.GetAPIKeyWithFallback(provider); err == nil && key != "" {
+			os.Setenv(env, key)
+		}
+	}
 }

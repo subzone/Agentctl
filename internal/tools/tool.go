@@ -92,7 +92,7 @@ func Builtins(confirm ConfirmFunc, undo *UndoStack) *Registry {
 		NewShell(), NewFSRead(), NewFSWrite(confirm, undo),
 		NewFSWriteMulti(confirm, undo),
 		NewFSList(), NewGit(), NewTestRun(), NewWebFetch(),
-		NewCodeSearch(),
+		NewCodeSearch(), NewKnowledge(), NewA2ACall(),
 	)
 }
 
