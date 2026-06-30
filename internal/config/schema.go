@@ -10,6 +10,7 @@ const (
 	TypeSkill     DocType = "skill"
 	TypeTool      DocType = "tool"
 	TypeMCPServer DocType = "mcp_server"
+	TypePackage   DocType = "package"
 )
 
 // Meta is the common frontmatter present on every document.
@@ -35,6 +36,27 @@ type AgentSpec struct {
 	ThinkingPhrases []string `yaml:"thinking_phrases,omitempty"`
 	PIIGuard        string   `yaml:"pii_guard,omitempty"`
 	ResponseSchema  any      `yaml:"response_schema,omitempty"`
+	Routing        *RoutingConfig `yaml:"routing,omitempty"`
+}
+
+// RoutingConfig defines MoE (Mixture of Experts) routing at the engine level.
+// The engine classifies each user turn and overrides the model before calling
+// the LLM — zero extra LLM calls for routing.
+type RoutingConfig struct {
+	Experts []ExpertRoute `yaml:"experts"`
+}
+
+// ExpertRoute maps a category to a model and optional system prompt override.
+type ExpertRoute struct {
+	Category string   `yaml:"category"`          // e.g. "reasoning", "speed", "longctx"
+	Model    string   `yaml:"model"`             // provider/model
+	Fallback []string `yaml:"fallback,omitempty"`
+	System   string   `yaml:"system,omitempty"`  // override system prompt for this category
+	MaxTokens *int    `yaml:"max_tokens,omitempty"`
+	// Classification signals (any match → this expert)
+	Keywords    []string `yaml:"keywords,omitempty"`     // substring match in input
+	MinLength   int      `yaml:"min_length,omitempty"`   // input char count threshold
+	MaxLength   int      `yaml:"max_length,omitempty"`   // upper bound for this expert
 }
 
 // ResponseSchemaJSON returns the response_schema as JSON bytes suitable
@@ -54,6 +76,17 @@ func (a *AgentSpec) ResponseSchemaJSON() json.RawMessage {
 type SkillSpec struct {
 	Meta  `yaml:",inline"`
 	Tools []string `yaml:"tools,omitempty"`
+}
+
+// PackageSpec describes a curated bundle of agents, skills, MCP servers, and
+// other product entitlements.
+type PackageSpec struct {
+	Meta         `yaml:",inline"`
+	Agents       []string `yaml:"agents,omitempty"`
+	Skills       []string `yaml:"skills,omitempty"`
+	Tools        []string `yaml:"tools,omitempty"`
+	MCP          []string `yaml:"mcp,omitempty"`
+	Entitlements []string `yaml:"entitlements,omitempty"`
 }
 
 // ToolRuntime identifies how a tool is executed.
@@ -120,6 +153,8 @@ func (d *Document) Meta() Meta {
 	case *ToolSpec:
 		return s.Meta
 	case *MCPServerSpec:
+		return s.Meta
+	case *PackageSpec:
 		return s.Meta
 	default:
 		return Meta{}

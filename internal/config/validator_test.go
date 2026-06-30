@@ -93,3 +93,37 @@ func TestValidateDocsDuplicate(t *testing.T) {
 		t.Errorf("expected duplicate issue, got %v", issues)
 	}
 }
+
+func TestValidateDocsPackageCrossRef(t *testing.T) {
+	docs := []*Document{
+		{
+			Path: "coder.md",
+			Spec: &AgentSpec{Meta: Meta{Name: "coder", Type: TypeAgent}, Model: "anthropic/m"},
+		},
+		{
+			Path: "reviewer.md",
+			Spec: &AgentSpec{Meta: Meta{Name: "reviewer", Type: TypeAgent}, Model: "anthropic/m"},
+		},
+		{
+			Path: "code-review.md",
+			Spec: &SkillSpec{Meta: Meta{Name: "code-review", Type: TypeSkill}},
+		},
+		{
+			Path: "github.md",
+			Spec: &MCPServerSpec{Meta: Meta{Name: "github", Type: TypeMCPServer}, Transport: TransportStdio, Command: []string{"github-mcp"}},
+		},
+		{
+			Path: "package.md",
+			Spec: &PackageSpec{
+				Meta:  Meta{Name: "pro-dev", Type: TypePackage},
+				Agents: []string{"coder", "reviewer"},
+				Skills: []string{"code-review"},
+				MCP:    []string{"github"},
+			},
+		},
+	}
+
+	if issues := ValidateDocs(docs); len(issues) != 0 {
+		t.Fatalf("unexpected issues: %v", issues)
+	}
+}

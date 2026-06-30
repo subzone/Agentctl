@@ -52,6 +52,8 @@ func Validate(doc *Document) []Issue {
 		validateTool(s, add)
 	case *MCPServerSpec:
 		validateMCP(s, add)
+	case *PackageSpec:
+		validatePackage(s, add)
 	default:
 		add("type", "unrecognized spec")
 	}
@@ -76,6 +78,21 @@ func validateAgent(s *AgentSpec, add func(field, msg string)) {
 	for _, t := range s.Tools {
 		if strings.TrimSpace(t) == "" {
 			add("tools", "contains empty entry")
+		}
+	}
+	if s.Routing != nil {
+		if len(s.Routing.Experts) == 0 {
+			add("routing.experts", "must have at least one expert")
+		}
+		for i, e := range s.Routing.Experts {
+			if e.Category == "" {
+				add(fmt.Sprintf("routing.experts[%d].category", i), "is required")
+			}
+			if e.Model == "" {
+				add(fmt.Sprintf("routing.experts[%d].model", i), "is required")
+			} else if !modelRE.MatchString(e.Model) {
+				add(fmt.Sprintf("routing.experts[%d].model", i), "must be in form provider/model")
+			}
 		}
 	}
 }
@@ -109,6 +126,47 @@ func validateMCP(s *MCPServerSpec, add func(field, msg string)) {
 		}
 	default:
 		add("transport", fmt.Sprintf("unknown value %q", s.Transport))
+	}
+}
+
+func validatePackage(s *PackageSpec, add func(field, msg string)) {
+	hasContents := false
+	for _, ref := range s.Agents {
+		if strings.TrimSpace(ref) == "" {
+			add("agents", "contains empty entry")
+			continue
+		}
+		hasContents = true
+	}
+	for _, ref := range s.Skills {
+		if strings.TrimSpace(ref) == "" {
+			add("skills", "contains empty entry")
+			continue
+		}
+		hasContents = true
+	}
+	for _, ref := range s.Tools {
+		if strings.TrimSpace(ref) == "" {
+			add("tools", "contains empty entry")
+			continue
+		}
+		hasContents = true
+	}
+	for _, ref := range s.MCP {
+		if strings.TrimSpace(ref) == "" {
+			add("mcp", "contains empty entry")
+			continue
+		}
+		hasContents = true
+	}
+	for _, ref := range s.Entitlements {
+		if strings.TrimSpace(ref) == "" {
+			add("entitlements", "contains empty entry")
+			continue
+		}
+	}
+	if !hasContents {
+		add("package", "must include at least one agent, skill, tool, or mcp server")
 	}
 }
 
@@ -166,6 +224,37 @@ func ValidateDocs(docs []*Document) []Issue {
 				issues = append(issues, Issue{
 					Path: d.Path, Field: "subagents",
 					Message: fmt.Sprintf("references unknown agent %q", ref),
+				})
+			}
+		}
+	}
+
+	for _, d := range docs {
+		pkg, ok := d.Spec.(*PackageSpec)
+		if !ok {
+			continue
+		}
+		for _, ref := range pkg.Agents {
+			if _, ok := byName["agent/"+ref]; !ok {
+				issues = append(issues, Issue{
+					Path: d.Path, Field: "agents",
+					Message: fmt.Sprintf("references unknown agent %q", ref),
+				})
+			}
+		}
+		for _, ref := range pkg.Skills {
+			if _, ok := byName["skill/"+ref]; !ok {
+				issues = append(issues, Issue{
+					Path: d.Path, Field: "skills",
+					Message: fmt.Sprintf("references unknown skill %q", ref),
+				})
+			}
+		}
+		for _, ref := range pkg.MCP {
+			if _, ok := byName["mcp_server/"+ref]; !ok {
+				issues = append(issues, Issue{
+					Path: d.Path, Field: "mcp",
+					Message: fmt.Sprintf("references unknown mcp_server %q", ref),
 				})
 			}
 		}

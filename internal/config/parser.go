@@ -80,6 +80,12 @@ func Parse(raw []byte) (*Document, error) {
 			return nil, fmt.Errorf("mcp_server frontmatter: %w", err)
 		}
 		doc.Spec = spec
+	case TypePackage:
+		spec := &PackageSpec{}
+		if err := dec.Decode(spec); err != nil {
+			return nil, fmt.Errorf("package frontmatter: %w", err)
+		}
+		doc.Spec = spec
 	case "":
 		return nil, errors.New("frontmatter missing required field: type")
 	default:

@@ -24,6 +24,10 @@ const (
 	ProviderGemini    Provider = "gemini"
 	ProviderAlibaba   Provider = "alibaba"
 	ProviderLiteLLM   Provider = "litellm"
+	// Free-tier providers used by the default MoE agent.
+	ProviderGroq     Provider = "groq"
+	ProviderCerebras Provider = "cerebras"
+	ProviderMistral  Provider = "mistral"
 )
 
 // Config is the on-disk schema. Fields are minimal on purpose: anything
@@ -148,6 +152,12 @@ func envVarForProvider(p Provider) string {
 		return "DASHSCOPE_API_KEY"
 	case ProviderLiteLLM:
 		return "LITELLM_API_KEY"
+	case ProviderGroq:
+		return "GROQ_API_KEY"
+	case ProviderCerebras:
+		return "CEREBRAS_API_KEY"
+	case ProviderMistral:
+		return "MISTRAL_API_KEY"
 	case ProviderOllama:
 		return "" // Local, no API key needed
 	default:

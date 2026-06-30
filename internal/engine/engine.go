@@ -19,6 +19,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/subzone/Agentctl/internal/config"
 	"github.com/subzone/Agentctl/internal/llm"
 	"github.com/subzone/Agentctl/internal/logging"
 	"github.com/subzone/Agentctl/internal/ports"
@@ -116,6 +117,11 @@ type Config struct {
 	// Zero uses DefaultMaxConcurrentTools. This prevents resource exhaustion
 	// when a model requests many tool calls in a single turn.
 	MaxConcurrentTools int
+
+	// Routing enables MoE (Mixture of Experts) model routing. When set,
+	// each user turn is classified and the model/system/max_tokens may be
+	// swapped to the best-fit expert before calling the LLM.
+	Routing *config.RoutingConfig
 
 	// Audit receives structured metadata events. Nil means disabled.
 	Audit ports.AuditSink
@@ -290,6 +296,25 @@ func (s *Session) Step(ctx context.Context, task string) error {
 			}
 		}
 	}
+
+	// MoE routing: classify input and swap model/system per expert.
+	if route := Classify(task, s.cfg.Routing); route != nil {
+		if s.cfg.ResolveModel != nil && route.Model != "" {
+			if p, m, err := s.cfg.ResolveModel(route.Model); err == nil {
+				s.cfg.Provider = p
+				s.cfg.Model = m
+				s.cfg.FallbackModels = route.Fallback
+				fmt.Fprintf(s.status, "[routed → %s (%s)]\n", route.Category, route.Model)
+			}
+		}
+		if route.System != "" {
+			s.cfg.System = route.System
+		}
+		if route.MaxTokens > 0 {
+			s.cfg.MaxTokens = route.MaxTokens
+		}
+	}
+
 	s.messages = append(s.messages, llm.TextMessage(llm.RoleUser, task))
 	// Auto-compact when estimated tokens exceed threshold.
 	if s.shouldCompact() {

@@ -72,6 +72,12 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 			} else {
 				baseURL = "https://dashscope-intl.aliyuncs.com"
 			}
+		case userconfig.ProviderGroq:
+			baseURL = "https://api.groq.com"
+		case userconfig.ProviderCerebras:
+			baseURL = "https://api.cerebras.ai"
+		case userconfig.ProviderMistral:
+			baseURL = "https://api.mistral.ai"
 		}
 		req, _ := http.NewRequestWithContext(ctx, http.MethodHead, baseURL, nil)
 		resp, rerr := http.DefaultClient.Do(req)

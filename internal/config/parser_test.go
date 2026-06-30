@@ -91,6 +91,34 @@ Jira MCP server.
 	}
 }
 
+func TestParsePackage(t *testing.T) {
+	src := `---
+name: pro-dev
+type: package
+description: Curated bundle for development work.
+agents: [coder, reviewer]
+skills: [code-review]
+mcp: [github]
+entitlements: [pro]
+---
+Use this for development and review work.
+`
+	doc, err := Parse([]byte(src))
+	if err != nil {
+		t.Fatalf("parse: %v", err)
+	}
+	spec, ok := doc.Spec.(*PackageSpec)
+	if !ok {
+		t.Fatalf("got %T", doc.Spec)
+	}
+	if spec.Name != "pro-dev" || len(spec.Agents) != 2 || spec.Agents[0] != "coder" {
+		t.Errorf("unexpected package spec: %+v", spec)
+	}
+	if !strings.Contains(doc.Body, "development and review") {
+		t.Errorf("body missing package note: %q", doc.Body)
+	}
+}
+
 func TestParseAgentWithResponseSchema(t *testing.T) {
 	src := `---
 name: spoke

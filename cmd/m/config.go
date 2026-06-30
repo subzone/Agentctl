@@ -177,6 +177,12 @@ func discoverModels(ctx context.Context, cfg *userconfig.Config) ([]string, erro
 		return discoverDashScope(ctx, key, baseURL)
 	case userconfig.ProviderOllama:
 		return discoverOllama(ctx)
+	case userconfig.ProviderGroq:
+		return discoverOpenAI(ctx, "https://api.groq.com/openai", "GROQ_API_KEY")
+	case userconfig.ProviderCerebras:
+		return discoverOpenAI(ctx, "https://api.cerebras.ai", "CEREBRAS_API_KEY")
+	case userconfig.ProviderMistral:
+		return discoverOpenAI(ctx, "https://api.mistral.ai", "MISTRAL_API_KEY")
 	case userconfig.ProviderLiteLLM:
 		return nil, fmt.Errorf("LiteLLM model discovery not supported — add models manually with /model")
 	default:
@@ -479,6 +485,9 @@ func apiKeyFromEnvOrKeychain(envVar string) (string, error) {
 		"GEMINI_API_KEY":    userconfig.ProviderGemini,
 		"DASHSCOPE_API_KEY": userconfig.ProviderAlibaba,
 		"LITELLM_API_KEY":   userconfig.ProviderLiteLLM,
+		"GROQ_API_KEY":      userconfig.ProviderGroq,
+		"CEREBRAS_API_KEY":  userconfig.ProviderCerebras,
+		"MISTRAL_API_KEY":   userconfig.ProviderMistral,
 	}
 	if p, ok := providerMap[envVar]; ok {
 		// Use fallback: keychain first, then env var.

@@ -61,34 +61,37 @@ func runWizard(in io.Reader, out, status io.Writer) (*userconfig.Config, error) 
 
 	fmt.Fprint(out, banner)
 	fmt.Fprintln(out, "Welcome to m. Choose your model backend:")
-	fmt.Fprintln(out, "  1) Ollama + Qwen3-Coder      — local, free, ~5–20 GB download")
-	fmt.Fprintln(out, "  2) Anthropic (Claude)        — best quality, paid API")
-	fmt.Fprintln(out, "  3) OpenAI (GPT)              — paid API")
-	fmt.Fprintln(out, "  4) Google Gemini             — 1M context, paid API")
-	fmt.Fprintln(out, "  5) Alibaba (Qwen Cloud)      — DashScope API")
-	fmt.Fprintln(out, "  6) LiteLLM proxy             — self-hosted / custom endpoint")
+	fmt.Fprintln(out, "  1) Free MoE (recommended)    — Groq + Cerebras + Gemini + Mistral free tiers")
+	fmt.Fprintln(out, "  2) Ollama + Qwen3-Coder      — local, free, ~5–20 GB download")
+	fmt.Fprintln(out, "  3) Anthropic (Claude)        — best quality, paid API")
+	fmt.Fprintln(out, "  4) OpenAI (GPT)              — paid API")
+	fmt.Fprintln(out, "  5) Google Gemini             — 1M context, paid API")
+	fmt.Fprintln(out, "  6) Alibaba (Qwen Cloud)      — DashScope API")
+	fmt.Fprintln(out, "  7) LiteLLM proxy             — self-hosted / custom endpoint")
 	fmt.Fprintln(out)
 
-	choice, err := w.prompt("Choice [1-6]: ")
+	choice, err := w.prompt("Choice [1-7]: ")
 	if err != nil {
 		return nil, err
 	}
 	var cfg *userconfig.Config
 	switch choice {
-	case "1":
-		cfg, err = setupOllama(w)
+	case "1", "":
+		cfg, err = setupFreeMoE(w)
 	case "2":
-		cfg, err = setupAnthropic(w)
+		cfg, err = setupOllama(w)
 	case "3":
-		cfg, err = setupHostedKey(w, userconfig.ProviderOpenAI, "OpenAI", "gpt-4o-mini", "sk-")
+		cfg, err = setupAnthropic(w)
 	case "4":
-		cfg, err = setupGemini(w)
+		cfg, err = setupHostedKey(w, userconfig.ProviderOpenAI, "OpenAI", "gpt-4o-mini", "sk-")
 	case "5":
-		cfg, err = setupAlibaba(w)
+		cfg, err = setupGemini(w)
 	case "6":
+		cfg, err = setupAlibaba(w)
+	case "7":
 		cfg, err = setupLiteLLM(w)
 	default:
-		return nil, fmt.Errorf("invalid choice %q (expected 1-6)", choice)
+		return nil, fmt.Errorf("invalid choice %q (expected 1-7)", choice)
 	}
 	if err != nil {
 		return nil, err
@@ -420,6 +423,69 @@ func setupHostedKey(w *wiz, provider userconfig.Provider, label, defaultModel, e
 		Provider: provider,
 		Model:    defaultModel,
 	}, nil
+}
+
+// freeProvider describes a free-tier backend offered by the Free MoE setup.
+type freeProvider struct {
+	provider     userconfig.Provider
+	label        string
+	signupURL    string
+	defaultModel string
+	env          string
+}
+
+// freeProviders is the ordered roster the Free MoE wizard collects keys for.
+// Order matters: the first provider the user supplies a key for becomes the
+// primary backend recorded in config. Each is free to sign up for.
+var freeProviders = []freeProvider{
+	{userconfig.ProviderGroq, "Groq", "https://console.groq.com/keys", "llama-3.3-70b-versatile", "GROQ_API_KEY"},
+	{userconfig.ProviderGemini, "Google Gemini", "https://aistudio.google.com/apikey", "gemini-2.5-flash", "GEMINI_API_KEY"},
+	{userconfig.ProviderCerebras, "Cerebras", "https://cloud.cerebras.ai", "llama-3.3-70b", "CEREBRAS_API_KEY"},
+	{userconfig.ProviderMistral, "Mistral", "https://console.mistral.ai/api-keys", "mistral-large-latest", "MISTRAL_API_KEY"},
+}
+
+// setupFreeMoE collects API keys for the free-tier providers that power the
+// default Mixture-of-Experts agent. Every key is optional, but at least one
+// is required. Keys are stored in the OS keychain and exported into the
+// current process so the very first chat works without a restart. The first
+// provider the user supplies becomes the recorded primary backend; the
+// engine's routing table swaps models per turn from whatever keys exist.
+func setupFreeMoE(w *wiz) (*userconfig.Config, error) {
+	fmt.Fprintln(w.out, "\nFree MoE routes each task to the best free model.")
+	fmt.Fprintln(w.out, "Paste a key for any providers you want (Enter to skip). At least one is required.")
+	fmt.Fprintln(w.out, "All of these have free tiers — sign up links are shown below.")
+
+	var primary *userconfig.Config
+	saved := 0
+	for _, fp := range freeProviders {
+		fmt.Fprintf(w.out, "\n%s — %s\n", fp.label, fp.signupURL)
+		key, err := w.promptSecret("Paste key (input hidden, Enter to skip): ")
+		if err != nil {
+			return nil, err
+		}
+		if key == "" {
+			fmt.Fprintf(w.out, "  skipped %s\n", fp.label)
+			continue
+		}
+		if err := saveKeyWithRetry(w, fp.provider, key); err != nil {
+			return nil, fmt.Errorf("save %s key to keychain: %w", fp.label, err)
+		}
+		os.Setenv(fp.env, key)
+		fmt.Fprintf(w.out, "  ✓ %s key saved\n", fp.label)
+		saved++
+		if primary == nil {
+			primary = &userconfig.Config{Provider: fp.provider, Model: fp.defaultModel}
+		}
+	}
+
+	if saved == 0 {
+		return nil, errors.New("no keys provided — Free MoE needs at least one (Groq and Gemini recommended)")
+	}
+	if saved == 1 {
+		fmt.Fprintln(w.out, "\n  note: only one provider configured. Add more later with `m init`")
+		fmt.Fprintln(w.out, "  for full MoE routing and automatic fallback across providers.")
+	}
+	return primary, nil
 }
 
 func setupAnthropic(w *wiz) (*userconfig.Config, error) {
