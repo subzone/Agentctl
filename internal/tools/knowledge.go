@@ -182,20 +182,23 @@ func (k *KnowledgeTool) search(db *sql.DB, query string, topK int) (string, erro
 		params = append(params, "%"+t+"%")
 	}
 
+	scoreExprs := make([]string, 0, len(conditions))
+	for _, c := range conditions {
+		scoreExprs = append(scoreExprs, "CASE WHEN "+c+" THEN 1 ELSE 0 END")
+	}
+	// The query is assembled only from constant SQL fragments and bound `?`
+	// placeholders; user input flows in via params, never string interpolation.
+	//nolint:gosec // G201: no user data is formatted into the SQL string.
 	sqlQ := fmt.Sprintf(`SELECT file_path, line_start, line_end, content,
 		(%s) as score
 		FROM chunks WHERE %s ORDER BY score DESC LIMIT ?`,
-		strings.Join(func() []string {
-			var exprs []string
-			for _, c := range conditions {
-				exprs = append(exprs, fmt.Sprintf("CASE WHEN %s THEN 1 ELSE 0 END", c))
-			}
-			return exprs
-		}(), "+"),
+		strings.Join(scoreExprs, "+"),
 		strings.Join(conditions, " OR "))
 
-	// duplicate params for score calc and WHERE
-	allParams := append(params, params...)
+	// duplicate params for score calc and WHERE (fresh slice to avoid aliasing)
+	allParams := make([]any, 0, len(params)*2+1)
+	allParams = append(allParams, params...)
+	allParams = append(allParams, params...)
 	allParams = append(allParams, topK)
 
 	rows, err := db.Query(sqlQ, allParams...)
