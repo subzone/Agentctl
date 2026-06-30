@@ -19,6 +19,16 @@ func agentRegistryDir() string {
 	return filepath.Join(base, "m", "agents")
 }
 
+// mcpRegistryDir returns ~/.config/m/mcp/ (installed MCP server definitions).
+// These are loaded as companion docs so agents can reference them by name.
+func mcpRegistryDir() string {
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(base, "m", "mcp")
+}
+
 // resolveAgentPath resolves an agent reference to a file path.
 // Checks in order:
 //  1. Literal path (if file exists)

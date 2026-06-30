@@ -13,25 +13,34 @@ import (
 // directory doesn't exist yet (first run). Existing files are never overwritten
 // so user edits are preserved.
 func extractBundledAgents() error {
-	dir := agentRegistryDir()
-	if dir == "" {
-		return nil
-	}
-	if err := os.MkdirAll(dir, 0o700); err != nil {
+	if err := extractEmbedded(examples.Agents, "agents", agentRegistryDir()); err != nil {
 		return err
 	}
+	// MCP server definitions ship alongside agents so that agents which
+	// reference them (e.g. the MoE experts referencing knowledge-master)
+	// can resolve them as companion docs.
+	return extractEmbedded(examples.MCP, "mcp", mcpRegistryDir())
+}
 
-	return fs.WalkDir(examples.Agents, "agents", func(path string, d fs.DirEntry, err error) error {
+// extractEmbedded copies every .md under root in src into dstDir, creating
+// the directory if needed. Existing files are never overwritten so user
+// edits are preserved.
+func extractEmbedded(src fs.FS, root, dstDir string) error {
+	if dstDir == "" {
+		return nil
+	}
+	if err := os.MkdirAll(dstDir, 0o700); err != nil {
+		return err
+	}
+	return fs.WalkDir(src, root, func(path string, d fs.DirEntry, err error) error {
 		if err != nil || d.IsDir() {
 			return err
 		}
-		name := filepath.Base(path)
-		dst := filepath.Join(dir, name)
-		// Never overwrite user-edited files.
+		dst := filepath.Join(dstDir, filepath.Base(path))
 		if _, err := os.Stat(dst); err == nil {
-			return nil
+			return nil // never overwrite user-edited files
 		}
-		data, err := examples.Agents.ReadFile(path)
+		data, err := fs.ReadFile(src, path)
 		if err != nil {
 			return err
 		}

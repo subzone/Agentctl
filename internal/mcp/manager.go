@@ -65,20 +65,24 @@ func Open(ctx context.Context, specs []*config.MCPServerSpec, agentName string, 
 			continue
 		}
 		if err != nil {
-			m.closeAll()
-			return nil, fmt.Errorf("mcp %s: %w", spec.Name, err)
+			// A server that can't start (e.g. the binary isn't installed)
+			// should not take the whole agent down. Warn and carry on with
+			// whatever else connected — consistent with the skip-and-log
+			// handling for unsupported transports and disallowed agents.
+			fmt.Fprintf(status, "skipping mcp server %q: %v\n", spec.Name, err)
+			continue
 		}
 
 		if err := transport.Initialize(ctx, "agent", "0.1"); err != nil {
 			_ = transport.Close()
-			m.closeAll()
-			return nil, fmt.Errorf("mcp %s: initialize: %w", spec.Name, err)
+			fmt.Fprintf(status, "skipping mcp server %q: initialize: %v\n", spec.Name, err)
+			continue
 		}
 		listing, err := transport.ListTools(ctx)
 		if err != nil {
 			_ = transport.Close()
-			m.closeAll()
-			return nil, fmt.Errorf("mcp %s: tools/list: %w", spec.Name, err)
+			fmt.Fprintf(status, "skipping mcp server %q: tools/list: %v\n", spec.Name, err)
+			continue
 		}
 
 		prefix := spec.ToolPrefix

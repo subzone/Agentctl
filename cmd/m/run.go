@@ -343,13 +343,17 @@ func buildPolicyCheck() (func(context.Context, string, json.RawMessage) (string,
 func loadCompanionDocs(agentPath string) []*config.Document {
 	var docs []*config.Document
 	seen := map[string]bool{}
+	seenMCP := map[string]bool{}
 
 	// 1. Scan the agent's project root.
 	if root, err := projectRoot(agentPath); err == nil {
 		if found, _ := config.LoadDir(root); len(found) > 0 {
 			for _, d := range found {
-				if a, ok := d.Spec.(*config.AgentSpec); ok {
-					seen[a.Name] = true
+				switch s := d.Spec.(type) {
+				case *config.AgentSpec:
+					seen[s.Name] = true
+				case *config.MCPServerSpec:
+					seenMCP[s.Name] = true
 				}
 				docs = append(docs, d)
 			}
@@ -362,6 +366,19 @@ func loadCompanionDocs(agentPath string) []*config.Document {
 			for _, d := range found {
 				if a, ok := d.Spec.(*config.AgentSpec); ok && !seen[a.Name] {
 					seen[a.Name] = true
+					docs = append(docs, d)
+				}
+			}
+		}
+	}
+
+	// 3. Scan the installed MCP registry so agents can resolve MCP servers
+	// (e.g. knowledge-master) by name even when invoked outside a project.
+	if dir := mcpRegistryDir(); dir != "" {
+		if found, _ := config.LoadDir(dir); len(found) > 0 {
+			for _, d := range found {
+				if m, ok := d.Spec.(*config.MCPServerSpec); ok && !seenMCP[m.Name] {
+					seenMCP[m.Name] = true
 					docs = append(docs, d)
 				}
 			}
