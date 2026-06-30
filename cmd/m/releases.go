@@ -25,6 +25,30 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.3.0",
+		Date:    "2026-06-30",
+		Highlights: []string{
+			"Desktop Command Center: health dashboard, quick nav, and first-run onboarding.",
+			"Context Inspector + Activity Timeline: see what the agent reads and what it did.",
+			"Extensions hub: Tools, Skills, MCP in one place with test bench for tools/MCP.",
+			"Knowledge split view: graph + search/index panel with semantic KMSearch.",
+			"Form builders for tools and skills; persona presets for quick tuning.",
+			"Command palette (⌘K) and save toasts across the desktop app.",
+		},
+	},
+	{
+		Version: "0.2.0",
+		Date:    "2026-06-30",
+		Highlights: []string{
+			"Custom shell tools as Markdown (~/.config/m/tools).",
+			"Skills composed into the system prompt (~/.config/m/skills).",
+			"Per-agent personality overlay (~/.config/m/personas).",
+			"MCP servers as Markdown (~/.config/m/mcp); tools merged per session.",
+			"knowledge-master km_* tools and live knowledge-graph view.",
+			"Redesigned desktop rail: Chat, Knowledge, Tools, Skills, MCP, Persona.",
+		},
+	},
+	{
 		Version: "0.1.0",
 		Date:    "2026-05-09",
 		Highlights: []string{

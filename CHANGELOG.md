@@ -5,6 +5,25 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.0] - 2026-06-30
+
+### Added
+- **Command Center** (Home tab): setup health dashboard, quick navigation, MoE agent status
+- **Context Inspector**: live preview of composed system prompt with Apply now (New Chat)
+- **Activity Timeline**: structured feed of routes, tools, approvals, and MCP events in chat
+- **Command palette** (`⌘K`) and toast notifications for config changes
+- **Extensions hub**: unified Tools / Skills / MCP rail tab with sub-navigation
+- **Test bench**: run shell tools and probe MCP servers from the desktop UI
+- **First-run onboarding** wizard for MoE API key setup
+- **Knowledge split view**: graph + side panel with semantic search, indexing, and node browser
+- **Form builders** for tools and skills (Form / Advanced MD toggle) via `ParseToolForm` / `ComposeToolForm`
+- **Persona presets**: Support, Code reviewer, Writer, Strict PM quick-start combinations
+
+### Changed
+- Health check “Fix →” links route into Extensions sub-tabs
+- Knowledge tab uses full-width split layout (no left sidebar)
+- Desktop bumped to 0.3.0
+
 ## [0.2.0] - 2026-06-30
 
 ### Added
