@@ -25,6 +25,18 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.3.1",
+		Date:    "2026-06-30",
+		Highlights: []string{
+			"Global Apply bar: unsaved tools/skills/MCP/persona/agents remind you to New Chat.",
+			"Agent Studio: form editor for custom agents under Extensions → Agents.",
+			"Session persistence: encrypted saves each turn; resume from Home or Chat sidebar.",
+			"Export chat as Markdown; Settings tabs (General / API / Health / Paths).",
+			"Simple/Pro UI mode; expandable activity timeline; ⌘N and ⌘, shortcuts.",
+			"Knowledge → Chat: ask about a graph node in one click.",
+		},
+	},
+	{
 		Version: "0.3.0",
 		Date:    "2026-06-30",
 		Highlights: []string{

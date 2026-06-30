@@ -5,6 +5,23 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-06-30
+
+### Added
+- **Global Apply bar** — surfaces unsaved config (tools, skills, MCP, persona, agents) with one-click New Chat
+- **Agent Studio** — form editor for custom agents under Extensions → Agents
+- **Knowledge → Chat** — "Ask in chat" from graph nodes
+- **Session persistence** — encrypted disk saves on each turn and on close; resume from Home or Chat sidebar
+- **Export chat** — download current session as Markdown (`⤓ Export` or command palette)
+- **Settings redesign** — tabbed General / API / Health / Paths with inline doctor
+- **Simple / Pro mode** — hide advanced rails for a chat-first layout
+- **Activity timeline expand** — click rows to see tool args and approval detail
+- **Keyboard shortcuts** — `⌘N` new chat, `⌘,` settings (in addition to `⌘K` palette)
+
+### Changed
+- Release workflow bumps `subzone/homebrew-tap` on tag push
+- Desktop bumped to 0.3.1
+
 ## [0.3.0] - 2026-06-30
 
 ### Added
