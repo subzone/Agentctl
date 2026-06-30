@@ -440,7 +440,7 @@ type freeProvider struct {
 var freeProviders = []freeProvider{
 	{userconfig.ProviderGroq, "Groq", "https://console.groq.com/keys", "llama-3.3-70b-versatile", "GROQ_API_KEY"},
 	{userconfig.ProviderGemini, "Google Gemini", "https://aistudio.google.com/apikey", "gemini-2.5-flash", "GEMINI_API_KEY"},
-	{userconfig.ProviderCerebras, "Cerebras", "https://cloud.cerebras.ai", "llama-3.3-70b", "CEREBRAS_API_KEY"},
+	{userconfig.ProviderCerebras, "Cerebras", "https://cloud.cerebras.ai", "gpt-oss-120b", "CEREBRAS_API_KEY"},
 	{userconfig.ProviderMistral, "Mistral", "https://console.mistral.ai/api-keys", "mistral-large-latest", "MISTRAL_API_KEY"},
 }
 

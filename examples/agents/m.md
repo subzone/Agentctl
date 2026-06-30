@@ -5,7 +5,7 @@ description: Default MoE agent — routes to the best free-tier model per task.
 version: 2
 model: groq/llama-3.3-70b-versatile
 fallback:
-  - cerebras/llama-3.3-70b
+  - cerebras/gpt-oss-120b
   - gemini/gemini-2.5-flash
   - mistral/mistral-large-latest
 tools:
@@ -44,7 +44,7 @@ routing:
         - migrate
       min_length: 200
     - category: speed
-      model: cerebras/llama-3.3-70b
+      model: cerebras/gpt-oss-120b
       fallback:
         - groq/llama-3.3-70b-versatile
         - mistral/mistral-large-latest

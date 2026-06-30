@@ -19,7 +19,7 @@
   const freeProviders = [
     { id: 'groq',     label: 'Groq',     model: 'llama-3.3-70b-versatile', signup: 'https://console.groq.com/keys' },
     { id: 'gemini',   label: 'Gemini',   model: 'gemini-2.5-flash',        signup: 'https://aistudio.google.com/apikey' },
-    { id: 'cerebras', label: 'Cerebras', model: 'llama-3.3-70b',           signup: 'https://cloud.cerebras.ai' },
+    { id: 'cerebras', label: 'Cerebras', model: 'gpt-oss-120b',             signup: 'https://cloud.cerebras.ai' },
     { id: 'mistral',  label: 'Mistral',  model: 'mistral-large-latest',    signup: 'https://console.mistral.ai/api-keys' },
   ];
   let moeKeys = { groq: '', gemini: '', cerebras: '', mistral: '' };

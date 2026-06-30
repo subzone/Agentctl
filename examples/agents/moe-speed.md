@@ -3,7 +3,7 @@ name: moe-speed
 type: agent
 description: "MoE expert — ultra-fast responses via Cerebras (2000 tok/s)."
 version: 1
-model: cerebras/llama-3.3-70b
+model: cerebras/gpt-oss-120b
 fallback:
   - groq/llama-3.3-70b-versatile
   - mistral/mistral-large-latest

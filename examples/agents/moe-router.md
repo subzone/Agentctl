@@ -5,7 +5,7 @@ description: "MoE router — classifies tasks via fast free-tier inference and d
 version: 1
 model: groq/llama-3.3-70b-versatile
 fallback:
-  - cerebras/llama-3.3-70b
+  - cerebras/gpt-oss-120b
   - gemini/gemini-2.5-flash
 tools:
   - fs_read
