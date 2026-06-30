@@ -1,7 +1,7 @@
 <script>
   import { onMount, tick } from 'svelte';
   import Sidebar from './components/Sidebar.svelte';
-  import KnowledgeSidebar from './components/KnowledgeSidebar.svelte';
+  import KnowledgePanel from './components/KnowledgePanel.svelte';
   import KnowledgeGraph from './components/KnowledgeGraph.svelte';
   import ToolsSidebar from './components/ToolsSidebar.svelte';
   import SkillsSidebar from './components/SkillsSidebar.svelte';
@@ -13,6 +13,8 @@
   import CommandPalette from './components/CommandPalette.svelte';
   import ToastStack from './components/ToastStack.svelte';
   import ExtensionsNav from './components/ExtensionsNav.svelte';
+  import ToolFormEditor from './components/ToolFormEditor.svelte';
+  import SkillFormEditor from './components/SkillFormEditor.svelte';
   import TestBench from './components/TestBench.svelte';
   import Onboarding from './components/Onboarding.svelte';
   import TopBar from './components/TopBar.svelte';
@@ -33,6 +35,7 @@
   let kmVisibleTypes = new Set();
   let kmIndexing = null;
   let kmLoaded = false;
+  let kmSelectedId = '';
   let graphRef;
 
   // Custom tools (Tools tab).
@@ -43,6 +46,7 @@
   let toolError = '';
   let toolSaving = false;
   let toolSaved = false;
+  let toolAdvanced = false;
 
   // Skills (Skills tab). Authored skill bodies are composed into every new
   // chat's system prompt, so they take effect on the next New Chat.
@@ -53,6 +57,7 @@
   let skillError = '';
   let skillSaving = false;
   let skillSaved = false;
+  let skillAdvanced = false;
 
   let agents = [];
   let currentSession = null;
@@ -782,15 +787,10 @@
         </button>
       </nav>
 
-      {#if leftTab !== 'home'}
+      {#if leftTab !== 'home' && leftTab !== 'knowledge'}
       <div class="sidecol">
         {#if leftTab === 'agents'}
           <Sidebar {agents} active={currentAgent} on:select={e => selectAgent(e.detail)} on:settings={() => showSettings = true} />
-        {:else if leftTab === 'knowledge'}
-          <KnowledgeSidebar health={kmHealth} stats={kmStats} indexing={kmIndexing}
-            visibleTypes={kmVisibleTypes} nodeCounts={kmNodeCounts} typeColors={KM_COLORS}
-            on:index={kmIndexFolder} on:refresh={refreshKnowledge}
-            on:toggle={e => toggleKMType(e.detail)} on:settings={() => showSettings = true} />
         {:else if leftTab === 'extensions'}
           <ExtensionsNav active={extensionsSubTab} on:select={e => openExtensions(e.detail)} />
           {#if extensionsSubTab === 'tools'}
@@ -822,29 +822,15 @@
         {:else if leftTab === 'extensions' && extensionsSubTab === 'tools'}
           <div class="tools-main">
             {#if activeTool}
-              <div class="tool-bar">
-                <label class="tool-name-field">
-                  <span class="tool-name-lbl">Name</span>
-                  <input class="tool-name-input" value={toolNameFromContent(toolContent)}
-                    on:input={e => setToolName(e.target.value)} placeholder="my_tool" spellcheck="false" autocomplete="off" />
-                </label>
-                <div class="tool-actions">
-                  {#if !activeTool.isNew}
-                    <button class="tbtn delete" on:click={deleteTool}>Delete</button>
-                  {/if}
-                  <button class="tbtn save" on:click={saveTool} disabled={toolSaving}>
-                    {toolSaving ? 'Saving…' : toolSaved ? '✓ Saved' : 'Save'}
-                  </button>
+              {#if !activeTool.isNew}
+                <div class="tool-bar slim">
+                  <button class="tbtn delete" on:click={deleteTool}>Delete tool</button>
                 </div>
-              </div>
-              {#if toolError}<div class="tool-err">⚠ {toolError}</div>{/if}
-              <textarea class="tool-edit" bind:value={toolContent} spellcheck="false"
-                placeholder="Tool MD (frontmatter + body)"></textarea>
-              <div class="tool-hint">
-                MD with <code>type: tool</code>, <code>runtime: shell</code>. The model's JSON arguments
-                arrive on the command's <strong>stdin</strong>; whatever it prints to <strong>stdout</strong> is
-                returned. Changes apply on your next <strong>New Chat</strong>.
-              </div>
+              {/if}
+              <ToolFormEditor bind:content={toolContent} bind:advanced={toolAdvanced}
+                saving={toolSaving} saved={toolSaved} error={toolError}
+                on:change={e => { toolContent = e.detail; toolSaved = false; }}
+                on:save={saveTool} />
               <TestBench mode="tool" name={toolNameFromContent(toolContent)} disabled={!!toolError || activeTool.isNew} />
             {:else}
               <div class="tools-empty">
@@ -860,29 +846,15 @@
         {:else if leftTab === 'extensions' && extensionsSubTab === 'skills'}
           <div class="tools-main">
             {#if activeSkill}
-              <div class="tool-bar">
-                <label class="tool-name-field">
-                  <span class="tool-name-lbl">Name</span>
-                  <input class="tool-name-input" value={skillNameFromContent(skillContent)}
-                    on:input={e => setSkillName(e.target.value)} placeholder="my_skill" spellcheck="false" autocomplete="off" />
-                </label>
-                <div class="tool-actions">
-                  {#if !activeSkill.isNew}
-                    <button class="tbtn delete" on:click={deleteSkill}>Delete</button>
-                  {/if}
-                  <button class="tbtn save" on:click={saveSkill} disabled={skillSaving}>
-                    {skillSaving ? 'Saving…' : skillSaved ? '✓ Saved' : 'Save'}
-                  </button>
+              {#if !activeSkill.isNew}
+                <div class="tool-bar slim">
+                  <button class="tbtn delete" on:click={deleteSkill}>Delete skill</button>
                 </div>
-              </div>
-              {#if skillError}<div class="tool-err">⚠ {skillError}</div>{/if}
-              <textarea class="tool-edit" bind:value={skillContent} spellcheck="false"
-                placeholder="Skill MD (frontmatter + body)"></textarea>
-              <div class="tool-hint">
-                MD with <code>type: skill</code>. The body is reusable instructions composed into the
-                agent's system prompt, so it applies these guidelines automatically. Changes apply on
-                your next <strong>New Chat</strong>.
-              </div>
+              {/if}
+              <SkillFormEditor bind:content={skillContent} bind:advanced={skillAdvanced}
+                saving={skillSaving} saved={skillSaved} error={skillError}
+                on:change={e => { skillContent = e.detail; skillSaved = false; }}
+                on:save={saveSkill} />
             {:else}
               <div class="tools-empty">
                 <div class="tools-empty-card">
@@ -951,17 +923,25 @@
             </div>
           {/if}
         {:else if leftTab === 'knowledge'}
-          <div class="km-main">
+          <div class="km-split">
             {#if kmHealth.available}
-              <div class="km-graphbar">
-                <span class="km-title">◆ Knowledge graph</span>
-                <span class="km-sub">{kmNodes.length} nodes · {kmLinks.length} links</span>
-                <button class="km-fit" on:click={() => graphRef?.fit()}>⊡ Fit</button>
+              <div class="km-graph-pane">
+                <div class="km-graphbar">
+                  <span class="km-title">◆ Knowledge graph</span>
+                  <span class="km-sub">{kmNodes.length} nodes · {kmLinks.length} links</span>
+                  <button class="km-fit" on:click={() => graphRef?.fit()}>⊡ Fit</button>
+                </div>
+                <div class="km-canvas">
+                  <KnowledgeGraph bind:this={graphRef} nodes={kmNodes} links={kmLinks}
+                    visibleTypes={kmVisibleTypes} typeColors={KM_COLORS} />
+                </div>
               </div>
-              <div class="km-canvas">
-                <KnowledgeGraph bind:this={graphRef} nodes={kmNodes} links={kmLinks}
-                  visibleTypes={kmVisibleTypes} typeColors={KM_COLORS} />
-              </div>
+              <KnowledgePanel health={kmHealth} stats={kmStats} indexing={kmIndexing}
+                visibleTypes={kmVisibleTypes} nodeCounts={kmNodeCounts} typeColors={KM_COLORS}
+                nodes={kmNodes} selectedId={kmSelectedId}
+                on:index={kmIndexFolder} on:refresh={refreshKnowledge}
+                on:toggle={e => toggleKMType(e.detail)}
+                on:select={e => kmSelectedId = e.detail} />
             {:else}
               <div class="km-empty">
                 <div class="km-empty-card">
@@ -1136,7 +1116,9 @@ km serve</pre>
 
   .sidecol{width:240px;flex-shrink:0;display:flex;flex-direction:column;background:#0c1322;border-right:1px solid #1e293b;overflow:hidden}
 
-  .km-main{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+  .km-main,.km-split{flex:1;display:flex;min-height:0;overflow:hidden}
+  .km-split{flex-direction:row}
+  .km-graph-pane{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0}
   .km-graphbar{display:flex;align-items:center;gap:12px;padding:8px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
   .km-title{font-size:13px;font-weight:600;color:var(--text)}
   .km-sub{font-size:12px;color:var(--muted);flex:1}
@@ -1146,6 +1128,7 @@ km serve</pre>
 
   .tools-main{flex:1;display:flex;flex-direction:column;min-height:0;overflow:hidden}
   .tool-bar{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0}
+  .tool-bar.slim{justify-content:flex-end;padding:8px 16px;background:#080d18}
   .tool-title{font-size:14px;font-weight:600;color:var(--text);font-family:'SF Mono',Menlo,monospace}
   .tool-name-field{display:flex;align-items:center;gap:8px;min-width:0;flex:1}
   .tool-name-lbl{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:0.4px;flex-shrink:0}

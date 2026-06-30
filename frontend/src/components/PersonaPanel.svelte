@@ -28,6 +28,43 @@
     { id: 'detailed', label: 'Detailed' },
   ];
 
+  const presets = [
+    {
+      id: 'support',
+      label: 'Support',
+      tone: 'friendly',
+      verbosity: 'balanced',
+      instructions: 'Be patient and helpful. Confirm understanding before acting. Prefer step-by-step explanations.',
+    },
+    {
+      id: 'reviewer',
+      label: 'Code reviewer',
+      tone: 'direct',
+      verbosity: 'detailed',
+      instructions: 'Focus on correctness, security, and maintainability. Cite specific lines. Suggest concrete fixes, not vague advice.',
+    },
+    {
+      id: 'writer',
+      label: 'Writer',
+      tone: 'formal',
+      verbosity: 'detailed',
+      instructions: 'Write clearly with good structure. Use headings and bullets when helpful. Avoid jargon unless asked.',
+    },
+    {
+      id: 'pm',
+      label: 'Strict PM',
+      tone: 'concise',
+      verbosity: 'terse',
+      instructions: 'Be brief and action-oriented. Lead with decisions and next steps. Flag risks and blockers explicitly.',
+    },
+  ];
+
+  function applyPreset(p) {
+    tone = p.tone;
+    verbosity = p.verbosity;
+    instructions = p.instructions;
+  }
+
   function save() {
     dispatch('save', {
       instructions: instructions.trim(),
@@ -54,6 +91,16 @@
   </div>
 
   <div class="pbody">
+    <div class="field">
+      <span class="lbl">Presets</span>
+      <div class="chips">
+        {#each presets as p}
+          <button class="chip preset" on:click={() => applyPreset(p)}>{p.label}</button>
+        {/each}
+      </div>
+      <p class="hint">Quick-start combinations — tweak after applying, then Save.</p>
+    </div>
+
     <div class="field">
       <span class="lbl">Tone</span>
       <div class="chips">
@@ -112,6 +159,7 @@
   .chip{padding:6px 14px;border-radius:20px;border:1px solid var(--border,#334155);background:transparent;color:var(--text,#cbd5e1);font-size:12px;cursor:pointer}
   .chip:hover{border-color:var(--accent,#6366f1)}
   .chip.on{background:var(--accent,#6366f1);border-color:var(--accent,#6366f1);color:#fff}
+  .chip.preset{border-style:dashed}
 
   .temp-head{display:flex;align-items:center;gap:8px;cursor:pointer}
   .temp-row{display:flex;align-items:center;gap:12px;max-width:420px}

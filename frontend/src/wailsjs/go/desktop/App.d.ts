@@ -5,6 +5,10 @@ import {userconfig} from '../models';
 
 export function CloseSession(arg1:string):Promise<void>;
 
+export function ComposeSkillForm(arg1:desktop.SkillForm):Promise<string>;
+
+export function ComposeToolForm(arg1:desktop.ToolForm):Promise<string>;
+
 export function CreateSession(arg1:string):Promise<desktop.SessionInfo>;
 
 export function DeleteMCP(arg1:string):Promise<void>;
@@ -35,6 +39,8 @@ export function KMIndex(arg1:string,arg2:string):Promise<void>;
 
 export function KMPickDirectory():Promise<string>;
 
+export function KMSearch(arg1:string,arg2:number):Promise<string>;
+
 export function KMStatus():Promise<desktop.KMStats>;
 
 export function ListAgents():Promise<Array<desktop.AgentInfo>>;
@@ -52,6 +58,10 @@ export function NewSkillTemplate():Promise<string>;
 export function NewToolTemplate():Promise<string>;
 
 export function OpenFile():Promise<desktop.FileResult>;
+
+export function ParseSkillForm(arg1:string):Promise<desktop.SkillForm>;
+
+export function ParseToolForm(arg1:string):Promise<desktop.ToolForm>;
 
 export function PreviewContext(arg1:string):Promise<desktop.AgentContextPreview>;
 

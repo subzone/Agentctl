@@ -6,6 +6,14 @@ export function CloseSession(arg1) {
   return window['go']['desktop']['App']['CloseSession'](arg1);
 }
 
+export function ComposeSkillForm(arg1) {
+  return window['go']['desktop']['App']['ComposeSkillForm'](arg1);
+}
+
+export function ComposeToolForm(arg1) {
+  return window['go']['desktop']['App']['ComposeToolForm'](arg1);
+}
+
 export function CreateSession(arg1) {
   return window['go']['desktop']['App']['CreateSession'](arg1);
 }
@@ -66,6 +74,10 @@ export function KMPickDirectory() {
   return window['go']['desktop']['App']['KMPickDirectory']();
 }
 
+export function KMSearch(arg1, arg2) {
+  return window['go']['desktop']['App']['KMSearch'](arg1, arg2);
+}
+
 export function KMStatus() {
   return window['go']['desktop']['App']['KMStatus']();
 }
@@ -100,6 +112,14 @@ export function NewToolTemplate() {
 
 export function OpenFile() {
   return window['go']['desktop']['App']['OpenFile']();
+}
+
+export function ParseSkillForm(arg1) {
+  return window['go']['desktop']['App']['ParseSkillForm'](arg1);
+}
+
+export function ParseToolForm(arg1) {
+  return window['go']['desktop']['App']['ParseToolForm'](arg1);
 }
 
 export function PreviewContext(arg1) {

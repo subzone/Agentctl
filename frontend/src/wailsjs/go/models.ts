@@ -373,6 +373,22 @@ export namespace desktop {
 	        this.error = source["error"];
 	    }
 	}
+	export class SkillForm {
+	    name: string;
+	    description: string;
+	    body: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new SkillForm(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.body = source["body"];
+	    }
+	}
 	export class TestResult {
 	    ok: boolean;
 	    output: string;
@@ -445,6 +461,28 @@ export namespace desktop {
 	        this.path = source["path"];
 	        this.content = source["content"];
 	        this.error = source["error"];
+	    }
+	}
+	export class ToolForm {
+	    name: string;
+	    description: string;
+	    command: string[];
+	    timeoutSec: number;
+	    parametersJson: string;
+	    body: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ToolForm(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.command = source["command"];
+	        this.timeoutSec = source["timeoutSec"];
+	        this.parametersJson = source["parametersJson"];
+	        this.body = source["body"];
 	    }
 	}
 

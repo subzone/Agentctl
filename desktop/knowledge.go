@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -183,4 +184,31 @@ func (a *App) emitKM(event string, data map[string]any) {
 		return
 	}
 	runtime.EventsEmit(a.ctx, event, data)
+}
+
+// KMSearch runs semantic search against the knowledge graph for the UI panel.
+func (a *App) KMSearch(query string, topK int) (string, error) {
+	query = strings.TrimSpace(query)
+	if query == "" {
+		return "", fmt.Errorf("query is required")
+	}
+	if topK <= 0 {
+		topK = 8
+	}
+	q := url.Values{}
+	q.Set("q", query)
+	q.Set("top_k", fmt.Sprint(topK))
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+	req, _ := http.NewRequestWithContext(ctx, http.MethodGet, kmBaseURL+"/api/v1/search?"+q.Encode(), nil)
+	resp, err := kmHTTP.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("knowledge-master not reachable at %s — start it with `km start && km serve`", kmBaseURL)
+	}
+	defer resp.Body.Close()
+	body, _ := io.ReadAll(io.LimitReader(resp.Body, 256*1024))
+	if resp.StatusCode != http.StatusOK {
+		return "", fmt.Errorf("knowledge-master returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+	}
+	return string(body), nil
 }
