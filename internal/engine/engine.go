@@ -187,6 +187,19 @@ func (s *Session) SetSystem(system string) {
 	s.cfg.System = system
 }
 
+// SetRouting updates the MoE routing config used to classify and re-route
+// each subsequent Step. Nil disables routing.
+func (s *Session) SetRouting(r *config.RoutingConfig) {
+	s.cfg.Routing = r
+}
+
+// SetFallbacks updates the fallback model chain and the resolver used to
+// switch models on rate-limit/overload errors for subsequent Steps.
+func (s *Session) SetFallbacks(models []string, resolve func(string) (llm.Provider, string, error)) {
+	s.cfg.FallbackModels = models
+	s.cfg.ResolveModel = resolve
+}
+
 // Model returns the current bare model id.
 func (s *Session) Model() string { return s.cfg.Model }
 

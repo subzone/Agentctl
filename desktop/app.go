@@ -332,6 +332,13 @@ func (a *App) CreateSession(agentName string) (*SessionInfo, error) {
 		Tools:       reg,
 		Temperature: spec.Temperature,
 		MaxTokens:   maxTokens,
+		// Wire MoE routing and the fallback chain so the default "m" agent
+		// behaves like it does in the CLI: each turn is routed to the best
+		// expert model, and a 429/overload on a free tier transparently
+		// fails over to the next provider instead of killing the chat.
+		Routing:        spec.Routing,
+		FallbackModels: spec.FallbackModels,
+		ResolveModel:   llm.Resolve,
 		ToolConfirm: func(ctx context.Context, name string, input json.RawMessage) (bool, error) {
 			return a.requestToolApproval(ctx, id, name, input)
 		},
@@ -554,6 +561,8 @@ func (a *App) SwitchAgent(sessionID, agentName string) error {
 	defer sess.mu.Unlock()
 	sess.engine.SetModel(provider, model)
 	sess.engine.SetSystem(body)
+	sess.engine.SetRouting(spec.Routing)
+	sess.engine.SetFallbacks(spec.FallbackModels, llm.Resolve)
 	sess.Agent = spec.Name
 	sess.Model = spec.Model
 	return nil
