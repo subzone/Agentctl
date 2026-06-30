@@ -188,6 +188,7 @@ func (k *KnowledgeTool) search(db *sql.DB, query string, topK int) (string, erro
 	}
 	// The query is assembled only from constant SQL fragments and bound `?`
 	// placeholders; user input flows in via params, never string interpolation.
+	// #nosec G201 -- no user data is formatted into the SQL string (golangci honors the nolint below).
 	//nolint:gosec // G201: no user data is formatted into the SQL string.
 	sqlQ := fmt.Sprintf(`SELECT file_path, line_start, line_end, content,
 		(%s) as score
