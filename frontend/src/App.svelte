@@ -16,10 +16,12 @@
   let errorBanner = '';
   let showSettings = false;
   let attachedFiles = [];
+  let moeRoute = null;
+  let contextUsage = 0;
+  let pendingApproval = null;
 
   onMount(async () => {
     await waitForWails();
-    // Apply saved theme
     try {
       const themes = await window.go.desktop.App.GetThemes();
       const saved = localStorage.getItem('theme') || 'default';
@@ -68,6 +70,7 @@
       }
       streaming = false;
       cost = { inputTokens: data.inputTokens || 0, outputTokens: data.outputTokens || 0, cost: data.cost || 0 };
+      if (data.contextUsage) contextUsage = data.contextUsage;
       scrollToBottom();
     });
     window.runtime.EventsOn('error', (data) => {
@@ -77,9 +80,76 @@
     });
     window.runtime.EventsOn('toolConfirm', (data) => {
       if (data.sessionId !== currentSession) return;
-      messages = [...messages, { role: 'tool', content: '→ ' + data.tool + ' ' + (data.input || '').substring(0, 80) }];
+      pendingApproval = { requestId: data.requestId, tool: data.tool, input: data.input || '' };
       scrollToBottom();
     });
+    window.runtime.EventsOn('route', (data) => {
+      if (data.sessionId !== currentSession) return;
+      moeRoute = { category: data.category, model: data.model };
+      messages = [...messages, { role: 'system', content: '◆ routed → ' + data.category + ' (' + data.model + ')' }];
+      scrollToBottom();
+    });
+  }
+
+  function renderMarkdown(text) {
+    if (!text) return '';
+    let html = '';
+    const lines = text.split('\n');
+    let i = 0;
+    while (i < lines.length) {
+      const line = lines[i];
+      // Fenced code block
+      const fence = line.match(/^```(\w*)/);
+      if (fence) {
+        const lang = fence[1] || '';
+        let code = '';
+        i++;
+        while (i < lines.length && !lines[i].startsWith('```')) {
+          code += (code ? '\n' : '') + lines[i];
+          i++;
+        }
+        i++; // skip closing ```
+        const langClass = lang ? ' lang-' + lang : '';
+        html += `<pre class="code-block${langClass}"><code>${escHtml(code)}</code></pre>`;
+        continue;
+      }
+      // Header
+      const hMatch = line.match(/^(#{1,3})\s+(.+)/);
+      if (hMatch) {
+        const level = hMatch[1].length;
+        html += `<h${level} class="md-h">${inlineMd(hMatch[2])}</h${level}>`;
+        i++; continue;
+      }
+      // Bullet list
+      if (line.match(/^\s*[-*]\s+/)) {
+        html += '<ul class="md-list">';
+        while (i < lines.length && lines[i].match(/^\s*[-*]\s+/)) {
+          html += `<li>${inlineMd(lines[i].replace(/^\s*[-*]\s+/, ''))}</li>`;
+          i++;
+        }
+        html += '</ul>';
+        continue;
+      }
+      // Empty line
+      if (line.trim() === '') { html += '<br/>'; i++; continue; }
+      // Paragraph
+      html += `<p class="md-p">${inlineMd(line)}</p>`;
+      i++;
+    }
+    return html;
+  }
+
+  function inlineMd(text) {
+    let s = escHtml(text);
+    s = s.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
+    s = s.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+    s = s.replace(/\*([^*]+)\*/g, '<em>$1</em>');
+    s = s.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" class="md-link">$1</a>');
+    return s;
+  }
+
+  function escHtml(s) {
+    return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   }
 
   async function selectAgent(agent) {
@@ -95,7 +165,19 @@
         currentAgent = agent;
         messages = []; streamBuffer = '';
         cost = { inputTokens: 0, outputTokens: 0, cost: 0 };
+        moeRoute = null; contextUsage = 0; pendingApproval = null;
       }
+    } catch (e) { errorBanner = String(e); }
+  }
+
+  async function newChat() {
+    if (!currentAgent) return;
+    try {
+      const session = await window.go.desktop.App.CreateSession(currentAgent.name);
+      currentSession = session.id;
+      messages = []; streamBuffer = '';
+      cost = { inputTokens: 0, outputTokens: 0, cost: 0 };
+      moeRoute = null; contextUsage = 0; pendingApproval = null;
     } catch (e) { errorBanner = String(e); }
   }
 
@@ -133,11 +215,24 @@
 
   async function stopGen() {
     try { await window.go.desktop.App.StopGeneration(currentSession); } catch (_) {}
+    pendingApproval = null;
     streaming = false;
     if (streamBuffer) {
       messages = [...messages, { role: 'assistant', content: streamBuffer + '\n[stopped]' }];
       streamBuffer = '';
     }
+  }
+
+  async function respondApproval(approved) {
+    if (!pendingApproval) return;
+    const { requestId, tool, input } = pendingApproval;
+    pendingApproval = null;
+    messages = [...messages, {
+      role: 'tool',
+      content: (approved ? '✓ approved ' : '✕ denied ') + tool + ' ' + input.substring(0, 80),
+    }];
+    try { await window.go.desktop.App.RespondToolApproval(requestId, approved); } catch (e) { errorBanner = String(e); }
+    scrollToBottom();
   }
 
   function handleKey(e) {
@@ -159,10 +254,10 @@
   />
 {:else}
   <div class="app">
-    <TopBar agent={currentAgent} {cost} on:settings={() => showSettings = true} />
+    <TopBar agent={currentAgent} {cost} {moeRoute} {contextUsage} on:settings={() => showSettings = true} />
 
     <div class="body">
-      <Sidebar {agents} on:select={e => selectAgent(e.detail)} on:settings={() => showSettings = true} />
+      <Sidebar {agents} active={currentAgent} on:select={e => selectAgent(e.detail)} on:settings={() => showSettings = true} />
 
       <div class="main">
         {#if errorBanner}
@@ -195,19 +290,36 @@
                   {:else if msg.role === 'error'}⚠ Error
                   {:else}ℹ{/if}
                 </div>
-                <div class="txt">{msg.content}</div>
+                {#if msg.role === 'assistant'}
+                  <div class="txt md-content">{@html renderMarkdown(msg.content)}</div>
+                {:else}
+                  <div class="txt">{msg.content}</div>
+                {/if}
               </div>
             {/each}
             {#if streaming}
               <div class="msg assistant">
                 <div class="lbl">◆ {currentAgent?.name || 'Agent'}</div>
-                <div class="txt">
-                  {#if streamBuffer}{streamBuffer}<span class="cursor">▊</span>
+                <div class="txt md-content">
+                  {#if streamBuffer}{@html renderMarkdown(streamBuffer)}<span class="cursor">▊</span>
                   {:else}<span class="thinking">Thinking...</span>{/if}
                 </div>
               </div>
             {/if}
           </div>
+
+          {#if pendingApproval}
+            <div class="approval">
+              <div class="approval-info">
+                <span class="approval-tool">⚙ {pendingApproval.tool}</span>
+                <code class="approval-input">{pendingApproval.input.substring(0, 160)}</code>
+              </div>
+              <div class="approval-actions">
+                <button class="appr deny" on:click={() => respondApproval(false)}>Deny</button>
+                <button class="appr allow" on:click={() => respondApproval(true)}>Allow</button>
+              </div>
+            </div>
+          {/if}
 
           {#if attachedFiles.length > 0}
             <div class="attachments">
@@ -224,6 +336,7 @@
                 placeholder="Type a message... (Enter to send, Shift+Enter for new line)"
                 disabled={streaming} rows="3"></textarea>
               <div class="btn-col">
+                <button class="btn new-chat" on:click={newChat} title="New Chat">＋</button>
                 {#if streaming}
                   <button class="btn stop" on:click={stopGen}>■ Stop</button>
                 {:else}
@@ -271,16 +384,63 @@
   .msg.error{background:color-mix(in srgb,var(--err) 15%,transparent);border:1px solid color-mix(in srgb,var(--err) 30%,transparent);align-self:flex-start}
   .msg.system{background:transparent;align-self:center;color:var(--muted);font-size:12px;padding:4px 0}
 
-  .lbl{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.3px}
+  .lbl{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:5px;text-transform:uppercase;letter-spacing:0.3px;display:flex;align-items:center;gap:6px}
   .msg.user .lbl{color:var(--user)}
   .msg.error .lbl{color:var(--err)}
   .msg.tool .lbl{color:var(--tool)}
   .txt{font-size:14px;line-height:1.65;white-space:pre-wrap}
 
+  .moe-badge{font-size:10px;background:#6366f1;color:#fff;padding:1px 6px;border-radius:4px;text-transform:none;letter-spacing:0;font-weight:500}
+
+  /* Markdown rendered content */
+  .md-content{white-space:normal}
+  .md-content :global(.md-h){font-weight:700;margin:8px 0 4px;color:var(--text)}
+  .md-content :global(h1.md-h){font-size:20px}
+  .md-content :global(h2.md-h){font-size:17px}
+  .md-content :global(h3.md-h){font-size:15px}
+  .md-content :global(.md-p){margin:4px 0;line-height:1.65}
+  .md-content :global(.md-list){margin:4px 0 4px 18px;line-height:1.6}
+  .md-content :global(.md-list li){margin:2px 0}
+  .md-content :global(.md-link){color:var(--accent);text-decoration:underline}
+  .md-content :global(.inline-code){background:#0f172a;border:1px solid var(--border);padding:1px 5px;border-radius:4px;font-family:'SF Mono',Menlo,monospace;font-size:12px}
+  .md-content :global(strong){font-weight:700;color:#f1f5f9}
+  .md-content :global(em){font-style:italic;color:#cbd5e1}
+
+  /* Code blocks */
+  .md-content :global(.code-block){background:#0f172a;border:1px solid var(--border);border-radius:6px;padding:12px 14px;margin:8px 0;overflow-x:auto;font-family:'SF Mono',Menlo,monospace;font-size:12px;line-height:1.5;color:#e2e8f0}
+  .md-content :global(.code-block code){font-family:inherit;font-size:inherit;color:inherit}
+  .md-content :global(.code-block.lang-go){border-left:3px solid #00add8}
+  .md-content :global(.code-block.lang-python){border-left:3px solid #3776ab}
+  .md-content :global(.code-block.lang-javascript),
+  .md-content :global(.code-block.lang-js){border-left:3px solid #f7df1e}
+  .md-content :global(.code-block.lang-typescript),
+  .md-content :global(.code-block.lang-ts){border-left:3px solid #3178c6}
+  .md-content :global(.code-block.lang-rust){border-left:3px solid #dea584}
+  .md-content :global(.code-block.lang-bash),
+  .md-content :global(.code-block.lang-sh),
+  .md-content :global(.code-block.lang-shell){border-left:3px solid #4ade80}
+  .md-content :global(.code-block.lang-yaml),
+  .md-content :global(.code-block.lang-yml){border-left:3px solid #cb171e}
+  .md-content :global(.code-block.lang-json){border-left:3px solid #a3a3a3}
+  .md-content :global(.code-block.lang-sql){border-left:3px solid #e38c00}
+  .md-content :global(.code-block.lang-css){border-left:3px solid #264de4}
+  .md-content :global(.code-block.lang-html){border-left:3px solid #e34c26}
+
   .cursor{animation:blink 1s infinite;color:var(--accent);font-weight:bold}
   @keyframes blink{0%,100%{opacity:1}50%{opacity:0}}
   .thinking{color:var(--muted);animation:pulse 1.5s infinite}
   @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
+
+  .approval{display:flex;align-items:center;justify-content:space-between;gap:12px;margin:0 20px 4px;padding:10px 14px;background:color-mix(in srgb,var(--tool) 14%,transparent);border:1px solid color-mix(in srgb,var(--tool) 40%,transparent);border-radius:8px;flex-shrink:0}
+  .approval-info{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
+  .approval-tool{font-size:12px;font-weight:600;color:var(--tool);text-transform:uppercase;letter-spacing:0.3px}
+  .approval-input{font-family:'SF Mono',Menlo,monospace;font-size:12px;color:var(--text);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;background:var(--bg);padding:4px 8px;border-radius:4px}
+  .approval-actions{display:flex;gap:8px;flex-shrink:0}
+  .appr{padding:8px 18px;border:none;border-radius:6px;font-weight:600;font-size:13px;cursor:pointer}
+  .appr.allow{background:var(--accent);color:#fff}
+  .appr.allow:hover{filter:brightness(1.1)}
+  .appr.deny{background:var(--bg-panel);color:var(--err);border:1px solid color-mix(in srgb,var(--err) 40%,transparent)}
+  .appr.deny:hover{background:color-mix(in srgb,var(--err) 15%,transparent)}
 
   .attachments{display:flex;flex-wrap:wrap;gap:6px;padding:8px 20px 0;flex-shrink:0}
   .chip{display:flex;align-items:center;gap:5px;background:var(--bg-input);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:12px;color:var(--muted)}
@@ -299,13 +459,15 @@
   textarea:focus{border-color:var(--accent)}
   textarea:disabled{opacity:0.5;cursor:not-allowed}
 
-  .btn-col{display:flex;flex-direction:column;justify-content:flex-end;flex-shrink:0}
+  .btn-col{display:flex;flex-direction:column;justify-content:flex-end;flex-shrink:0;gap:4px}
   .btn{padding:10px 22px;border:none;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;white-space:nowrap}
   .btn.send{background:var(--accent);color:white}
   .btn.send:hover:not(:disabled){filter:brightness(1.1)}
   .btn.send:disabled{opacity:0.4;cursor:not-allowed}
   .btn.stop{background:var(--err);color:white}
   .btn.stop:hover{filter:brightness(1.1)}
+  .btn.new-chat{background:var(--bg-panel);color:var(--muted);border:1px solid var(--border);padding:6px 12px;font-size:16px}
+  .btn.new-chat:hover{background:var(--border);color:var(--text)}
 
   .footer-bar{display:flex;justify-content:space-between;align-items:center;margin-top:8px;font-size:11px}
   .cost-info{color:var(--tool);font-family:'SF Mono',Menlo,monospace;font-weight:500}

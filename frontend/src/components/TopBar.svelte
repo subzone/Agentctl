@@ -2,6 +2,8 @@
   import { createEventDispatcher } from 'svelte';
   export let agent = null;
   export let cost = { inputTokens: 0, outputTokens: 0, cost: 0 };
+  export let moeRoute = null;
+  export let contextUsage = 0;
   const dispatch = createEventDispatcher();
 
   function fmt(n) { return (n||0) >= 1000 ? ((n||0)/1000).toFixed(1)+'k' : String(n||0); }
@@ -9,10 +11,16 @@
     if (!c) return '$0.00';
     return c < 0.01 ? '$'+c.toFixed(4) : '$'+c.toFixed(2);
   }
+
+  function moeColor(cat) {
+    if (cat === 'reasoning') return '#a78bfa';
+    if (cat === 'speed') return '#4ade80';
+    if (cat === 'longctx') return '#fb923c';
+    return '#64748b';
+  }
 </script>
 
 <header class="topbar">
-  <!-- Drag region — sits behind everything -->
   <div class="drag-region"></div>
 
   <div class="left">
@@ -32,10 +40,21 @@
       <span class="agent-name">{agent.name}</span>
       <span class="model">{agent.model}</span>
     {/if}
+    {#if moeRoute}
+      <span class="moe-tag" style="background:{moeColor(moeRoute.category)}">
+        {moeRoute.category} → {moeRoute.model}
+      </span>
+    {/if}
   </div>
 
   <div class="right">
     {#if agent}
+      {#if contextUsage > 0}
+        <div class="ctx-bar" title="Context: {contextUsage}%">
+          <div class="ctx-fill" style="width:{contextUsage}%;background:{contextUsage > 80 ? '#ef4444' : contextUsage > 50 ? '#f59e0b' : '#4ade80'}"></div>
+          <span class="ctx-label">{contextUsage}%</span>
+        </div>
+      {/if}
       <div class="tokens">
         <span class="tok-label">In</span><span class="tok-val">{fmt(cost.inputTokens)}</span>
         <span class="tok-sep">·</span>
@@ -60,22 +79,20 @@
     justify-content: space-between;
     height: 52px;
     padding: 0 12px;
-    padding-top: 28px; /* macOS traffic lights height */
-    padding-left: 80px; /* space for traffic lights */
+    padding-top: 28px;
+    padding-left: 80px;
     background: #1e293b;
     border-bottom: 1px solid #334155;
     flex-shrink: 0;
     gap: 12px;
   }
 
-  /* Full-width drag region behind content */
   .drag-region {
     position: absolute;
     inset: 0;
     -webkit-app-region: drag;
   }
 
-  /* All interactive content must be no-drag */
   .left, .right {
     position: relative;
     z-index: 1;
@@ -102,6 +119,12 @@
     padding: 2px 7px; border-radius: 4px; white-space: nowrap;
     flex-shrink: 0; max-width: 180px; overflow: hidden; text-overflow: ellipsis;
   }
+
+  .moe-tag{font-size:10px;color:#fff;padding:2px 8px;border-radius:4px;font-weight:600;white-space:nowrap;flex-shrink:0}
+
+  .ctx-bar{position:relative;width:60px;height:8px;background:#0f172a;border-radius:4px;border:1px solid #334155;overflow:hidden;flex-shrink:0}
+  .ctx-fill{height:100%;border-radius:3px;transition:width 0.3s}
+  .ctx-label{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:7px;font-weight:700;color:#e2e8f0}
 
   .tokens {
     display: flex; align-items: center; gap: 5px;

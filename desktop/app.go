@@ -13,6 +13,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -33,6 +34,12 @@ type App struct {
 	cfg      *userconfig.Config
 	sessions map[string]*Session
 	mu       sync.RWMutex
+
+	// pending holds in-flight tool-approval requests keyed by request id.
+	// The engine blocks on the channel until the frontend answers via
+	// RespondToolApproval.
+	pending   map[string]chan bool
+	pendingMu sync.Mutex
 }
 
 // Session wraps an engine.Session with desktop-specific state.
@@ -103,7 +110,10 @@ type CostInfo struct {
 }
 
 func NewApp() *App {
-	return &App{sessions: make(map[string]*Session)}
+	return &App{
+		sessions: make(map[string]*Session),
+		pending:  make(map[string]chan bool),
+	}
 }
 
 func (a *App) Startup(ctx context.Context) {
@@ -128,6 +138,12 @@ func (a *App) Startup(ctx context.Context) {
 				os.Setenv("DASHSCOPE_API_KEY", key)
 			case userconfig.ProviderLiteLLM:
 				os.Setenv("LITELLM_API_KEY", key)
+			case userconfig.ProviderGroq:
+				os.Setenv("GROQ_API_KEY", key)
+			case userconfig.ProviderCerebras:
+				os.Setenv("CEREBRAS_API_KEY", key)
+			case userconfig.ProviderMistral:
+				os.Setenv("MISTRAL_API_KEY", key)
 			}
 		}
 		if cfg.BaseURL != "" {
@@ -139,6 +155,24 @@ func (a *App) Startup(ctx context.Context) {
 			case userconfig.ProviderOllama:
 				os.Setenv("OLLAMA_HOST", cfg.BaseURL)
 			}
+		}
+	}
+
+	// The bundled default agent and the MoE example agents route across the
+	// free-tier providers (Groq, Cerebras, Mistral, Gemini). Hydrate every
+	// free key we have stored — independent of the primary provider — so
+	// routing and fallback don't fail with "<KEY> is not set".
+	for provider, env := range map[userconfig.Provider]string{
+		userconfig.ProviderGroq:     "GROQ_API_KEY",
+		userconfig.ProviderCerebras: "CEREBRAS_API_KEY",
+		userconfig.ProviderMistral:  "MISTRAL_API_KEY",
+		userconfig.ProviderGemini:   "GEMINI_API_KEY",
+	} {
+		if os.Getenv(env) != "" {
+			continue
+		}
+		if key, err := userconfig.GetAPIKeyWithFallback(provider); err == nil && key != "" {
+			os.Setenv(env, key)
 		}
 	}
 }
@@ -263,22 +297,22 @@ func (a *App) CreateSession(agentName string) (*SessionInfo, error) {
 		return nil, fmt.Errorf("resolve model: %w", err)
 	}
 
-	// Build tools.
-	reg := tools.Builtins(
-		func(_ context.Context, prompt string) (bool, error) {
-			return a.requestToolConfirm(prompt)
-		},
-		&tools.UndoStack{},
-	)
+	// Build tools. Pass a nil confirm func: the engine-level ToolConfirm
+	// below is the single authoritative approval gate, so fs_write must not
+	// prompt a second time.
+	reg := tools.Builtins(nil, &tools.UndoStack{})
 
 	maxTokens := 0
 	if spec.MaxTokens != nil {
 		maxTokens = *spec.MaxTokens
 	}
 
-	// Create streaming writer that emits events to frontend.
+	// Create streaming writer that emits events to frontend. Output (assistant
+	// tokens) and status (engine diagnostics like MoE routing) go to separate
+	// events so status lines never pollute the visible assistant message.
 	id := fmt.Sprintf("s_%d", time.Now().UnixMilli())
 	sw := &streamWriter{ctx: a.ctx, sessionID: id}
+	stw := &statusWriter{ctx: a.ctx, sessionID: id}
 
 	sess := engine.NewSession(engine.Config{
 		Provider:    provider,
@@ -288,10 +322,10 @@ func (a *App) CreateSession(agentName string) (*SessionInfo, error) {
 		Temperature: spec.Temperature,
 		MaxTokens:   maxTokens,
 		ToolConfirm: func(ctx context.Context, name string, input json.RawMessage) (bool, error) {
-			return a.requestToolApproval(id, name, input)
+			return a.requestToolApproval(ctx, id, name, input)
 		},
 		Out:    sw,
-		Status: sw,
+		Status: stw,
 	})
 
 	session := &Session{
@@ -528,21 +562,51 @@ func (a *App) GetMCPStatus() []MCPStatus {
 
 // --- Tool Confirmation ---
 
-func (a *App) requestToolConfirm(prompt string) (bool, error) {
-	// Emit event and wait for response from frontend.
-	runtime.EventsEmit(a.ctx, "confirm", map[string]any{"prompt": prompt})
-	// TODO: implement response channel from frontend
-	return true, nil
-}
+// requestToolApproval emits a tool-confirmation request to the frontend and
+// blocks until the user answers (via RespondToolApproval) or ctx is
+// cancelled (e.g. the user hit Stop). Returns the user's decision; a
+// cancelled context surfaces as an error the engine treats as "cancelled".
+func (a *App) requestToolApproval(ctx context.Context, sessionID, name string, input json.RawMessage) (bool, error) {
+	reqID := fmt.Sprintf("req_%d", time.Now().UnixNano())
+	ch := make(chan bool, 1)
 
-func (a *App) requestToolApproval(sessionID, name string, input json.RawMessage) (bool, error) {
+	a.pendingMu.Lock()
+	a.pending[reqID] = ch
+	a.pendingMu.Unlock()
+
+	defer func() {
+		a.pendingMu.Lock()
+		delete(a.pending, reqID)
+		a.pendingMu.Unlock()
+	}()
+
 	runtime.EventsEmit(a.ctx, "toolConfirm", map[string]any{
 		"sessionId": sessionID,
+		"requestId": reqID,
 		"tool":      name,
 		"input":     string(input),
 	})
-	// TODO: implement response channel from frontend
-	return true, nil
+
+	select {
+	case ok := <-ch:
+		return ok, nil
+	case <-ctx.Done():
+		return false, ctx.Err()
+	}
+}
+
+// RespondToolApproval is called from the frontend to answer a pending
+// tool-approval request. Unknown or already-answered ids are ignored.
+func (a *App) RespondToolApproval(requestID string, approved bool) {
+	a.pendingMu.Lock()
+	ch, ok := a.pending[requestID]
+	if ok {
+		delete(a.pending, requestID)
+	}
+	a.pendingMu.Unlock()
+	if ok {
+		ch <- approved
+	}
 }
 
 // --- Helpers ---
@@ -595,6 +659,34 @@ func (w *streamWriter) Write(p []byte) (int, error) {
 	runtime.EventsEmit(w.ctx, "stream", map[string]any{
 		"sessionId": w.sessionID,
 		"text":      string(p),
+	})
+	return len(p), nil
+}
+
+// routeRe matches the engine's MoE routing status line, e.g.
+// "[routed → reasoning (gemini/gemini-2.5-flash)]".
+var routeRe = regexp.MustCompile(`\[routed\s*→\s*(\S+)\s*\(([^)]+)\)\]`)
+
+// statusWriter receives engine diagnostics (separate from assistant output).
+// It emits a generic "status" event and, when it detects a MoE routing line,
+// a structured "route" event the UI can render as a badge.
+type statusWriter struct {
+	ctx       context.Context
+	sessionID string
+}
+
+func (w *statusWriter) Write(p []byte) (int, error) {
+	text := string(p)
+	if m := routeRe.FindStringSubmatch(text); m != nil {
+		runtime.EventsEmit(w.ctx, "route", map[string]any{
+			"sessionId": w.sessionID,
+			"category":  m[1],
+			"model":     m[2],
+		})
+	}
+	runtime.EventsEmit(w.ctx, "status", map[string]any{
+		"sessionId": w.sessionID,
+		"text":      text,
 	})
 	return len(p), nil
 }
