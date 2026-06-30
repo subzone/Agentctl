@@ -28,6 +28,9 @@
       const t = themes.find(x => x.name === saved) || themes[0];
       if (t) applyTheme(t);
       agents = await window.go.desktop.App.ListAgents();
+      // Auto-activate the default MoE agent so the app is usable immediately.
+      const def = agents.find(a => a.category === 'default') || agents.find(a => a.name === 'm');
+      if (def) await selectAgent(def);
     } catch (e) {
       errorBanner = 'Failed to load: ' + e;
     }

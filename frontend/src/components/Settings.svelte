@@ -12,7 +12,19 @@
   let themes = [];
   let activeTheme = localStorage.getItem('theme') || 'default';
 
-  const providers = ['anthropic', 'openai', 'ollama', 'gemini', 'alibaba', 'litellm'];
+  const providers = ['groq', 'gemini', 'cerebras', 'mistral', 'anthropic', 'openai', 'ollama', 'alibaba', 'litellm'];
+
+  // Free-tier providers used by the default MoE agent. Each has a generous
+  // free API tier; paste any subset and routing/fallback uses whatever exists.
+  const freeProviders = [
+    { id: 'groq',     label: 'Groq',     model: 'llama-3.3-70b-versatile', signup: 'https://console.groq.com/keys' },
+    { id: 'gemini',   label: 'Gemini',   model: 'gemini-2.5-flash',        signup: 'https://aistudio.google.com/apikey' },
+    { id: 'cerebras', label: 'Cerebras', model: 'llama-3.3-70b',           signup: 'https://cloud.cerebras.ai' },
+    { id: 'mistral',  label: 'Mistral',  model: 'mistral-large-latest',    signup: 'https://console.mistral.ai/api-keys' },
+  ];
+  let moeKeys = { groq: '', gemini: '', cerebras: '', mistral: '' };
+  let moeSaving = false;
+  let moeSaved = false;
 
   onMount(async () => {
     try {
@@ -21,6 +33,26 @@
       themes = await window.go.desktop.App.GetThemes();
     } catch (e) { error = String(e); }
   });
+
+  async function enableFreeMoE() {
+    moeSaving = true; moeSaved = false; error = '';
+    try {
+      const entered = freeProviders.filter(p => moeKeys[p.id].trim());
+      if (entered.length === 0) { error = 'Paste at least one free API key.'; moeSaving = false; return; }
+      for (const p of entered) {
+        await window.go.desktop.App.SaveAPIKey(p.id, moeKeys[p.id].trim());
+      }
+      // Use the first provided provider as the base default; the "m" agent
+      // routes across every key that's present.
+      const primary = entered[0];
+      await window.go.desktop.App.SaveConfig(primary.id, primary.model, '');
+      provider = primary.id; model = primary.model; baseURL = '';
+      moeKeys = { groq: '', gemini: '', cerebras: '', mistral: '' };
+      moeSaved = true;
+      setTimeout(() => moeSaved = false, 2500);
+    } catch (e) { error = String(e); }
+    finally { moeSaving = false; }
+  }
 
   async function save() {
     saving = true; error = '';
@@ -50,6 +82,22 @@
   </div>
 
   <div class="body">
+    <div class="section moe">
+      <h3>Free MoE — recommended</h3>
+      <p class="hint">Paste a key for any of these free-tier providers. The default <code>m</code> agent routes each task to the best available model and falls back across the rest. At least one key is required.</p>
+      <div class="moe-grid">
+        {#each freeProviders as p}
+          <label>
+            <span class="moe-label">{p.label}<a class="moe-link" href={p.signup} target="_blank" rel="noreferrer">get key ↗</a></span>
+            <input type="password" bind:value={moeKeys[p.id]} placeholder={'Paste ' + p.label + ' key (optional)'} autocomplete="off" />
+          </label>
+        {/each}
+      </div>
+      <button class="moe-btn" on:click={enableFreeMoE} disabled={moeSaving}>
+        {moeSaving ? 'Saving…' : moeSaved ? '✓ Free MoE enabled' : 'Enable Free MoE'}
+      </button>
+    </div>
+
     <div class="section">
       <h3>Theme</h3>
       <div class="theme-grid">
@@ -80,7 +128,7 @@
         </select>
       </label>
       <label>Model
-        <input type="text" bind:value={model} placeholder="e.g. qwen-plus, claude-sonnet-4-6" />
+        <input type="text" bind:value={model} placeholder="e.g. llama-3.3-70b-versatile, gemini-2.5-flash" />
       </label>
       {#if provider === 'ollama' || provider === 'litellm' || provider === 'alibaba'}
         <label>Base URL
@@ -145,7 +193,17 @@
   }
   input:focus,select:focus{border-color:var(--accent,#3b82f6)}
   select option{background:var(--bg-panel,#1e293b)}
-  .hint{font-size:11px;color:var(--muted,#475569)}
+  .hint{font-size:11px;color:var(--muted,#475569);line-height:1.5}
+  .hint code{background:var(--bg-input,#1e293b);padding:1px 5px;border-radius:4px;font-size:11px}
+
+  .section.moe{background:color-mix(in srgb,var(--accent,#3b82f6) 8%,transparent);border:1px solid color-mix(in srgb,var(--accent,#3b82f6) 30%,transparent);border-radius:10px;padding:16px}
+  .moe-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .moe-label{display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .moe-link{font-size:10px;color:var(--accent,#3b82f6);text-decoration:none;font-weight:500}
+  .moe-link:hover{text-decoration:underline}
+  .moe-btn{margin-top:12px;width:100%;padding:11px;background:var(--accent,#3b82f6);border:none;border-radius:8px;color:#fff;font-size:13px;font-weight:600;cursor:pointer}
+  .moe-btn:hover:not(:disabled){filter:brightness(1.1)}
+  .moe-btn:disabled{opacity:0.7;cursor:not-allowed}
   .err{background:#2d1111;border:1px solid #ef444433;color:#fca5a5;padding:10px 14px;border-radius:7px;font-size:13px}
 
   .actions{display:flex;gap:10px;justify-content:flex-end;padding-top:4px}

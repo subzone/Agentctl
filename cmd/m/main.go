@@ -1,13 +1,13 @@
 package main
 
 import (
-	_ "embed"
 	"errors"
 	"fmt"
 	"os"
 
 	"github.com/spf13/cobra"
 
+	"github.com/subzone/Agentctl/examples"
 	"github.com/subzone/Agentctl/internal/config"
 	"github.com/subzone/Agentctl/internal/userconfig"
 
@@ -23,8 +23,18 @@ import (
 	_ "github.com/subzone/Agentctl/internal/llm/openai"
 )
 
-//go:embed default_agent.md
-var defaultAgentMD []byte
+// defaultAgentMD is the bundled default MoE agent. It is sourced from the
+// shared examples set (agents/m.md) so the CLI and the desktop app use the
+// exact same definition and can't drift apart.
+var defaultAgentMD = mustDefaultAgent()
+
+func mustDefaultAgent() []byte {
+	b, err := examples.Agents.ReadFile("agents/m.md")
+	if err != nil {
+		panic("bundled default agent agents/m.md missing: " + err.Error())
+	}
+	return b
+}
 
 const banner = `
 ███╗   ███╗

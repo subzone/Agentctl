@@ -127,24 +127,7 @@ func (a *App) Startup(ctx context.Context) {
 	// Apply config: load API keys from keychain into env vars.
 	if cfg.Provider != "" {
 		if key, err := userconfig.GetAPIKeyWithFallback(cfg.Provider); err == nil && key != "" {
-			switch cfg.Provider {
-			case userconfig.ProviderAnthropic:
-				os.Setenv("ANTHROPIC_API_KEY", key)
-			case userconfig.ProviderOpenAI:
-				os.Setenv("OPENAI_API_KEY", key)
-			case userconfig.ProviderGemini:
-				os.Setenv("GEMINI_API_KEY", key)
-			case userconfig.ProviderAlibaba:
-				os.Setenv("DASHSCOPE_API_KEY", key)
-			case userconfig.ProviderLiteLLM:
-				os.Setenv("LITELLM_API_KEY", key)
-			case userconfig.ProviderGroq:
-				os.Setenv("GROQ_API_KEY", key)
-			case userconfig.ProviderCerebras:
-				os.Setenv("CEREBRAS_API_KEY", key)
-			case userconfig.ProviderMistral:
-				os.Setenv("MISTRAL_API_KEY", key)
-			}
+			setProviderKeyEnv(cfg.Provider, key)
 		}
 		if cfg.BaseURL != "" {
 			switch cfg.Provider {
@@ -201,7 +184,31 @@ func (a *App) SaveConfig(provider, model, baseURL string) error {
 }
 
 func (a *App) SaveAPIKey(provider, key string) error {
-	return userconfig.SaveAPIKey(userconfig.Provider(provider), key)
+	if err := userconfig.SaveAPIKey(userconfig.Provider(provider), key); err != nil {
+		return err
+	}
+	// Also export it into the running process so new sessions pick it up
+	// without requiring an app restart.
+	setProviderKeyEnv(userconfig.Provider(provider), key)
+	return nil
+}
+
+// setProviderKeyEnv maps a provider to the environment variable its LLM
+// adapter reads and sets it for the current process.
+func setProviderKeyEnv(provider userconfig.Provider, key string) {
+	envByProvider := map[userconfig.Provider]string{
+		userconfig.ProviderAnthropic: "ANTHROPIC_API_KEY",
+		userconfig.ProviderOpenAI:    "OPENAI_API_KEY",
+		userconfig.ProviderGemini:    "GEMINI_API_KEY",
+		userconfig.ProviderAlibaba:   "DASHSCOPE_API_KEY",
+		userconfig.ProviderLiteLLM:   "LITELLM_API_KEY",
+		userconfig.ProviderGroq:      "GROQ_API_KEY",
+		userconfig.ProviderCerebras:  "CEREBRAS_API_KEY",
+		userconfig.ProviderMistral:   "MISTRAL_API_KEY",
+	}
+	if env, ok := envByProvider[provider]; ok && key != "" {
+		os.Setenv(env, key)
+	}
 }
 
 // --- Agents ---
@@ -234,6 +241,10 @@ func (a *App) ListAgents() []AgentInfo {
 		}
 		if strings.HasPrefix(spec.Name, "spoke-") {
 			cat = "spoke"
+		}
+		// The bundled MoE router is the recommended default; surface it first.
+		if spec.Name == "m" {
+			cat = "default"
 		}
 		agents = append(agents, AgentInfo{
 			Name:        spec.Name,

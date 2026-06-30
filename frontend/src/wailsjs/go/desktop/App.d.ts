@@ -21,6 +21,8 @@ export function ListAgents():Promise<Array<desktop.AgentInfo>>;
 
 export function OpenFile():Promise<desktop.FileResult>;
 
+export function RespondToolApproval(arg1:string,arg2:boolean):Promise<void>;
+
 export function SaveAPIKey(arg1:string,arg2:string):Promise<void>;
 
 export function SaveConfig(arg1:string,arg2:string,arg3:string):Promise<void>;

@@ -1,22 +1,12 @@
+import { mount } from 'svelte'
 import App from './App.svelte'
 
-let app
-
-function mount() {
-  app = new App({
-    target: document.getElementById('app')
-  })
-}
-
-// Wails injects window.runtime after the page loads.
-// Wait for it before mounting so all go bindings are available.
-if (window.runtime) {
-  mount()
-} else {
-  window.addEventListener('DOMContentLoaded', () => {
-    // Give Wails a tick to inject runtime
-    setTimeout(mount, 0)
-  })
-}
+// Svelte 5 mounts components via mount(), not `new Component()`.
+// The #app element exists because this module script runs after the body
+// is parsed; App.svelte waits for the Wails runtime internally before it
+// calls any go bindings, so mounting immediately is safe.
+const app = mount(App, {
+  target: document.getElementById('app'),
+})
 
 export default app

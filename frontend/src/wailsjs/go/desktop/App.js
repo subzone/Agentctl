@@ -38,6 +38,10 @@ export function OpenFile() {
   return window['go']['desktop']['App']['OpenFile']();
 }
 
+export function RespondToolApproval(arg1, arg2) {
+  return window['go']['desktop']['App']['RespondToolApproval'](arg1, arg2);
+}
+
 export function SaveAPIKey(arg1, arg2) {
   return window['go']['desktop']['App']['SaveAPIKey'](arg1, arg2);
 }
