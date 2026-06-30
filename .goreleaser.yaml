@@ -14,25 +14,32 @@ builds:
       - CGO_ENABLED=0
     goos:
       - linux
+      - windows
+      - darwin
     goarch:
       - amd64
       - arm64
+    ignore:
+      - goos: windows
+        goarch: arm64
     ldflags:
       - -s -w -X main.Version={{.Version}}
 
 archives:
-  - id: tarball
-    formats: [tar.gz]
-    name_template: >-
-      {{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}
+  - id: tarballs
+    name_template: "m_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: windows
+        formats: [zip]
 
 nfpms:
   - id: deb
     package_name: m
     vendor: subzone
-    homepage: https://github.com/subzone/m
+    homepage: https://github.com/subzone/Agentctl
     maintainer: Milenko Mitrovic <milenkom81@gmail.com>
-    description: MD-driven agent for code, infra, and automation work
+    description: MD-driven agent CLI for code, infrastructure, and automation
+    license: MIT
     formats:
       - deb
     bindir: /usr/local/bin
@@ -41,13 +48,12 @@ checksum:
   name_template: "checksums.txt"
 
 release:
+  github:
+    owner: subzone
+    name: Agentctl
   draft: false
   prerelease: auto
+  replace_existing_artifacts: true
 
 changelog:
-  sort: asc
-  filters:
-    exclude:
-      - "^docs:"
-      - "^test:"
-      - "^chore:"
+  use: github-native

@@ -1,9 +1,10 @@
-name: Desktop Release
+name: Desktop Release (manual)
 
+# Manual-only. The canonical tag-triggered pipeline lives in release.yml
+# (CLI via goreleaser + desktop apps for macOS/Linux/Windows + macOS .pkg).
+# This workflow is kept for ad-hoc desktop+Docker builds via manual dispatch
+# so it never races release.yml for the same GitHub release on a tag push.
 on:
-  push:
-    tags:
-      - 'v*'
   workflow_dispatch:
     inputs:
       version:

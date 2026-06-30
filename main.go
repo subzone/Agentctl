@@ -18,8 +18,11 @@ import (
 	// Register all LLM providers (same as cmd/m/main.go)
 	_ "github.com/subzone/Agentctl/internal/llm/alibaba"
 	_ "github.com/subzone/Agentctl/internal/llm/anthropic"
+	_ "github.com/subzone/Agentctl/internal/llm/cerebras"
 	_ "github.com/subzone/Agentctl/internal/llm/gemini"
+	_ "github.com/subzone/Agentctl/internal/llm/groq"
 	_ "github.com/subzone/Agentctl/internal/llm/litellm"
+	_ "github.com/subzone/Agentctl/internal/llm/mistral"
 	_ "github.com/subzone/Agentctl/internal/llm/ollama"
 	_ "github.com/subzone/Agentctl/internal/llm/openai"
 )
@@ -44,13 +47,15 @@ func main() {
 		AssetServer: &assetserver.Options{
 			Assets: assets,
 		},
-		Debug: options.Debug{
-			OpenInspectorOnStartup: true,
-		},
 		BackgroundColour: &options.RGBA{R: 15, G: 23, B: 42, A: 1},
 		OnStartup:        app.Startup,
 		Bind: []interface{}{
 			app,
+		},
+		Debug: options.Debug{
+			// Only auto-open the web inspector when explicitly debugging.
+			// Shipping builds should not pop devtools on launch.
+			OpenInspectorOnStartup: os.Getenv("M_DEBUG") != "",
 		},
 		Mac: &mac.Options{
 			TitleBar: &mac.TitleBar{
