@@ -7,6 +7,14 @@
   import SkillsSidebar from './components/SkillsSidebar.svelte';
   import MCPSidebar from './components/MCPSidebar.svelte';
   import PersonaPanel from './components/PersonaPanel.svelte';
+  import CommandCenter from './components/CommandCenter.svelte';
+  import ContextInspector from './components/ContextInspector.svelte';
+  import ActivityTimeline from './components/ActivityTimeline.svelte';
+  import CommandPalette from './components/CommandPalette.svelte';
+  import ToastStack from './components/ToastStack.svelte';
+  import ExtensionsNav from './components/ExtensionsNav.svelte';
+  import TestBench from './components/TestBench.svelte';
+  import Onboarding from './components/Onboarding.svelte';
   import TopBar from './components/TopBar.svelte';
   import Settings from './components/Settings.svelte';
 
@@ -77,6 +85,19 @@
   let pendingApproval = null;
   let pendingContinue = null;
 
+  // Command Center + observability
+  let healthReport = { ok: true, checks: [] };
+  let homeStats = { tools: 0, skills: 0, mcp: 0, km: false };
+  let contextPreview = null;
+  let contextLoading = false;
+  let showInspector = true;
+  let activityEvents = [];
+  let activitySeq = 0;
+  let toasts = [];
+  let paletteOpen = false;
+  let extensionsSubTab = 'tools';
+  let showOnboarding = false;
+
   onMount(async () => {
     await waitForWails();
     try {
@@ -85,13 +106,18 @@
       const t = themes.find(x => x.name === saved) || themes[0];
       if (t) applyTheme(t);
       agents = await window.go.desktop.App.ListAgents();
+      await refreshHomeData();
       // Auto-activate the default MoE agent so the app is usable immediately.
       const def = agents.find(a => a.category === 'default') || agents.find(a => a.name === 'm');
       if (def) await selectAgent(def);
+      leftTab = 'home';
+      if (!localStorage.getItem('agentctl_onboarded_v1')) showOnboarding = true;
     } catch (e) {
       errorBanner = 'Failed to load: ' + e;
     }
     registerEvents();
+    window.addEventListener('keydown', onGlobalKey);
+    return () => window.removeEventListener('keydown', onGlobalKey);
   });
 
   function waitForWails() {
@@ -131,6 +157,7 @@
       streaming = false;
       cost = { inputTokens: data.inputTokens || 0, outputTokens: data.outputTokens || 0, cost: data.cost || 0 };
       if (data.contextUsage) contextUsage = data.contextUsage;
+      pushActivity('assistant', 'response complete', { tokens: (data.outputTokens || 0) });
       scrollToBottom();
     });
     window.runtime.EventsOn('error', (data) => {
@@ -141,18 +168,23 @@
     window.runtime.EventsOn('toolConfirm', (data) => {
       if (data.sessionId !== currentSession) return;
       pendingApproval = { requestId: data.requestId, tool: data.tool, input: data.input || '' };
+      pushActivity('approval', data.tool, { input: (data.input || '').substring(0, 120) });
       scrollToBottom();
     });
     window.runtime.EventsOn('route', (data) => {
       if (data.sessionId !== currentSession) return;
       moeRoute = { category: data.category, model: data.model };
-      messages = [...messages, { role: 'system', content: '◆ routed → ' + data.category + ' (' + data.model + ')' }];
-      scrollToBottom();
+    });
+
+    window.runtime.EventsOn('activity', (data) => {
+      if (data.sessionId !== currentSession) return;
+      pushActivity(data.kind, data.label, data.detail, data.ts);
     });
 
     window.runtime.EventsOn('continueConfirm', (data) => {
       if (data.sessionId !== currentSession) return;
       pendingContinue = { requestId: data.requestId, turns: data.turns };
+      pushActivity('continue', 'tool-step limit', { turns: data.turns });
       scrollToBottom();
     });
 
@@ -218,9 +250,12 @@
     ensureKnowledge();
   }
 
-  function openTools() {
-    leftTab = 'tools';
-    if (!toolsLoaded) { toolsLoaded = true; loadTools(); }
+  function openExtensions(sub = 'tools') {
+    leftTab = 'extensions';
+    extensionsSubTab = sub;
+    if (sub === 'tools' && !toolsLoaded) { toolsLoaded = true; loadTools(); }
+    if (sub === 'skills' && !skillsLoaded) { skillsLoaded = true; loadSkills(); }
+    if (sub === 'mcp' && !mcpLoaded) { mcpLoaded = true; loadMCP(); }
   }
 
   async function loadTools() {
@@ -272,6 +307,7 @@
       await window.go.desktop.App.SaveTool(activeTool.isNew ? '' : activeTool.name, toolContent);
       activeTool = { name: toolNameFromContent(toolContent) || activeTool.name, isNew: false };
       toolSaved = true;
+      toast('Tool saved — New Chat to apply', 'info');
       await loadTools();
       setTimeout(() => toolSaved = false, 2000);
     } catch (e) { toolError = String(e); }
@@ -286,11 +322,6 @@
       activeTool = null; toolContent = ''; toolError = '';
       await loadTools();
     } catch (e) { toolError = String(e); }
-  }
-
-  function openSkills() {
-    leftTab = 'skills';
-    if (!skillsLoaded) { skillsLoaded = true; loadSkills(); }
   }
 
   async function loadSkills() {
@@ -337,6 +368,7 @@
       await window.go.desktop.App.SaveSkill(activeSkill.isNew ? '' : activeSkill.name, skillContent);
       activeSkill = { name: skillNameFromContent(skillContent) || activeSkill.name, isNew: false };
       skillSaved = true;
+      toast('Skill saved — New Chat to apply', 'info');
       await loadSkills();
       setTimeout(() => skillSaved = false, 2000);
     } catch (e) { skillError = String(e); }
@@ -351,11 +383,6 @@
       activeSkill = null; skillContent = ''; skillError = '';
       await loadSkills();
     } catch (e) { skillError = String(e); }
-  }
-
-  function openMCP() {
-    leftTab = 'mcp';
-    if (!mcpLoaded) { mcpLoaded = true; loadMCP(); }
   }
 
   async function loadMCP() {
@@ -401,6 +428,7 @@
       await window.go.desktop.App.SaveMCP(activeMCP.isNew ? '' : activeMCP.name, mcpContent);
       activeMCP = { name: mcpNameFromContent(mcpContent) || activeMCP.name, isNew: false };
       mcpSaved = true;
+      toast('MCP server saved — New Chat to apply', 'info');
       await loadMCP();
       setTimeout(() => mcpSaved = false, 2000);
     } catch (e) { mcpError = String(e); }
@@ -445,8 +473,104 @@
       await window.go.desktop.App.SavePersona(currentAgent.name, e.detail);
       persona = e.detail;
       personaSaved = true;
+      toast('Personality saved — New Chat to apply', 'info');
+      await loadContextPreview();
       setTimeout(() => personaSaved = false, 2000);
     } catch (err) { errorBanner = 'Personality: ' + String(err); }
+  }
+
+  function toast(message, type = 'info') {
+    const id = Date.now() + Math.random();
+    toasts = [...toasts, { id, message, type }];
+    setTimeout(() => { toasts = toasts.filter(t => t.id !== id); }, 4000);
+  }
+
+  function pushActivity(kind, label, detail = null, ts = null) {
+    activitySeq++;
+    activityEvents = [...activityEvents, {
+      id: activitySeq,
+      kind, label, detail,
+      ts: ts || Date.now(),
+    }].slice(-80);
+  }
+
+  async function refreshHomeData() {
+    try {
+      healthReport = await window.go.desktop.App.GetHealth();
+    } catch (e) {
+      healthReport = { ok: false, checks: [{ id: 'health', label: 'Health', status: 'error', detail: String(e) }] };
+    }
+    if (!toolsLoaded) { toolsLoaded = true; await loadTools(); }
+    if (!skillsLoaded) { skillsLoaded = true; await loadSkills(); }
+    if (!mcpLoaded) { mcpLoaded = true; await loadMCP(); }
+    try {
+      const km = await window.go.desktop.App.KMHealth();
+      homeStats = {
+        tools: toolsList.filter(t => !t.error).length,
+        skills: skillsList.filter(s => !s.error).length,
+        mcp: mcpList.filter(m => !m.error).length,
+        km: !!km.available,
+      };
+    } catch (_) {
+      homeStats = { tools: toolsList.length, skills: skillsList.length, mcp: mcpList.length, km: false };
+    }
+  }
+
+  function openHome() {
+    leftTab = 'home';
+    refreshHomeData();
+  }
+
+  function navTab(tab) {
+    if (tab === 'ext-tools') { openExtensions('tools'); return; }
+    if (tab === 'ext-skills') { openExtensions('skills'); return; }
+    if (tab === 'ext-mcp') { openExtensions('mcp'); return; }
+    leftTab = tab;
+    if (tab === 'knowledge') ensureKnowledge();
+    if (tab === 'personality') loadPersona();
+    if (tab === 'agents' && currentAgent) loadContextPreview();
+  }
+
+  async function loadContextPreview() {
+    if (!currentAgent) { contextPreview = null; return; }
+    contextLoading = true;
+    try {
+      contextPreview = await window.go.desktop.App.PreviewContext(currentAgent.name);
+    } catch (e) {
+      contextPreview = null;
+    } finally {
+      contextLoading = false;
+    }
+  }
+
+  $: paletteItems = [
+    { label: 'Home — Command Center', icon: '⌂', action: 'home', hint: '' },
+    { label: 'New chat', icon: '＋', action: 'newChat', hint: currentAgent?.name || '' },
+    { label: 'Open chat', icon: '⬡', action: 'agents', hint: '' },
+    { label: 'Knowledge graph', icon: '◆', action: 'knowledge', hint: '' },
+    { label: 'Extensions — tools', icon: '🛠', action: 'ext-tools', hint: '' },
+    { label: 'Extensions — skills', icon: '✦', action: 'ext-skills', hint: '' },
+    { label: 'Extensions — MCP', icon: '🔌', action: 'ext-mcp', hint: '' },
+    { label: 'Personality', icon: '🎭', action: 'personality', hint: currentAgent?.name || '' },
+    { label: 'Settings', icon: '⚙', action: 'settings', hint: '' },
+    { label: 'Refresh health', icon: '↻', action: 'refreshHealth', hint: '' },
+    { label: 'Toggle context inspector', icon: '◧', action: 'toggleInspector', hint: '' },
+  ];
+
+  function onPaletteSelect(action) {
+    if (action === 'home') openHome();
+    else if (action === 'newChat') newChat();
+    else if (action === 'settings') showSettings = true;
+    else if (action === 'refreshHealth') refreshHomeData();
+    else if (action === 'toggleInspector') { showInspector = !showInspector; if (showInspector) loadContextPreview(); }
+    else navTab(action);
+  }
+
+  function onGlobalKey(e) {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      paletteOpen = true;
+    }
   }
 
   function renderMarkdown(text) {
@@ -526,19 +650,22 @@
         moeRoute = null; contextUsage = 0; pendingApproval = null; pendingContinue = null;
       }
       if (leftTab === 'personality') await loadPersona();
+      await loadContextPreview();
     } catch (e) { errorBanner = String(e); }
   }
 
   async function newChat() {
     if (!currentAgent) return;
     try {
-      // Close the previous session so its MCP subprocesses are torn down.
       if (currentSession) { try { await window.go.desktop.App.CloseSession(currentSession); } catch (_) {} }
       const session = await window.go.desktop.App.CreateSession(currentAgent.name);
       currentSession = session.id;
       messages = []; streamBuffer = '';
+      activityEvents = [];
       cost = { inputTokens: 0, outputTokens: 0, cost: 0 };
       moeRoute = null; contextUsage = 0; pendingApproval = null; pendingContinue = null;
+      await loadContextPreview();
+      toast('New chat started with latest config', 'ok');
     } catch (e) { errorBanner = String(e); }
   }
 
@@ -564,6 +691,7 @@
     const displayMsg = msg + (attachedFiles.length > 0 ? ` [+${attachedFiles.length} file(s)]` : '');
     inputValue = ''; attachedFiles = [];
     messages = [...messages, { role: 'user', content: displayMsg }];
+    pushActivity('user', displayMsg.substring(0, 80));
     streaming = true; streamBuffer = '';
     await tick(); scrollToBottom();
     try {
@@ -594,6 +722,7 @@
       content: (approved ? '✓ approved ' : '✕ denied ') + tool + ' ' + input.substring(0, 80),
     }];
     try { await window.go.desktop.App.RespondToolApproval(requestId, approved); } catch (e) { errorBanner = String(e); }
+    pushActivity('tool', tool, { ok: approved, approval: true });
     scrollToBottom();
   }
 
@@ -632,20 +761,17 @@
 
     <div class="body">
       <nav class="rail">
-        <button class="rail-btn" class:active={leftTab === 'agents'} on:click={() => leftTab = 'agents'} title="Agents">
+        <button class="rail-btn" class:active={leftTab === 'home'} on:click={openHome} title="Command Center">
+          <span class="rail-ico">⌂</span><span class="rail-lbl">Home</span>
+        </button>
+        <button class="rail-btn" class:active={leftTab === 'agents'} on:click={() => { leftTab = 'agents'; loadContextPreview(); }} title="Chat">
           <span class="rail-ico">⬡</span><span class="rail-lbl">Chat</span>
         </button>
         <button class="rail-btn" class:active={leftTab === 'knowledge'} on:click={openKnowledge} title="Knowledge graph">
           <span class="rail-ico">◆</span><span class="rail-lbl">Knowledge</span>
         </button>
-        <button class="rail-btn" class:active={leftTab === 'tools'} on:click={openTools} title="Custom tools">
-          <span class="rail-ico">🛠</span><span class="rail-lbl">Tools</span>
-        </button>
-        <button class="rail-btn" class:active={leftTab === 'skills'} on:click={openSkills} title="Skills">
-          <span class="rail-ico">✦</span><span class="rail-lbl">Skills</span>
-        </button>
-        <button class="rail-btn" class:active={leftTab === 'mcp'} on:click={openMCP} title="MCP servers">
-          <span class="rail-ico">🔌</span><span class="rail-lbl">MCP</span>
+        <button class="rail-btn" class:active={leftTab === 'extensions'} on:click={() => openExtensions('tools')} title="Extensions">
+          <span class="rail-ico">🧩</span><span class="rail-lbl">Extensions</span>
         </button>
         <button class="rail-btn" class:active={leftTab === 'personality'} on:click={openPersonality} title="Personality">
           <span class="rail-ico">🎭</span><span class="rail-lbl">Persona</span>
@@ -656,6 +782,7 @@
         </button>
       </nav>
 
+      {#if leftTab !== 'home'}
       <div class="sidecol">
         {#if leftTab === 'agents'}
           <Sidebar {agents} active={currentAgent} on:select={e => selectAgent(e.detail)} on:settings={() => showSettings = true} />
@@ -664,26 +791,35 @@
             visibleTypes={kmVisibleTypes} nodeCounts={kmNodeCounts} typeColors={KM_COLORS}
             on:index={kmIndexFolder} on:refresh={refreshKnowledge}
             on:toggle={e => toggleKMType(e.detail)} on:settings={() => showSettings = true} />
-        {:else if leftTab === 'tools'}
-          <ToolsSidebar tools={toolsList} activeName={activeTool?.name}
-            on:select={e => selectTool(e.detail)} on:new={newTool} on:settings={() => showSettings = true} />
-        {:else if leftTab === 'skills'}
-          <SkillsSidebar skills={skillsList} activeName={activeSkill?.name}
-            on:select={e => selectSkill(e.detail)} on:new={newSkill} on:settings={() => showSettings = true} />
-        {:else if leftTab === 'mcp'}
-          <MCPSidebar servers={mcpList} activeName={activeMCP?.name}
-            on:select={e => selectMCP(e.detail)} on:new={newMCP} on:settings={() => showSettings = true} />
+        {:else if leftTab === 'extensions'}
+          <ExtensionsNav active={extensionsSubTab} on:select={e => openExtensions(e.detail)} />
+          {#if extensionsSubTab === 'tools'}
+            <ToolsSidebar tools={toolsList} activeName={activeTool?.name}
+              on:select={e => selectTool(e.detail)} on:new={newTool} on:settings={() => showSettings = true} />
+          {:else if extensionsSubTab === 'skills'}
+            <SkillsSidebar skills={skillsList} activeName={activeSkill?.name}
+              on:select={e => selectSkill(e.detail)} on:new={newSkill} on:settings={() => showSettings = true} />
+          {:else if extensionsSubTab === 'mcp'}
+            <MCPSidebar servers={mcpList} activeName={activeMCP?.name}
+              on:select={e => selectMCP(e.detail)} on:new={newMCP} on:settings={() => showSettings = true} />
+          {/if}
         {:else if leftTab === 'personality'}
           <Sidebar {agents} active={currentAgent} on:select={e => selectAgent(e.detail)} on:settings={() => showSettings = true} />
         {/if}
       </div>
+      {/if}
 
       <div class="main">
         {#if errorBanner}
           <div class="err-banner">⚠ {errorBanner} <button on:click={() => errorBanner = ''}>✕</button></div>
         {/if}
 
-        {#if leftTab === 'tools'}
+        {#if leftTab === 'home'}
+          <CommandCenter agent={currentAgent} health={healthReport} stats={homeStats} {moeRoute}
+            on:nav={e => navTab(e.detail)}
+            on:newChat={newChat}
+            on:refresh={refreshHomeData} />
+        {:else if leftTab === 'extensions' && extensionsSubTab === 'tools'}
           <div class="tools-main">
             {#if activeTool}
               <div class="tool-bar">
@@ -709,6 +845,7 @@
                 arrive on the command's <strong>stdin</strong>; whatever it prints to <strong>stdout</strong> is
                 returned. Changes apply on your next <strong>New Chat</strong>.
               </div>
+              <TestBench mode="tool" name={toolNameFromContent(toolContent)} disabled={!!toolError || activeTool.isNew} />
             {:else}
               <div class="tools-empty">
                 <div class="tools-empty-card">
@@ -720,7 +857,7 @@
               </div>
             {/if}
           </div>
-        {:else if leftTab === 'skills'}
+        {:else if leftTab === 'extensions' && extensionsSubTab === 'skills'}
           <div class="tools-main">
             {#if activeSkill}
               <div class="tool-bar">
@@ -758,7 +895,7 @@
               </div>
             {/if}
           </div>
-        {:else if leftTab === 'mcp'}
+        {:else if leftTab === 'extensions' && extensionsSubTab === 'mcp'}
           <div class="tools-main">
             {#if activeMCP}
               <div class="tool-bar">
@@ -784,6 +921,7 @@
                 <code>command</code>, or <code>sse</code>/<code>http</code> with a <code>url</code>). The server's tools are
                 namespaced by <code>tool_prefix</code> and merged into the agent. Changes apply on your next <strong>New Chat</strong>.
               </div>
+              <TestBench mode="mcp" name={mcpNameFromContent(mcpContent)} disabled={!!mcpError || activeMCP.isNew} />
             {:else}
               <div class="tools-empty">
                 <div class="tools-empty-card">
@@ -853,6 +991,16 @@ km serve</pre>
             <p>Select an agent from the sidebar to start</p>
           </div>
         {:else}
+          <div class="chat-layout">
+            <div class="chat-col">
+              <div class="chat-toolbar">
+                <span class="chat-title">◆ {currentAgent?.name}</span>
+                {#if moeRoute}<span class="moe-pill">{moeRoute.category}</span>{/if}
+                <button class="tb-btn" class:on={showInspector} on:click={() => { showInspector = !showInspector; if (showInspector) loadContextPreview(); }} title="Context inspector">◧ Context</button>
+                <button class="tb-btn" on:click={() => paletteOpen = true} title="Command palette (⌘K)">⌘K</button>
+              </div>
+              <ActivityTimeline events={activityEvents} />
+
           <div class="messages" bind:this={messagesEl}>
             {#each messages as msg (msg)}
               <div class="msg {msg.role}">
@@ -932,12 +1080,25 @@ km serve</pre>
             </div>
             <div class="footer-bar">
               <span class="cost-info">In: {fmt(cost.inputTokens)} · Out: {fmt(cost.outputTokens)} · {fmtCost(cost.cost)}</span>
-              <span class="hint-txt">Enter to send · Shift+Enter new line · 📎 attach file</span>
+              <span class="hint-txt">Enter to send · ⌘K palette · ◧ context</span>
             </div>
+          </div>
+            </div>
+            {#if showInspector}
+              <ContextInspector preview={contextPreview} loading={contextLoading}
+                on:close={() => showInspector = false}
+                on:apply={newChat} />
+            {/if}
           </div>
         {/if}
       </div>
     </div>
+
+    <CommandPalette bind:open={paletteOpen} items={paletteItems} on:select={e => onPaletteSelect(e.detail)} />
+    <ToastStack {toasts} />
+    {#if showOnboarding}
+      <Onboarding on:done={() => showOnboarding = false} />
+    {/if}
 
   </div>
 {/if}
@@ -954,6 +1115,15 @@ km serve</pre>
   .app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
   .body{display:flex;flex:1;overflow:hidden;min-height:0}
   .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0}
+
+  .chat-layout{flex:1;display:flex;min-height:0;overflow:hidden}
+  .chat-col{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}
+  .chat-toolbar{display:flex;align-items:center;gap:8px;padding:8px 14px;border-bottom:1px solid var(--border);flex-shrink:0;background:#080d18}
+  .chat-title{font-size:13px;font-weight:600;color:var(--text);flex:1}
+  .moe-pill{font-size:10px;font-weight:700;padding:2px 8px;border-radius:4px;background:#4c1d95;color:#c4b5fd}
+  .tb-btn{padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:var(--bg-input);color:var(--muted);font-size:11px;font-weight:600;cursor:pointer}
+  .tb-btn:hover{color:var(--text)}
+  .tb-btn.on{border-color:var(--accent);color:#93c5fd}
 
   .rail{width:62px;flex-shrink:0;display:flex;flex-direction:column;align-items:stretch;gap:2px;padding:8px 6px;background:#080d18;border-right:1px solid #1e293b;overflow:hidden}
   .rail-spacer{flex:1}

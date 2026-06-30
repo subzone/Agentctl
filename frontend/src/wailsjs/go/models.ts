@@ -1,5 +1,67 @@
 export namespace desktop {
 	
+	export class Persona {
+	    instructions: string;
+	    tone: string;
+	    verbosity: string;
+	    temperature?: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new Persona(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.instructions = source["instructions"];
+	        this.tone = source["tone"];
+	        this.verbosity = source["verbosity"];
+	        this.temperature = source["temperature"];
+	    }
+	}
+	export class AgentContextPreview {
+	    agent: string;
+	    model: string;
+	    system: string;
+	    charCount: number;
+	    skills: string[];
+	    persona: Persona;
+	    toolCount: number;
+	    mcpServers: string[];
+	
+	    static createFrom(source: any = {}) {
+	        return new AgentContextPreview(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.agent = source["agent"];
+	        this.model = source["model"];
+	        this.system = source["system"];
+	        this.charCount = source["charCount"];
+	        this.skills = source["skills"];
+	        this.persona = this.convertValues(source["persona"], Persona);
+	        this.toolCount = source["toolCount"];
+	        this.mcpServers = source["mcpServers"];
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
+	}
 	export class AgentInfo {
 	    name: string;
 	    description: string;
@@ -55,6 +117,58 @@ export namespace desktop {
 	        this.name = source["name"];
 	        this.content = source["content"];
 	    }
+	}
+	export class HealthCheck {
+	    id: string;
+	    label: string;
+	    status: string;
+	    detail: string;
+	    fixTab?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new HealthCheck(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.id = source["id"];
+	        this.label = source["label"];
+	        this.status = source["status"];
+	        this.detail = source["detail"];
+	        this.fixTab = source["fixTab"];
+	    }
+	}
+	export class HealthReport {
+	    ok: boolean;
+	    checks: HealthCheck[];
+	
+	    static createFrom(source: any = {}) {
+	        return new HealthReport(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.checks = this.convertValues(source["checks"], HealthCheck);
+	    }
+	
+		convertValues(a: any, classs: any, asMap: boolean = false): any {
+		    if (!a) {
+		        return a;
+		    }
+		    if (a.slice && a.map) {
+		        return (a as any[]).map(elem => this.convertValues(elem, classs));
+		    } else if ("object" === typeof a) {
+		        if (asMap) {
+		            for (const key of Object.keys(a)) {
+		                a[key] = new classs(a[key]);
+		            }
+		            return a;
+		        }
+		        return new classs(a);
+		    }
+		    return a;
+		}
 	}
 	export class KMLink {
 	    source: string;
@@ -196,24 +310,25 @@ export namespace desktop {
 	        this.installed = source["installed"];
 	    }
 	}
-	export class Persona {
-	    instructions: string;
-	    tone: string;
-	    verbosity: string;
-	    temperature?: number;
+	export class MCPTestResult {
+	    ok: boolean;
+	    tools: string[];
+	    log: string;
+	    error?: string;
 	
 	    static createFrom(source: any = {}) {
-	        return new Persona(source);
+	        return new MCPTestResult(source);
 	    }
 	
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.instructions = source["instructions"];
-	        this.tone = source["tone"];
-	        this.verbosity = source["verbosity"];
-	        this.temperature = source["temperature"];
+	        this.ok = source["ok"];
+	        this.tools = source["tools"];
+	        this.log = source["log"];
+	        this.error = source["error"];
 	    }
 	}
+	
 	export class SessionInfo {
 	    id: string;
 	    agent: string;
@@ -256,6 +371,24 @@ export namespace desktop {
 	        this.path = source["path"];
 	        this.content = source["content"];
 	        this.error = source["error"];
+	    }
+	}
+	export class TestResult {
+	    ok: boolean;
+	    output: string;
+	    error?: string;
+	    durationMs: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new TestResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.ok = source["ok"];
+	        this.output = source["output"];
+	        this.error = source["error"];
+	        this.durationMs = source["durationMs"];
 	    }
 	}
 	export class ThemeInfo {

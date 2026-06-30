@@ -30,6 +30,10 @@ export function GetCost(arg1) {
   return window['go']['desktop']['App']['GetCost'](arg1);
 }
 
+export function GetHealth() {
+  return window['go']['desktop']['App']['GetHealth']();
+}
+
 export function GetMCPStatus() {
   return window['go']['desktop']['App']['GetMCPStatus']();
 }
@@ -98,6 +102,10 @@ export function OpenFile() {
   return window['go']['desktop']['App']['OpenFile']();
 }
 
+export function PreviewContext(arg1) {
+  return window['go']['desktop']['App']['PreviewContext'](arg1);
+}
+
 export function RespondToolApproval(arg1, arg2) {
   return window['go']['desktop']['App']['RespondToolApproval'](arg1, arg2);
 }
@@ -136,4 +144,12 @@ export function StopGeneration(arg1) {
 
 export function SwitchAgent(arg1, arg2) {
   return window['go']['desktop']['App']['SwitchAgent'](arg1, arg2);
+}
+
+export function TestMCP(arg1) {
+  return window['go']['desktop']['App']['TestMCP'](arg1);
+}
+
+export function TestTool(arg1, arg2) {
+  return window['go']['desktop']['App']['TestTool'](arg1, arg2);
 }

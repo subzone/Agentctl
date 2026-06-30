@@ -17,6 +17,8 @@ export function GetConfig():Promise<userconfig.Config>;
 
 export function GetCost(arg1:string):Promise<desktop.CostInfo>;
 
+export function GetHealth():Promise<desktop.HealthReport>;
+
 export function GetMCPStatus():Promise<Array<desktop.MCPStatus>>;
 
 export function GetPersona(arg1:string):Promise<desktop.Persona>;
@@ -51,6 +53,8 @@ export function NewToolTemplate():Promise<string>;
 
 export function OpenFile():Promise<desktop.FileResult>;
 
+export function PreviewContext(arg1:string):Promise<desktop.AgentContextPreview>;
+
 export function RespondToolApproval(arg1:string,arg2:boolean):Promise<void>;
 
 export function SaveAPIKey(arg1:string,arg2:string):Promise<void>;
@@ -70,3 +74,7 @@ export function SendMessage(arg1:string,arg2:string):Promise<void>;
 export function StopGeneration(arg1:string):Promise<void>;
 
 export function SwitchAgent(arg1:string,arg2:string):Promise<void>;
+
+export function TestMCP(arg1:string):Promise<desktop.MCPTestResult>;
+
+export function TestTool(arg1:string,arg2:string):Promise<desktop.TestResult>;

@@ -328,15 +328,10 @@ func (a *App) CreateSession(agentName string) (*SessionInfo, error) {
 	// User-authored skills (MD files in ~/.config/m/skills) are composed into
 	// the system prompt fresh each session, so authoring/editing a skill takes
 	// effect on the next New Chat without a restart.
-	system := composeUserSkills(body)
+	system := composeAgentSystem(body, agentName)
 
-	// Per-agent personality overlay: free-form instructions, tone/verbosity
-	// presets, and an optional temperature override that tweak how this agent
-	// behaves without editing its (possibly bundled) MD file.
+	// Per-agent personality overlay: temperature override (text is in system).
 	persona := loadPersona(agentName)
-	if blk := persona.compose(); blk != "" {
-		system += "\n\n" + blk
-	}
 	temperature := spec.Temperature
 	if persona.Temperature != nil {
 		temperature = persona.Temperature
@@ -384,10 +379,20 @@ func (a *App) CreateSession(agentName string) (*SessionInfo, error) {
 		ToolConfirm: func(ctx context.Context, name string, input json.RawMessage) (bool, error) {
 			// Read-only tools (search/read/list/status) run without prompting;
 			// only mutating or shell-executing tools need explicit approval.
-			if readOnlyTools[name] {
-				return true, nil
+			auto := readOnlyTools[name]
+			approved := auto
+			var err error
+			if !auto {
+				approved, err = a.requestToolApproval(ctx, id, name, input)
 			}
-			return a.requestToolApproval(ctx, id, name, input)
+			if err == nil {
+				emitActivity(a.ctx, id, "tool", name, map[string]any{
+					"input": string(input),
+					"auto":  auto,
+					"ok":    approved,
+				})
+			}
+			return approved, err
 		},
 		ContinueConfirm: func(ctx context.Context, turns int) (bool, error) {
 			return a.requestContinue(ctx, id, turns)
@@ -615,10 +620,7 @@ func (a *App) SwitchAgent(sessionID, agentName string) error {
 
 	// Recompose the system prompt with user skills and this agent's persona so
 	// switching agents in-place behaves like a fresh session would.
-	system := composeUserSkills(body)
-	if blk := loadPersona(agentName).compose(); blk != "" {
-		system += "\n\n" + blk
-	}
+	system := composeAgentSystem(body, agentName)
 
 	sess.mu.Lock()
 	defer sess.mu.Unlock()
@@ -823,12 +825,27 @@ func (w *statusWriter) Write(p []byte) (int, error) {
 			"category":  m[1],
 			"model":     m[2],
 		})
+		emitActivity(w.ctx, w.sessionID, "route", m[1], map[string]any{"model": m[2]})
+	}
+	trimmed := strings.TrimSpace(text)
+	if trimmed != "" {
+		emitActivity(w.ctx, w.sessionID, "status", trimmed, nil)
 	}
 	runtime.EventsEmit(w.ctx, "status", map[string]any{
 		"sessionId": w.sessionID,
 		"text":      text,
 	})
 	return len(p), nil
+}
+
+func emitActivity(ctx context.Context, sessionID, kind, label string, detail map[string]any) {
+	runtime.EventsEmit(ctx, "activity", map[string]any{
+		"sessionId": sessionID,
+		"kind":      kind,
+		"label":     label,
+		"detail":    detail,
+		"ts":        time.Now().UnixMilli(),
+	})
 }
 
 // ThemeInfo describes a desktop theme.

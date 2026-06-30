@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - 2026-06-30
+
+### Added
+- Custom shell tools authored as Markdown (`~/.config/m/tools`), callable from the desktop chat and the CLI
+- Skills: reusable instruction blocks composed into the agent's system prompt (`~/.config/m/skills`)
+- Per-agent personality overlay (tone / verbosity / creativity / custom instructions) stored in `~/.config/m/personas`
+- MCP servers configurable as Markdown (`~/.config/m/mcp`); their tools are opened per session and merged into the agent
+- knowledge-master integration: built-in `km_*` tools plus a live knowledge-graph view and indexing controls in the desktop app
+- Redesigned desktop UI with a vertical icon rail (Chat · Knowledge · Tools · Skills · MCP · Persona · Settings)
+
+### Changed
+- `SwitchAgent` now recomposes skills + persona into the system prompt; New Chat closes the previous session so MCP subprocesses are reclaimed
+- Desktop bumped to 0.2.0
+
 ## [0.1.1] - 2026-05-14
 
 ### Added
