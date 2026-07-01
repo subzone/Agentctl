@@ -98,10 +98,11 @@
         {#each savedSessions.slice(0, 8) as s}
           <div class="sess-row saved">
             <button class="sess-main" on:click={() => dispatch('resume', s.id)}>
-              <span class="sess-agent">{s.model || s.provider || 'session'}</span>
-              <span class="sess-preview">{s.preview || 'Saved chat'}</span>
+              <span class="sess-agent">{s.label || s.model || s.provider || 'session'}</span>
+              <span class="sess-preview">{s.label ? s.preview : (s.preview || 'Saved chat')}</span>
               <span class="sess-meta">{s.messages} msg · {fmtSaved(s.savedAt)}</span>
             </button>
+            <button class="sess-edit" title="Rename" on:click={() => { const l = prompt('Session name', s.label || ''); if (l !== null) dispatch('label', { id: s.id, label: l }); }}>✎</button>
             <button class="sess-del" title="Delete saved session" on:click={() => dispatch('deleteSaved', s.id)}>✕</button>
           </div>
         {/each}
@@ -172,7 +173,8 @@
   .sess-row.saved{flex-wrap:nowrap;align-items:stretch;gap:6px;padding:0;overflow:hidden}
   .sess-main{flex:1;display:flex;flex-wrap:wrap;align-items:baseline;gap:8px;padding:10px 12px;background:none;border:none;cursor:pointer;text-align:left;color:inherit}
   .sess-main:hover{background:#111c30}
-  .sess-del{flex-shrink:0;width:36px;border:none;border-left:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-size:12px}
+  .sess-edit{flex-shrink:0;width:32px;border:none;border-left:1px solid var(--border);background:none;color:var(--muted);cursor:pointer;font-size:11px}
+  .sess-edit:hover{color:var(--accent)}
   .sess-del:hover{background:#2d1111;color:#fca5a5}
   .sess-row:not(.saved){cursor:pointer}
   .sess-row:not(.saved):hover{border-color:var(--accent)}

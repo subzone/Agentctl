@@ -4,6 +4,8 @@
   import { select } from 'd3-selection';
   import { zoom as d3zoom, zoomIdentity } from 'd3-zoom';
 
+  export let highlightIds = [];
+
   export let nodes = [];
   export let links = [];
   export let visibleTypes = null; // Set of type names, or null = all
@@ -89,7 +91,11 @@
       ctx.fillStyle = colorFor(n.type);
       ctx.arc(n.x, n.y, r, 0, Math.PI * 2);
       ctx.fill();
-      if (hover && hover.id === n.id) {
+      if (highlightIds.includes(n.id)) {
+        ctx.lineWidth = 3 / tf.k;
+        ctx.strokeStyle = '#fbbf24';
+        ctx.stroke();
+      } else if (hover && hover.id === n.id) {
         ctx.lineWidth = 2 / tf.k;
         ctx.strokeStyle = '#fff';
         ctx.stroke();

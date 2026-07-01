@@ -36,6 +36,7 @@ var Version = "dev"
 func main() {
 	// Create application instance
 	app := desktop.NewApp()
+	app.SetProductVersion(Version)
 
 	// Create application with options
 	err := wails.Run(&options.App{

@@ -5,6 +5,8 @@ import {userconfig} from '../models';
 
 export function BuiltinToolNames():Promise<Array<string>>;
 
+export function CheckForUpdate():Promise<desktop.UpdateInfo>;
+
 export function CloseSession(arg1:string):Promise<void>;
 
 export function ComposeAgentForm(arg1:desktop.AgentForm):Promise<string>;
@@ -31,6 +33,8 @@ export function DeleteTool(arg1:string):Promise<void>;
 
 export function ExportSessionMarkdown(arg1:string):Promise<string>;
 
+export function GetAuditConfig():Promise<desktop.AuditConfigView>;
+
 export function GetConfig():Promise<userconfig.Config>;
 
 export function GetCost(arg1:string):Promise<desktop.CostInfo>;
@@ -40,6 +44,8 @@ export function GetHealth():Promise<desktop.HealthReport>;
 export function GetMCPStatus():Promise<Array<desktop.MCPStatus>>;
 
 export function GetPersona(arg1:string):Promise<desktop.Persona>;
+
+export function GetPolicyRules():Promise<Array<desktop.PolicyRuleView>>;
 
 export function GetSessions():Promise<Array<desktop.SessionInfo>>;
 
@@ -57,9 +63,13 @@ export function KMSearch(arg1:string,arg2:number):Promise<string>;
 
 export function KMStatus():Promise<desktop.KMStats>;
 
+export function KnownModels():Promise<Record<string, Array<desktop.ModelOption>>>;
+
 export function ListAgentDocs():Promise<Array<desktop.AgentDoc>>;
 
 export function ListAgents():Promise<Array<desktop.AgentInfo>>;
+
+export function ListAuditEvents(arg1:number):Promise<Array<desktop.AuditEventView>>;
 
 export function ListMCP():Promise<Array<desktop.MCPDoc>>;
 
@@ -79,6 +89,8 @@ export function NewToolTemplate():Promise<string>;
 
 export function OpenFile():Promise<desktop.FileResult>;
 
+export function OpenPath(arg1:string):Promise<void>;
+
 export function ParseAgentForm(arg1:string):Promise<desktop.AgentForm>;
 
 export function ParseMCPForm(arg1:string):Promise<desktop.MCPForm>;
@@ -89,9 +101,13 @@ export function ParseToolForm(arg1:string):Promise<desktop.ToolForm>;
 
 export function PreviewContext(arg1:string):Promise<desktop.AgentContextPreview>;
 
+export function ResetSession(arg1:string):Promise<void>;
+
 export function RespondToolApproval(arg1:string,arg2:boolean):Promise<void>;
 
 export function ResumeSavedSession(arg1:string,arg2:string):Promise<desktop.ResumeResult>;
+
+export function RetryLastMessage(arg1:string):Promise<void>;
 
 export function SaveAPIKey(arg1:string,arg2:string):Promise<void>;
 
@@ -107,11 +123,19 @@ export function SaveSkill(arg1:string,arg2:string):Promise<void>;
 
 export function SaveTool(arg1:string,arg2:string):Promise<void>;
 
+export function SearchSavedSessions(arg1:string):Promise<Array<desktop.SavedSessionSummary>>;
+
 export function SendMessage(arg1:string,arg2:string):Promise<void>;
+
+export function SetProductVersion(arg1:string):Promise<void>;
+
+export function SetSessionLabel(arg1:string,arg2:string):Promise<void>;
 
 export function StopGeneration(arg1:string):Promise<void>;
 
 export function SwitchAgent(arg1:string,arg2:string):Promise<void>;
+
+export function SwitchSessionModel(arg1:string,arg2:string):Promise<void>;
 
 export function TestMCP(arg1:string):Promise<desktop.MCPTestResult>;
 

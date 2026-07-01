@@ -54,6 +54,7 @@ func sessionStore() (*adapters.EncryptedFileStore, error) {
 // SavedSessionSummary is a persisted chat session on disk.
 type SavedSessionSummary struct {
 	ID           string `json:"id"`
+	Label        string `json:"label"`
 	Provider     string `json:"provider"`
 	Model        string `json:"model"`
 	Messages     int    `json:"messages"`
@@ -99,6 +100,7 @@ func (a *App) ListSavedSessions() ([]SavedSessionSummary, error) {
 		}
 		out = append(out, SavedSessionSummary{
 			ID:           id,
+			Label:        getSessionLabel(id),
 			Provider:     data.Provider,
 			Model:        data.Model,
 			Messages:     len(data.Messages),
@@ -309,6 +311,84 @@ func sessionPreview(data *ports.SessionData) string {
 		return text
 	}
 	return "Saved session"
+}
+
+// SetSessionLabel assigns a human-readable name to a saved session.
+func (a *App) SetSessionLabel(savedID, label string) error {
+	if savedID == "" {
+		return fmt.Errorf("session id required")
+	}
+	return saveSessionLabel(savedID, strings.TrimSpace(label))
+}
+
+// SearchSavedSessions filters saved sessions by label or preview text.
+func (a *App) SearchSavedSessions(query string) ([]SavedSessionSummary, error) {
+	all, err := a.ListSavedSessions()
+	if err != nil {
+		return nil, err
+	}
+	q := strings.ToLower(strings.TrimSpace(query))
+	if q == "" {
+		return all, nil
+	}
+	var out []SavedSessionSummary
+	for _, s := range all {
+		if strings.Contains(strings.ToLower(s.Label), q) ||
+			strings.Contains(strings.ToLower(s.Preview), q) ||
+			strings.Contains(strings.ToLower(s.ID), q) {
+			out = append(out, s)
+		}
+	}
+	return out, nil
+}
+
+func sessionLabelsPath() string {
+	base, err := os.UserConfigDir()
+	if err != nil {
+		return ""
+	}
+	return filepath.Join(base, "m", "session_labels.json")
+}
+
+func loadSessionLabels() map[string]string {
+	p := sessionLabelsPath()
+	if p == "" {
+		return map[string]string{}
+	}
+	data, err := os.ReadFile(p)
+	if err != nil {
+		return map[string]string{}
+	}
+	var labels map[string]string
+	if err := json.Unmarshal(data, &labels); err != nil {
+		return map[string]string{}
+	}
+	return labels
+}
+
+func getSessionLabel(id string) string {
+	return loadSessionLabels()[id]
+}
+
+func saveSessionLabel(id, label string) error {
+	labels := loadSessionLabels()
+	if label == "" {
+		delete(labels, id)
+	} else {
+		labels[id] = label
+	}
+	p := sessionLabelsPath()
+	if p == "" {
+		return fmt.Errorf("config dir unavailable")
+	}
+	if err := os.MkdirAll(filepath.Dir(p), 0o700); err != nil {
+		return err
+	}
+	data, err := json.MarshalIndent(labels, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(p, data, 0o600)
 }
 
 func parseSessionSavedAt(id string) int64 {

@@ -76,7 +76,7 @@
       <div class="group-label">Saved chats</div>
       {#each savedSessions.slice(0, 8) as s}
         <button class="history-item" on:click={() => dispatch('resume', s.id)} title={s.preview}>
-          <span class="hist-preview">{s.preview || 'Saved chat'}</span>
+          <span class="hist-preview">{s.label || s.preview || 'Saved chat'}</span>
           <span class="ts">{s.messages} · {fmtSaved(s.savedAt)}</span>
         </button>
       {/each}

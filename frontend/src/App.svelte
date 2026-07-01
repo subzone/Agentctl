@@ -23,6 +23,10 @@
   import AgentFormEditor from './components/AgentFormEditor.svelte';
   import TopBar from './components/TopBar.svelte';
   import Settings from './components/Settings.svelte';
+  import ToolCallCard from './components/ToolCallCard.svelte';
+  import SetupChecklist from './components/SetupChecklist.svelte';
+  import SecurityPanel from './components/SecurityPanel.svelte';
+  import MoERoutePanel from './components/MoERoutePanel.svelte';
 
   const KM_COLORS = {
     Repo: '#818cf8', Document: '#38bdf8', Person: '#fbbf24', Tech: '#34d399',
@@ -115,6 +119,10 @@
   let homeStats = { tools: 0, skills: 0, mcp: 0, km: false };
   let homeSessions = [];
   let savedSessions = [];
+  let sessionSearchQuery = '';
+  let moeRouteHistory = [];
+  let kmHighlightIds = [];
+  let updateInfo = null;
   let contextPreview = null;
   let contextLoading = false;
   let showInspector = true;
@@ -138,6 +146,7 @@
       agents = await window.go.desktop.App.ListAgents();
       builtinToolNames = await window.go.desktop.App.BuiltinToolNames();
       await refreshHomeData();
+      try { updateInfo = await window.go.desktop.App.CheckForUpdate(); } catch (_) {}
       // Auto-activate the default MoE agent so the app is usable immediately.
       const def = agents.find(a => a.category === 'default') || agents.find(a => a.name === 'm');
       if (def) await selectAgent(def);
@@ -206,6 +215,37 @@
     window.runtime.EventsOn('route', (data) => {
       if (data.sessionId !== currentSession) return;
       moeRoute = { category: data.category, model: data.model };
+      moeRouteHistory = [...moeRouteHistory, { category: data.category, model: data.model, ts: Date.now() }].slice(-12);
+    });
+
+    window.runtime.EventsOn('toolRun', (data) => {
+      if (data.sessionId !== currentSession) return;
+      if (data.phase === 'start') {
+        const id = 'tr_' + Date.now() + '_' + (data.tool || '');
+        messages = [...messages, {
+          role: 'toolcard',
+          id,
+          toolCall: { name: data.tool, input: data.input || '', status: 'running' },
+        }];
+        scrollToBottom();
+      } else if (data.phase === 'end') {
+        const idx = [...messages].reverse().findIndex(m => m.role === 'toolcard' && m.toolCall?.name === data.tool && m.toolCall?.status === 'running');
+        if (idx >= 0) {
+          const realIdx = messages.length - 1 - idx;
+          const m = messages[realIdx];
+          m.toolCall = {
+            ...m.toolCall,
+            status: data.outcome === 'success' ? 'success' : (data.outcome || 'error'),
+            durationMs: data.durationMs,
+            error: data.error,
+            output: data.error ? '' : (m.toolCall.output || ''),
+          };
+          messages = [...messages];
+        }
+        if ((data.tool || '').startsWith('km_')) {
+          kmHighlightIds = [...kmHighlightIds, kmSelectedId].filter(Boolean).slice(-5);
+        }
+      }
     });
 
     window.runtime.EventsOn('activity', (data) => {
@@ -370,6 +410,7 @@
 
   async function askAboutNode(node) {
     if (!node) return;
+    kmHighlightIds = [node.id];
     leftTab = 'agents';
     if (!currentAgent && agents.length) {
       const def = agents.find(a => a.category === 'default') || agents[0];
@@ -624,7 +665,11 @@
 
   async function refreshSavedSessions() {
     try {
-      savedSessions = await window.go.desktop.App.ListSavedSessions() || [];
+      if (sessionSearchQuery.trim()) {
+        savedSessions = await window.go.desktop.App.SearchSavedSessions(sessionSearchQuery.trim()) || [];
+      } else {
+        savedSessions = await window.go.desktop.App.ListSavedSessions() || [];
+      }
     } catch (_) {
       savedSessions = [];
     }
@@ -901,6 +946,43 @@
     } catch (e) { errorBanner = String(e); }
   }
 
+  async function handleSlashCommand(cmd) {
+    const parts = cmd.split(/\s+/);
+    const name = parts[0].toLowerCase();
+    try {
+      if (name === '/help') {
+        messages = [...messages, { role: 'system', content: 'Commands: /reset · /retry · /model provider/model · /export' }];
+        return;
+      }
+      if (name === '/reset') {
+        await window.go.desktop.App.ResetSession(currentSession);
+        messages = []; streamBuffer = ''; activityEvents = []; moeRouteHistory = [];
+        toast('Chat cleared', 'ok');
+        return;
+      }
+      if (name === '/retry') {
+        streaming = true;
+        await window.go.desktop.App.RetryLastMessage(currentSession);
+        toast('Retrying last message', 'ok');
+        return;
+      }
+      if (name === '/model' && parts[1]) {
+        await window.go.desktop.App.SwitchSessionModel(currentSession, parts[1]);
+        messages = [...messages, { role: 'system', content: '◆ Model → ' + parts[1] }];
+        toast('Model updated', 'ok');
+        return;
+      }
+      if (name === '/export') {
+        await exportChat();
+        return;
+      }
+      messages = [...messages, { role: 'system', content: 'Unknown command. Try /help' }];
+    } catch (e) {
+      toast(String(e), 'error');
+    }
+    scrollToBottom();
+  }
+
   async function attachFile() {
     try {
       const file = await window.go.desktop.App.OpenFile();
@@ -912,10 +994,25 @@
 
   function removeFile(name) { attachedFiles = attachedFiles.filter(f => f.name !== name); }
 
+  async function labelSavedSession(id, label) {
+    try {
+      await window.go.desktop.App.SetSessionLabel(id, label);
+      await refreshSavedSessions();
+      toast('Session renamed', 'ok');
+    } catch (e) { toast(String(e), 'error'); }
+  }
+
   async function sendMessage() {
-    const msg = inputValue.trim();
+    let msg = inputValue.trim();
     if (!msg && attachedFiles.length === 0) return;
     if (!currentSession || streaming) return;
+
+    if (msg.startsWith('/')) {
+      inputValue = '';
+      await handleSlashCommand(msg);
+      return;
+    }
+
     let fullMsg = msg;
     for (const f of attachedFiles) {
       fullMsg += `\n\n[File: ${f.name}]\n\`\`\`\n${f.content}\n\`\`\``;
@@ -1014,6 +1111,9 @@
         <button class="rail-btn" class:active={leftTab === 'personality'} on:click={openPersonality} title="Personality">
           <span class="rail-ico">🎭</span><span class="rail-lbl">Persona</span>
         </button>
+        <button class="rail-btn" class:active={leftTab === 'security'} on:click={() => leftTab = 'security'} title="Audit & policy">
+          <span class="rail-ico">🛡</span><span class="rail-lbl">Security</span>
+        </button>
         {/if}
         <div class="rail-spacer"></div>
         <button class="rail-btn" on:click={() => showSettings = true} title="Settings">
@@ -1021,7 +1121,7 @@
         </button>
       </nav>
 
-      {#if leftTab !== 'home' && leftTab !== 'knowledge'}
+      {#if leftTab !== 'home' && leftTab !== 'knowledge' && leftTab !== 'security'}
       <div class="sidecol">
         {#if leftTab === 'agents'}
           <Sidebar {agents} active={currentAgent} {savedSessions}
@@ -1058,12 +1158,18 @@
         {/if}
 
         {#if leftTab === 'home'}
-          <CommandCenter agent={currentAgent} health={healthReport} stats={homeStats} {moeRoute} sessions={homeSessions} {savedSessions}
-            on:nav={e => navTab(e.detail)}
-            on:newChat={newChat}
-            on:refresh={refreshHomeData}
-            on:resume={e => resumeSaved(e.detail)}
-            on:deleteSaved={e => deleteSaved(e.detail)} />
+          <div class="center-wrap">
+            <SetupChecklist health={healthReport} {proMode} on:nav={e => navTab(e.detail)} />
+            <CommandCenter agent={currentAgent} health={healthReport} stats={homeStats} {moeRoute} sessions={homeSessions} {savedSessions}
+              on:nav={e => navTab(e.detail)}
+              on:newChat={newChat}
+              on:refresh={refreshHomeData}
+              on:resume={e => resumeSaved(e.detail)}
+              on:deleteSaved={e => deleteSaved(e.detail)}
+              on:label={e => labelSavedSession(e.detail.id, e.detail.label)} />
+          </div>
+        {:else if leftTab === 'security'}
+          <SecurityPanel />
         {:else if leftTab === 'extensions' && extensionsSubTab === 'tools'}
           <div class="tools-main">
             {#if activeTool}
@@ -1193,7 +1299,7 @@
                 </div>
                 <div class="km-canvas">
                   <KnowledgeGraph bind:this={graphRef} nodes={kmNodes} links={kmLinks}
-                    visibleTypes={kmVisibleTypes} typeColors={KM_COLORS} />
+                    visibleTypes={kmVisibleTypes} typeColors={KM_COLORS} highlightIds={kmHighlightIds} />
                 </div>
               </div>
               <KnowledgePanel health={kmHealth} stats={kmStats} indexing={kmIndexing}
@@ -1246,6 +1352,7 @@ km serve</pre>
                 <button class="tb-btn" on:click={() => paletteOpen = true} title="Command palette (⌘K)">⌘K</button>
                 <button class="tb-btn" on:click={exportChat} title="Export chat as Markdown">⤓ Export</button>
               </div>
+              <MoERoutePanel routes={moeRouteHistory} />
               <ActivityTimeline events={activityEvents} />
 
           <div class="messages" bind:this={messagesEl}>
@@ -1260,6 +1367,8 @@ km serve</pre>
                 </div>
                 {#if msg.role === 'assistant'}
                   <div class="txt md-content">{@html renderMarkdown(msg.content)}</div>
+                {:else if msg.role === 'toolcard'}
+                  <ToolCallCard call={msg.toolCall} />
                 {:else}
                   <div class="txt">{msg.content}</div>
                 {/if}
@@ -1362,6 +1471,7 @@ km serve</pre>
   .app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
   .body{display:flex;flex:1;overflow:hidden;min-height:0}
   .main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0;min-height:0}
+  .center-wrap{flex:1;overflow-y:auto;min-height:0}
 
   .chat-layout{flex:1;display:flex;min-height:0;overflow:hidden}
   .chat-col{flex:1;display:flex;flex-direction:column;min-width:0;min-height:0;overflow:hidden}

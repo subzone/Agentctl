@@ -32,6 +32,7 @@ import (
 type App struct {
 	ctx      context.Context
 	cfg      *userconfig.Config
+	version  string
 	sessions map[string]*Session
 	mu       sync.RWMutex
 
@@ -112,8 +113,16 @@ type CostInfo struct {
 
 func NewApp() *App {
 	return &App{
+		version:  "0.5.0",
 		sessions: make(map[string]*Session),
 		pending:  make(map[string]chan bool),
+	}
+}
+
+// SetProductVersion sets the build version (from main.Version ldflags).
+func (a *App) SetProductVersion(v string) {
+	if v != "" && v != "dev" {
+		a.version = v
 	}
 }
 
@@ -342,10 +351,13 @@ func (a *App) CreateSession(agentName string) (*SessionInfo, error) {
 		maxTokens = *spec.MaxTokens
 	}
 
+	id := fmt.Sprintf("s_%d", time.Now().UnixMilli())
+	auditSink, _ := buildDesktopAuditSink(a.ctx, id)
+	policyCheck, _ := buildDesktopPolicyCheck()
+
 	// Create streaming writer that emits events to frontend. Output (assistant
 	// tokens) and status (engine diagnostics like MoE routing) go to separate
 	// events so status lines never pollute the visible assistant message.
-	id := fmt.Sprintf("s_%d", time.Now().UnixMilli())
 	sw := &streamWriter{ctx: a.ctx, sessionID: id}
 	stw := &statusWriter{ctx: a.ctx, sessionID: id}
 
@@ -397,6 +409,9 @@ func (a *App) CreateSession(agentName string) (*SessionInfo, error) {
 		ContinueConfirm: func(ctx context.Context, turns int) (bool, error) {
 			return a.requestContinue(ctx, id, turns)
 		},
+		PolicyCheck:      policyCheck,
+		Audit:            auditSink,
+		AuditSessionID:   id,
 		Out:    sw,
 		Status: stw,
 	})
@@ -420,55 +435,7 @@ func (a *App) CreateSession(agentName string) (*SessionInfo, error) {
 }
 
 func (a *App) SendMessage(sessionID, message string) error {
-	a.mu.RLock()
-	sess, ok := a.sessions[sessionID]
-	a.mu.RUnlock()
-	if !ok {
-		return fmt.Errorf("session not found: %s", sessionID)
-	}
-
-	sess.mu.Lock()
-	defer sess.mu.Unlock()
-
-	// Add user message.
-	sess.Messages = append(sess.Messages, Message{
-		ID:        fmt.Sprintf("msg_%d", time.Now().UnixMilli()),
-		Role:      "user",
-		Content:   message,
-		Timestamp: time.Now().Unix(),
-	})
-
-	// Emit user message event.
-	runtime.EventsEmit(a.ctx, "message", map[string]any{
-		"sessionId": sessionID,
-		"role":      "user",
-		"content":   message,
-	})
-
-	// Run engine step (streams via events).
-	ctx, cancel := context.WithCancel(a.ctx)
-	sess.cancel = cancel
-	go func() {
-		defer cancel()
-		if err := sess.engine.Step(ctx, message); err != nil {
-			runtime.EventsEmit(a.ctx, "error", map[string]any{
-				"sessionId": sessionID,
-				"error":     err.Error(),
-			})
-		}
-		// Emit done event with usage and cost.
-		usage := sess.engine.Usage()
-		cost := calcCost(sess.Model, usage.InputTokens, usage.OutputTokens)
-		runtime.EventsEmit(a.ctx, "done", map[string]any{
-			"sessionId":    sessionID,
-			"inputTokens":  usage.InputTokens,
-			"outputTokens": usage.OutputTokens,
-			"cost":         cost,
-		})
-		a.persistSessionToDisk(sess)
-	}()
-
-	return nil
+	return a.runEngineStep(sessionID, message, true)
 }
 
 func (a *App) StopGeneration(sessionID string) {

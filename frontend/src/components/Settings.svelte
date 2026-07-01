@@ -16,6 +16,7 @@
   let health = { ok: true, checks: [] };
   let paths = [];
   let healthLoading = false;
+  let knownModels = {};
 
   const providers = ['groq', 'gemini', 'cerebras', 'mistral', 'anthropic', 'openai', 'ollama', 'alibaba', 'litellm'];
   const tabs = [
@@ -41,6 +42,7 @@
       if (cfg) { provider = cfg.Provider || ''; model = cfg.Model || ''; baseURL = cfg.BaseURL || ''; }
       themes = await window.go.desktop.App.GetThemes();
       paths = await window.go.desktop.App.ConfigPaths() || [];
+      knownModels = await window.go.desktop.App.KnownModels() || {};
     } catch (e) { error = String(e); }
     await loadHealth();
   });
@@ -192,7 +194,15 @@
             </select>
           </label>
           <label>Model
-            <input type="text" bind:value={model} placeholder="e.g. llama-3.3-70b-versatile" />
+            {#if knownModels[provider]?.length}
+              <select bind:value={model}>
+                {#each knownModels[provider] as m}
+                  <option value={m.id}>{m.label}</option>
+                {/each}
+              </select>
+            {:else}
+              <input type="text" bind:value={model} placeholder="e.g. llama-3.3-70b-versatile" />
+            {/if}
           </label>
           {#if provider === 'ollama' || provider === 'litellm' || provider === 'alibaba'}
             <label>Base URL
@@ -248,6 +258,7 @@
                 <div class="path-lbl">{p.label}</div>
                 <code class="path-val">{p.path}</code>
                 <button class="copy-btn" on:click={() => copyPath(p.path)} title="Copy path">⧉</button>
+                <button class="copy-btn" on:click={() => window.go.desktop.App.OpenPath(p.path)} title="Open in Finder">↗</button>
               </div>
             {/each}
           </div>

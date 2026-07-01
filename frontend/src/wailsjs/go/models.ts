@@ -138,6 +138,50 @@ export namespace desktop {
 	        this.category = source["category"];
 	    }
 	}
+	export class AuditConfigView {
+	    backend: string;
+	    path: string;
+	    active: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new AuditConfigView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.backend = source["backend"];
+	        this.path = source["path"];
+	        this.active = source["active"];
+	    }
+	}
+	export class AuditEventView {
+	    type: string;
+	    sessionId?: string;
+	    ts?: string;
+	    tool?: string;
+	    outcome?: string;
+	    error?: string;
+	    durationMs?: number;
+	    agent?: string;
+	    model?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new AuditEventView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.type = source["type"];
+	        this.sessionId = source["sessionId"];
+	        this.ts = source["ts"];
+	        this.tool = source["tool"];
+	        this.outcome = source["outcome"];
+	        this.error = source["error"];
+	        this.durationMs = source["durationMs"];
+	        this.agent = source["agent"];
+	        this.model = source["model"];
+	    }
+	}
 	export class ConfigPath {
 	    id: string;
 	    label: string;
@@ -485,6 +529,26 @@ export namespace desktop {
 		}
 	}
 	
+	export class PolicyRuleView {
+	    name: string;
+	    tool?: string;
+	    denyPattern?: string;
+	    allowPathPrefix?: string[];
+	    message?: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new PolicyRuleView(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.tool = source["tool"];
+	        this.denyPattern = source["denyPattern"];
+	        this.allowPathPrefix = source["allowPathPrefix"];
+	        this.message = source["message"];
+	    }
+	}
 	export class SessionInfo {
 	    id: string;
 	    agent: string;
@@ -541,6 +605,7 @@ export namespace desktop {
 	}
 	export class SavedSessionSummary {
 	    id: string;
+	    label: string;
 	    provider: string;
 	    model: string;
 	    messages: number;
@@ -556,6 +621,7 @@ export namespace desktop {
 	    constructor(source: any = {}) {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.id = source["id"];
+	        this.label = source["label"];
 	        this.provider = source["provider"];
 	        this.model = source["model"];
 	        this.messages = source["messages"];
@@ -699,6 +765,28 @@ export namespace desktop {
 	        this.timeoutSec = source["timeoutSec"];
 	        this.parametersJson = source["parametersJson"];
 	        this.body = source["body"];
+	    }
+	}
+	export class UpdateInfo {
+	    current: string;
+	    latest: string;
+	    updateAvailable: boolean;
+	    releaseUrl: string;
+	    desktopUrl: string;
+	    downloadNotes: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.current = source["current"];
+	        this.latest = source["latest"];
+	        this.updateAvailable = source["updateAvailable"];
+	        this.releaseUrl = source["releaseUrl"];
+	        this.desktopUrl = source["desktopUrl"];
+	        this.downloadNotes = source["downloadNotes"];
 	    }
 	}
 
