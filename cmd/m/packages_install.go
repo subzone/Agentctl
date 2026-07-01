@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,14 +19,6 @@ func skillsRegistryDir() string {
 		return ""
 	}
 	return filepath.Join(base, "m", "skills")
-}
-
-func packagesRegistryDir() string {
-	base, err := os.UserConfigDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(base, "m", "packages")
 }
 
 func newPackagesInstallCmd() *cobra.Command {
@@ -175,20 +166,4 @@ func installBundledFile(subdir, filename, destDir string) error {
 		}
 	}
 	return os.WriteFile(dst, data, 0o600)
-}
-
-// copyFile helper if we need local package paths later.
-func copyFile(src, dst string) error {
-	in, err := os.Open(src)
-	if err != nil {
-		return err
-	}
-	defer in.Close()
-	out, err := os.Create(dst)
-	if err != nil {
-		return err
-	}
-	defer out.Close()
-	_, err = io.Copy(out, in)
-	return err
 }
