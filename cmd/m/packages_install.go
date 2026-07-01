@@ -135,18 +135,25 @@ func installBundledFile(subdir, filename, destDir string) error {
 	if destDir == "" {
 		return fmt.Errorf("cannot resolve config directory")
 	}
+	name := filepath.Base(filename)
+	if name == "" || name == "." || name == ".." {
+		return fmt.Errorf("invalid filename: %s", filename)
+	}
 	if err := os.MkdirAll(destDir, 0o700); err != nil {
 		return err
 	}
-	dst := filepath.Join(destDir, filename)
+	dst := filepath.Join(destDir, name)
+	rel, err := filepath.Rel(destDir, dst)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return fmt.Errorf("invalid install path: %s", filename)
+	}
 	if _, err := os.Stat(dst); err == nil {
 		return nil // already installed
 	}
 
 	// Try bundled examples first.
-	srcPath := subdir + "/" + filename
+	srcPath := subdir + "/" + name
 	var data []byte
-	var err error
 	switch subdir {
 	case "agents":
 		data, err = examples.Agents.ReadFile(srcPath)
@@ -159,11 +166,11 @@ func installBundledFile(subdir, filename, destDir string) error {
 	}
 	if err != nil {
 		// Fallback: examples/ on disk (dev clone).
-		disk := filepath.Join("examples", subdir, filename)
+		disk := filepath.Join("examples", subdir, name)
 		data, err = os.ReadFile(disk)
 		if err != nil {
-			return fmt.Errorf("bundled file missing: %s/%s", subdir, filename)
+			return fmt.Errorf("bundled file missing: %s/%s", subdir, name)
 		}
 	}
-	return os.WriteFile(dst, data, 0o600)
+	return os.WriteFile(dst, data, 0o600) // #nosec G703 -- filepath.Base + Rel guard keeps dst under destDir
 }

@@ -53,16 +53,23 @@ func installPackageByName(name string) error {
 }
 
 func copyBundledToConfig(subdir, filename, destDir string) error {
+	name := filepath.Base(filename)
+	if name == "" || name == "." || name == ".." {
+		return fmt.Errorf("invalid filename: %s", filename)
+	}
 	if err := os.MkdirAll(destDir, 0o700); err != nil {
 		return err
 	}
-	dst := filepath.Join(destDir, filename)
+	dst := filepath.Join(destDir, name)
+	rel, err := filepath.Rel(destDir, dst)
+	if err != nil || strings.HasPrefix(rel, "..") {
+		return fmt.Errorf("invalid install path: %s", filename)
+	}
 	if _, err := os.Stat(dst); err == nil {
 		return nil
 	}
-	srcPath := subdir + "/" + filename
+	srcPath := subdir + "/" + name
 	var data []byte
-	var err error
 	switch subdir {
 	case "agents":
 		data, err = examples.Agents.ReadFile(srcPath)
@@ -71,12 +78,12 @@ func copyBundledToConfig(subdir, filename, destDir string) error {
 	case "skills":
 		data, err = examples.Skills.ReadFile(srcPath)
 	default:
-		err = fmt.Errorf("unknown subdir %s", subdir)
+		return fmt.Errorf("unknown subdir %s", subdir)
 	}
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(dst, data, 0o600)
+	return os.WriteFile(dst, data, 0o600) // #nosec G703 -- filepath.Base + Rel guard keeps dst under destDir
 }
 
 // ListPackageOffers returns bundled packages with lock/install state.
