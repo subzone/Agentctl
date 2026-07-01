@@ -25,6 +25,17 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.5.0",
+		Date:    "2026-07-01",
+		Highlights: []string{
+			"Tool call cards in chat with live running/done state and expandable I/O.",
+			"Slash commands: /reset, /retry, /model, /export, /help.",
+			"Session labels and search; Security panel for audit log + policy rules.",
+			"MoE routing history, setup checklist, model picker, KM node highlighting.",
+			"Desktop audit sink and policy engine wired like the CLI.",
+		},
+	},
+	{
 		Version: "0.3.1",
 		Date:    "2026-06-30",
 		Highlights: []string{
