@@ -25,6 +25,16 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.5.1",
+		Date:    "2026-06-30",
+		Highlights: []string{
+			"ChatView: chat UI extracted for maintainability; @file autocomplete with CLI-parity inline expansion.",
+			"MCP live dashboard in Extensions and from chat pill; per-server connectivity tests.",
+			"In-app updates: download GitHub release packages from Settings or top bar.",
+			"Tool output snippets on cards, session search, Retry/MCP pills, setup checklist polish.",
+		},
+	},
+	{
 		Version: "0.5.0",
 		Date:    "2026-07-01",
 		Highlights: []string{

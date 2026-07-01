@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.1] - 2026-06-30
+
 ### Added
 - **ChatView** — chat UI extracted from App.svelte for maintainability
 - **MCP live dashboard** — per-server status in Extensions and from chat MCP pill
