@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/subzone/Agentctl/internal/atfile"
 	"github.com/subzone/Agentctl/internal/llm"
 	"github.com/wailsapp/wails/v2/pkg/runtime"
 )
@@ -88,6 +89,9 @@ func (a *App) runEngineStep(sessionID, message string, appendUser bool) error {
 	if !ok {
 		return fmt.Errorf("session not found: %s", sessionID)
 	}
+
+	expanded, _ := atfile.Expand(message)
+	message = expanded
 
 	sess.mu.Lock()
 	if appendUser {

@@ -1,3 +1,24 @@
+export namespace atfile {
+	
+	export class Candidate {
+	    path: string;
+	    name: string;
+	    dir: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new Candidate(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.name = source["name"];
+	        this.dir = source["dir"];
+	    }
+	}
+
+}
+
 export namespace desktop {
 	
 	export class Persona {
@@ -386,6 +407,36 @@ export namespace desktop {
 	        this.repos = source["repos"];
 	    }
 	}
+	export class MCPDashboardEntry {
+	    name: string;
+	    description: string;
+	    transport: string;
+	    inSession: boolean;
+	    reachable: boolean;
+	    toolCount: number;
+	    tools?: string[];
+	    error?: string;
+	    configError?: string;
+	    checkedAt: number;
+	
+	    static createFrom(source: any = {}) {
+	        return new MCPDashboardEntry(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.transport = source["transport"];
+	        this.inSession = source["inSession"];
+	        this.reachable = source["reachable"];
+	        this.toolCount = source["toolCount"];
+	        this.tools = source["tools"];
+	        this.error = source["error"];
+	        this.configError = source["configError"];
+	        this.checkedAt = source["checkedAt"];
+	    }
+	}
 	export class MCPDoc {
 	    name: string;
 	    description: string;
@@ -765,6 +816,24 @@ export namespace desktop {
 	        this.timeoutSec = source["timeoutSec"];
 	        this.parametersJson = source["parametersJson"];
 	        this.body = source["body"];
+	    }
+	}
+	export class UpdateDownloadResult {
+	    path: string;
+	    filename: string;
+	    releaseUrl: string;
+	    notes: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new UpdateDownloadResult(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.path = source["path"];
+	        this.filename = source["filename"];
+	        this.releaseUrl = source["releaseUrl"];
+	        this.notes = source["notes"];
 	    }
 	}
 	export class UpdateInfo {

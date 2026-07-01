@@ -58,6 +58,14 @@ export function DeleteTool(arg1) {
   return window['go']['desktop']['App']['DeleteTool'](arg1);
 }
 
+export function DownloadUpdate() {
+  return window['go']['desktop']['App']['DownloadUpdate']();
+}
+
+export function ExpandAtFiles(arg1) {
+  return window['go']['desktop']['App']['ExpandAtFiles'](arg1);
+}
+
 export function ExportSessionMarkdown(arg1) {
   return window['go']['desktop']['App']['ExportSessionMarkdown'](arg1);
 }
@@ -78,6 +86,10 @@ export function GetHealth() {
   return window['go']['desktop']['App']['GetHealth']();
 }
 
+export function GetMCPDashboard(arg1, arg2) {
+  return window['go']['desktop']['App']['GetMCPDashboard'](arg1, arg2);
+}
+
 export function GetMCPStatus() {
   return window['go']['desktop']['App']['GetMCPStatus']();
 }
@@ -88,6 +100,10 @@ export function GetPersona(arg1) {
 
 export function GetPolicyRules() {
   return window['go']['desktop']['App']['GetPolicyRules']();
+}
+
+export function GetSessionMCP(arg1) {
+  return window['go']['desktop']['App']['GetSessionMCP'](arg1);
 }
 
 export function GetSessions() {
@@ -240,6 +256,10 @@ export function SaveSkill(arg1, arg2) {
 
 export function SaveTool(arg1, arg2) {
   return window['go']['desktop']['App']['SaveTool'](arg1, arg2);
+}
+
+export function SearchAtFiles(arg1) {
+  return window['go']['desktop']['App']['SearchAtFiles'](arg1);
 }
 
 export function SearchSavedSessions(arg1) {

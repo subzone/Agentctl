@@ -50,6 +50,7 @@ type Session struct {
 	Model     string    `json:"model"`
 	CreatedAt int64     `json:"createdAt"`
 	Messages  []Message `json:"messages"`
+	MCPNames  []string  `json:"mcpNames"`
 	engine    *engine.Session
 	cancel    context.CancelFunc
 	cleanups  []func() error // e.g. MCP managers to close on session end
@@ -365,9 +366,15 @@ func (a *App) CreateSession(agentName string) (*SessionInfo, error) {
 	// tools (namespaced by tool_prefix) merged in, so the agent can use them
 	// just like builtins. They're torn down when the session is closed.
 	var cleanups []func() error
+	var mcpNames []string
 	if mgr := a.openUserMCP(agentName, stw); mgr != nil {
 		reg = tools.Merge(reg, mgr.Registry())
 		cleanups = append(cleanups, mgr.Close)
+		for _, spec := range loadUserMCPSpecs() {
+			if spec.Name != "" {
+				mcpNames = append(mcpNames, spec.Name)
+			}
+		}
 	}
 
 	sess := engine.NewSession(engine.Config{
@@ -421,6 +428,7 @@ func (a *App) CreateSession(agentName string) (*SessionInfo, error) {
 		Agent:     spec.Name,
 		Model:     model,
 		CreatedAt: time.Now().Unix(),
+		MCPNames:  mcpNames,
 		engine:    sess,
 		cleanups:  cleanups,
 	}
@@ -605,18 +613,6 @@ func (a *App) SwitchAgent(sessionID, agentName string) error {
 	return nil
 }
 
-// --- MCP ---
-
-func (a *App) GetMCPStatus() []MCPStatus {
-	// Scan examples/mcp for definitions.
-	var statuses []MCPStatus
-	fs.WalkDir(examples.Agents, ".", func(path string, d fs.DirEntry, err error) error {
-		return fs.SkipAll // agents FS doesn't have MCP
-	})
-	// For now return empty — MCP definitions are on disk not embedded.
-	return statuses
-}
-
 // readOnlyTools are auto-approved in the desktop: they only read state
 // (filesystem reads, searches, knowledge lookups, web GETs) so prompting for
 // each one is pure friction. Mutating tools (fs_write, shell, git, km_index),
@@ -787,6 +783,7 @@ var routeRe = regexp.MustCompile(`\[routed\s*→\s*(\S+)\s*\(([^)]+)\)\]`)
 type statusWriter struct {
 	ctx       context.Context
 	sessionID string
+	lastTool  string
 }
 
 func (w *statusWriter) Write(p []byte) (int, error) {
@@ -799,15 +796,53 @@ func (w *statusWriter) Write(p []byte) (int, error) {
 		})
 		emitActivity(w.ctx, w.sessionID, "route", m[1], map[string]any{"model": m[2]})
 	}
-	trimmed := strings.TrimSpace(text)
-	if trimmed != "" {
-		emitActivity(w.ctx, w.sessionID, "status", trimmed, nil)
+	for _, line := range strings.Split(text, "\n") {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+		if strings.HasPrefix(line, "→ ") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				w.lastTool = fields[1]
+			}
+		}
+		if strings.HasPrefix(line, "← ") {
+			outcome := "success"
+			output := strings.TrimPrefix(line, "← ")
+			if strings.HasPrefix(output, "error:") || strings.HasPrefix(output, "policy deny:") {
+				outcome = "error"
+			}
+			runtime.EventsEmit(w.ctx, "toolRun", map[string]any{
+				"sessionId": w.sessionID,
+				"phase":     "end",
+				"tool":      w.lastTool,
+				"outcome":   outcome,
+				"output":    output,
+			})
+		}
+		emitActivity(w.ctx, w.sessionID, "status", line, nil)
 	}
 	runtime.EventsEmit(w.ctx, "status", map[string]any{
 		"sessionId": w.sessionID,
 		"text":      text,
 	})
 	return len(p), nil
+}
+
+// GetSessionMCP returns MCP server names active in a session.
+func (a *App) GetSessionMCP(sessionID string) []string {
+	a.mu.RLock()
+	sess, ok := a.sessions[sessionID]
+	a.mu.RUnlock()
+	if !ok {
+		return nil
+	}
+	sess.mu.RLock()
+	defer sess.mu.RUnlock()
+	out := make([]string, len(sess.MCPNames))
+	copy(out, sess.MCPNames)
+	return out
 }
 
 func emitActivity(ctx context.Context, sessionID, kind, label string, detail map[string]any) {

@@ -3,6 +3,7 @@
   export let agents = [];
   export let active = null;
   export let savedSessions = [];
+  export let sessionSearch = '';
   const dispatch = createEventDispatcher();
 
   let search = '';
@@ -71,9 +72,11 @@
     {/if}
   </div>
 
-  {#if savedSessions.length > 0}
+  {#if savedSessions.length > 0 || sessionSearch}
     <div class="history">
       <div class="group-label">Saved chats</div>
+      <input class="sess-search" type="search" placeholder="Search sessions…" bind:value={sessionSearch}
+        on:input={() => dispatch('search')} />
       {#each savedSessions.slice(0, 8) as s}
         <button class="history-item" on:click={() => dispatch('resume', s.id)} title={s.preview}>
           <span class="hist-preview">{s.label || s.preview || 'Saved chat'}</span>
@@ -116,7 +119,9 @@
   .desc { font-size: 11px; color: #64748b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .empty { padding: 20px; text-align: center; color: #475569; font-size: 13px; }
 
-  .history{padding:0 8px 10px;border-top:1px solid #1e293b;max-height:160px;overflow-y:auto;flex-shrink:0}
+  .history{padding:0 8px 10px;border-top:1px solid #1e293b;max-height:180px;overflow-y:auto;flex-shrink:0}
+  .sess-search{width:100%;margin:0 0 6px;padding:6px 8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:11px;outline:none;box-sizing:border-box}
+  .sess-search:focus{border-color:#3b82f6}
   .history-item{
     display:flex;align-items:center;gap:6px;width:100%;padding:6px 10px;
     background:none;border:none;border-radius:6px;cursor:pointer;text-align:left;color:#94a3b8;

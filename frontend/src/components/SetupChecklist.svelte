@@ -4,6 +4,7 @@
 
   export let health = { ok: true, checks: [] };
   export let proMode = true;
+  export let hasChatted = false;
 
   let updateInfo = null;
 
@@ -15,7 +16,7 @@
 
   $: steps = [
     { id: 'keys', label: 'API keys configured', done: health.checks?.some(c => c.id === 'free_moe' && c.status === 'ok') || health.checks?.some(c => c.id === 'api_key' && c.status === 'ok') },
-    { id: 'chat', label: 'Start your first chat', done: false, action: 'agents' },
+    { id: 'chat', label: 'Start your first chat', done: hasChatted, action: 'agents' },
     { id: 'tool', label: 'Create a custom tool (optional)', done: false, action: 'ext-tools', pro: true },
   ];
 

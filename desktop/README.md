@@ -1,168 +1,117 @@
-# Desktop Version
+# AgentCTL Desktop (v0.5.x)
 
-The desktop version of AgentCTL provides a modern GUI interface while maintaining 100% compatibility with the CLI version.
+The desktop app is a Wails-based GUI for AgentCTL — same config, agents, tools, and sessions as the CLI, with a full control-plane UI.
 
-## Installation
+## Install
 
 ### macOS
 ```bash
-# Download and install the .dmg or .pkg from releases
-# Or via Homebrew (coming soon):
+# Download AgentCTL_*_macos.zip from GitHub Releases, unzip, drag to Applications
+# Or Homebrew (when available):
 brew install --cask agentctl
 ```
 
 ### Linux
 ```bash
-# Download .deb, .rpm, or .AppImage from releases
-# Debian/Ubuntu:
-sudo dpkg -i m-desktop_0.0.36_amd64.deb
-
-# Fedora/RHEL:
-sudo rpm -i m-desktop-0.0.36.x86_64.rpm
-
-# AppImage (universal):
-chmod +x m-desktop-0.0.36.AppImage
-./m-desktop-0.0.36.AppImage
+# Download AgentCTL_*_linux_amd64.tar.gz from Releases
+tar -xzf AgentCTL_*_linux_amd64.tar.gz
+./m
 ```
 
 ### Windows
-```powershell
-# Download and run the .msi installer from releases
-# Or use the standalone .exe
-```
+Download `AgentCTL_*_windows_amd64.zip`, unzip, and run the app.
 
-## Usage
+## Launch
 
-The desktop version includes both GUI and CLI in a single binary:
+- **macOS / Windows:** open `AgentCTL.app` or the installed shortcut
+- **CLI flag:** `m --gui` or `m gui` (same binary)
 
-### GUI Mode
-```bash
-# Launch GUI explicitly:
-m --gui
-m gui
+## Features (v0.5)
 
-# On macOS/Windows: Double-click the app icon
-# On Linux: Launch from applications menu or desktop
-```
+### Chat
+- Visual chat with markdown, tool-call cards, and streaming
+- Slash commands: `/reset`, `/retry`, `/model`, `/export`, `/help`
+- `@file.go` mentions inline file content (same as CLI)
+- Session persistence — resume from Home or sidebar
+- Context inspector, MoE routing history, activity timeline
 
-### CLI Mode (Same as Always)
-```bash
-# All existing CLI commands work unchanged:
-m chat
-m run agent.md "task"
-m pipe "explain this"
-cat error.log | m pipe
-```
+### Control plane
+- **Home** — setup checklist, health, quick nav
+- **Extensions** — Tools, Skills, MCP servers, Agent Studio (form editors + test bench)
+- **Knowledge** — live graph when `km serve` is running
+- **Personality** — per-agent tone, verbosity, instructions
+- **Security** (Pro) — audit log tail and policy rules
 
-## Features
+### MCP
+- Define servers in `~/.config/m/mcp/*.md`
+- Live dashboard in Extensions → MCP and from the chat MCP pill
+- Per-server connectivity test (“Test all”)
 
-### GUI Features
-- **Visual Chat Interface**: Rich markdown rendering with syntax highlighting
-- **Agent Manager**: Browse and select from built-in and custom agents
-- **Tool Execution Visualization**: See tool calls in real-time
-- **Settings Panel**: Configure providers and API keys visually
-- **File References**: Drag & drop agent files
-- **Session History**: Persistent chat sessions
+### Updates
+- Top bar shows **↑ v{latest}** when a GitHub release is newer
+- In-app download to `~/Downloads/AgentCTL-updates/` with install notes
+- Also available under **Settings → General**
 
-### Shared Features (GUI & CLI)
-- Same configuration files (`~/.agentctl/config.yaml`)
-- Same agent definitions (Markdown files)
-- Same session history
-- Same cost tracking
-- Same MCP server support
+## Config paths
+
+All desktop and CLI data lives under `~/.config/m/`:
+
+| Path | Purpose |
+|------|---------|
+| `config.yaml` | Provider, model, base URL |
+| `tools/` | Custom shell tools |
+| `skills/` | Skill bodies (system prompt) |
+| `mcp/` | MCP server definitions |
+| `agents/` | Custom agent specs |
+| `personas/` | Per-agent personality overlays |
+| `sessions/` | Encrypted saved chats |
 
 ## Development
 
 ### Prerequisites
 ```bash
-# Install Wails CLI
 go install github.com/wailsapp/wails/v2/cmd/wails@latest
-
-# Install frontend dependencies
 cd frontend && npm install
 ```
 
-### Build & Run
+### Run / build
 ```bash
-# Development mode (hot reload)
-make desktop-dev
-
-# Build for current platform
-make desktop-build
-
-# Build for all platforms
-make desktop-build-all
+make desktop-dev      # hot reload
+make desktop-build    # production binary / .app
+wails generate module # refresh JS bindings after Go API changes
 ```
 
-### Project Structure
+### Layout
 ```
-desktop/          # Desktop app bridge
-  ├── app.go      # App logic (session management, config)
-  └── main.go     # Wails entry point
-
-frontend/         # Svelte UI
-  ├── src/
-  │   ├── App.svelte           # Main app
-  │   └── components/
-  │       ├── Chat.svelte      # Chat interface
-  │       ├── Sidebar.svelte   # Agent browser
-  │       └── Settings.svelte  # Settings panel
-  └── package.json
-
-cmd/m/
-  ├── main.go         # Entry point with dual-mode detection
-  ├── gui_launch.go   # GUI launcher (build tag: gui)
-  └── gui_stub.go     # GUI stub (build tag: !gui)
+desktop/           # Go bridge (sessions, MCP, updates, audit)
+  app.go           # Core session + agent APIs
+  chat_cmds.go     # /reset, /retry, engine steps
+  mcp_dashboard.go # Live MCP status
+  upgrade*.go      # Check + download updates
+frontend/src/
+  App.svelte       # Shell: rail, tabs, routing
+  components/
+    ChatView.svelte      # Chat UI (extracted)
+    MCPDashboard.svelte  # MCP live status
+    UpdatePanel.svelte   # In-app updater
 ```
 
-## Build Tags
+## Build tags
 
-The project uses Go build tags to conditionally compile GUI support:
-
-- **Default (headless)**: `go build` → CLI only (~8 MB)
-- **With GUI**: `go build -tags gui` → CLI + GUI (~18 MB)
-- **Docker**: Always headless (uses `-tags headless` explicitly)
-
-## Platform-Specific Notes
-
-### macOS
-- Uses native WebKit (WKWebView)
-- Supports Touch Bar (future)
-- Menu bar integration
-- App signing for Gatekeeper
-
-### Linux
-- Uses WebKitGTK
-- Desktop entry for application menus
-- AppImage for universal compatibility
-- Wayland and X11 support
-
-### Windows
-- Uses WebView2 (Edge)
-- MSI installer with auto-update support
-- System tray integration (future)
+- Default CLI build: no GUI (`go build ./cmd/m`)
+- Desktop: Wails embeds the Svelte frontend into `AgentCTL.app`
 
 ## FAQ
 
-**Q: Can I use both GUI and CLI at the same time?**  
-A: Yes! They share the same configuration and session history.
+**Do GUI and CLI share state?**  
+Yes — same `~/.config/m` tree and saved sessions.
 
-**Q: Does GUI require internet for the UI?**  
-A: No, the UI is bundled. Only LLM API calls require internet.
+**When do tool/skill/MCP changes apply?**  
+Start a **New Chat** (Apply bar reminds you when config is dirty).
 
-**Q: Can I run CLI commands from the GUI?**  
-A: Not yet, but this is planned. For now, use your terminal.
-
-**Q: Does the Docker version include GUI?**  
-A: No, Docker builds are headless-only for minimal size.
-
-**Q: Can I build desktop version without Wails?**  
-A: No, Wails is required for desktop builds. CLI builds don't need it.
-
-## Contributing
-
-Desktop-specific contributions welcome! See [CONTRIBUTING.md](../CONTRIBUTING.md).
+**Does the UI need network?**  
+Only for LLM APIs and optional update checks. The UI is bundled offline.
 
 ## License
 
-Same as main project - see [LICENSE](../LICENSE).
+Same as the main project — see [LICENSE](../LICENSE).

@@ -4,8 +4,8 @@
   export let cost = { inputTokens: 0, outputTokens: 0, cost: 0 };
   export let moeRoute = null;
   export let contextUsage = 0;
+  export let updateInfo = null;
   const dispatch = createEventDispatcher();
-
   function fmt(n) { return (n||0) >= 1000 ? ((n||0)/1000).toFixed(1)+'k' : String(n||0); }
   function fmtCost(c) {
     if (!c) return '$0.00';
@@ -48,6 +48,10 @@
   </div>
 
   <div class="right">
+    {#if updateInfo?.updateAvailable}
+      <button type="button" class="update-pill" title={updateInfo.downloadNotes}
+        on:click={() => dispatch('update')}>↑ v{updateInfo.latest}</button>
+    {/if}
     {#if agent}
       {#if contextUsage > 0}
         <div class="ctx-bar" title="Context: {contextUsage}%">
@@ -116,6 +120,9 @@
   }
 
   .moe-tag{font-size:10px;color:#fff;padding:2px 8px;border-radius:4px;font-weight:600;white-space:nowrap;flex-shrink:0}
+
+  .update-pill{font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;background:#713f12;color:#fcd34d;border:none;cursor:pointer;flex-shrink:0;font-family:inherit}
+  .update-pill:hover{filter:brightness(1.1)}
 
   .ctx-bar{position:relative;width:60px;height:8px;background:#0f172a;border-radius:4px;border:1px solid #334155;overflow:hidden;flex-shrink:0}
   .ctx-fill{height:100%;border-radius:3px;transition:width 0.3s}

@@ -5,6 +5,22 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+- **ChatView** — chat UI extracted from App.svelte for maintainability
+- **MCP live dashboard** — per-server status in Extensions and from chat MCP pill
+- **@file mentions** — autocomplete in chat; content inlined on send (CLI parity)
+- **In-app updates** — download release packages from Settings or top bar
+- Tool call cards now show engine output snippets from status lines
+- TopBar update pill when a newer release is on GitHub
+- Chat toolbar: Retry button and live MCP connection count
+- Sidebar session search filters saved chats
+- Setup checklist marks "first chat" done automatically
+
+### Changed
+- `desktop/README.md` updated for v0.5.x
+
 ## [0.5.0] - 2026-07-01
 
 ### Added
