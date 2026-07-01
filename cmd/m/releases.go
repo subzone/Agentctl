@@ -25,6 +25,17 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.6.0",
+		Date:    "2026-06-30",
+		Highlights: []string{
+			"Entitlement system: local license store and Pro/Team/Enterprise dev keys.",
+			"m license activate + m packages install with package lock gating.",
+			"Pro packages pro-dev and pro-security — curated agent/skill/MCP bundles.",
+			"Desktop: license activation in Settings, plan badge on Home.",
+			"MILLION_DOLLAR_PLAN.md — phased roadmap to $1M ARR.",
+		},
+	},
+	{
 		Version: "0.5.1",
 		Date:    "2026-06-30",
 		Highlights: []string{

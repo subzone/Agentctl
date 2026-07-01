@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-06-30
+
+### Added
+- **$1M ARR plan** — [`MILLION_DOLLAR_PLAN.md`](MILLION_DOLLAR_PLAN.md) with phased roadmap to Pro/Team/Enterprise revenue
+- **Entitlement system** — `internal/entitlement` local license store (`~/.config/m/entitlement.json`)
+- **`m license`** — `status`, `activate`, and dev keys for Pro/Team/Enterprise testing
+- **`m packages install`** — install curated bundles to `~/.config/m/` with entitlement gating
+- **Pro packages** — `pro-dev` and `pro-security` (agents, skills, MCP copied on install)
+- **Desktop license UI** — Settings → activate license + install packages; Home plan badge
+
+### Changed
+- `m packages` is now a command group (`list` / `install`); list shows locked/licensed status
+- `m doctor` reports current plan and entitlements
+- Bundled `examples/skills` embedded for package installs
+
 ## [0.5.1] - 2026-06-30
 
 ### Added
