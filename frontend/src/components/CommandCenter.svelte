@@ -8,6 +8,8 @@
   export let moeRoute = null;
   export let sessions = [];
   export let savedSessions = [];
+  export let entitlement = { plan: 'free', isPro: false };
+  export let packageOffers = [];
 
   function fmtSaved(ts) {
     if (!ts) return '';
@@ -44,6 +46,7 @@
         {:else}
           Select an agent to get started
         {/if}
+        <span class="plan-pill" class:pro={entitlement.isPro}>{entitlement.plan}</span>
       </p>
     </div>
     <div class="head-actions">
@@ -89,6 +92,21 @@
     <div class="moe-banner">
       Last route: <strong>{moeRoute.category}</strong> → {moeRoute.model}
     </div>
+  {/if}
+
+  {#if packageOffers.length > 0}
+    <section class="packages">
+      <h2>Pro packages</h2>
+      <div class="pkg-row">
+        {#each packageOffers as o}
+          <div class="pkg-chip" class:locked={o.locked} class:done={o.installed}>
+            <span class="pkg-name">{o.name}</span>
+            {#if o.installed}✓{:else if o.locked}🔒{:else}○{/if}
+          </div>
+        {/each}
+      </div>
+      <p class="pkg-hint">{entitlement.isPro ? 'Install packages in Settings → General' : 'Activate Pro in Settings to unlock packages'}</p>
+    </section>
   {/if}
 
   {#if savedSessions.length > 0}
@@ -156,6 +174,19 @@
   .act:hover{filter:brightness(1.1)}
   .act.primary{background:var(--accent);border-color:var(--accent);color:#fff}
   .act:disabled{opacity:0.5;cursor:not-allowed}
+
+  .sub .model{font-size:11px;color:var(--muted);margin-left:8px}
+  .plan-pill{margin-left:10px;font-size:10px;font-weight:800;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:#334155;color:#94a3b8}
+  .plan-pill.pro{background:#4c1d95;color:#e9d5ff}
+
+  .packages{margin-bottom:20px}
+  .packages h2{margin:0 0 10px;font-size:14px;font-weight:700}
+  .pkg-row{display:flex;flex-wrap:wrap;gap:8px}
+  .pkg-chip{display:flex;align-items:center;gap:6px;padding:6px 12px;background:#0c1322;border:1px solid var(--border);border-radius:8px;font-size:12px}
+  .pkg-chip.locked{opacity:0.7;border-color:#713f12}
+  .pkg-chip.done{border-color:#14532d}
+  .pkg-name{font-weight:600;color:#93c5fd}
+  .pkg-hint{font-size:11px;color:var(--muted);margin-top:8px}
 
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px}
   .card{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 16px;background:#0c1322;border:1px solid var(--border);border-radius:10px;cursor:pointer;text-align:left;color:var(--text)}

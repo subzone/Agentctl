@@ -122,6 +122,8 @@
   let kmHighlightIds = [];
   let updateInfo = null;
   let sessionMCP = [];
+  let entitlement = { plan: 'free', isPro: false, entitlements: ['free'] };
+  let packageOffers = [];
   let contextPreview = null;
   let contextLoading = false;
   let showInspector = true;
@@ -710,6 +712,13 @@
       homeSessions = [];
     }
     await refreshSavedSessions();
+    try {
+      entitlement = await window.go.desktop.App.GetEntitlement();
+      packageOffers = await window.go.desktop.App.ListPackageOffers() || [];
+    } catch (_) {
+      entitlement = { plan: 'free', isPro: false, entitlements: ['free'] };
+      packageOffers = [];
+    }
   }
 
   async function resumeSaved(savedID) {
@@ -989,6 +998,7 @@
           <div class="center-wrap">
             <SetupChecklist health={healthReport} {proMode} hasChatted={messages.length > 0} on:nav={e => navTab(e.detail)} />
             <CommandCenter agent={currentAgent} health={healthReport} stats={homeStats} {moeRoute} sessions={homeSessions} {savedSessions}
+              {entitlement} {packageOffers}
               on:nav={e => navTab(e.detail)}
               on:newChat={newChat}
               on:refresh={refreshHomeData}

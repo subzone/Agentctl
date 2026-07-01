@@ -4,6 +4,8 @@ import {desktop} from '../models';
 import {userconfig} from '../models';
 import {atfile} from '../models';
 
+export function ActivateLicense(arg1:string):Promise<desktop.EntitlementInfo>;
+
 export function BuiltinToolNames():Promise<Array<string>>;
 
 export function CheckForUpdate():Promise<desktop.UpdateInfo>;
@@ -44,6 +46,8 @@ export function GetConfig():Promise<userconfig.Config>;
 
 export function GetCost(arg1:string):Promise<desktop.CostInfo>;
 
+export function GetEntitlement():Promise<desktop.EntitlementInfo>;
+
 export function GetHealth():Promise<desktop.HealthReport>;
 
 export function GetMCPDashboard(arg1:string,arg2:boolean):Promise<Array<desktop.MCPDashboardEntry>>;
@@ -59,6 +63,8 @@ export function GetSessionMCP(arg1:string):Promise<Array<string>>;
 export function GetSessions():Promise<Array<desktop.SessionInfo>>;
 
 export function GetThemes():Promise<Array<desktop.ThemeInfo>>;
+
+export function InstallPackage(arg1:string):Promise<void>;
 
 export function KMGraph():Promise<desktop.KMGraphData>;
 
@@ -81,6 +87,8 @@ export function ListAgents():Promise<Array<desktop.AgentInfo>>;
 export function ListAuditEvents(arg1:number):Promise<Array<desktop.AuditEventView>>;
 
 export function ListMCP():Promise<Array<desktop.MCPDoc>>;
+
+export function ListPackageOffers():Promise<Array<desktop.PackageOffer>>;
 
 export function ListSavedSessions():Promise<Array<desktop.SavedSessionSummary>>;
 

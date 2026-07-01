@@ -1,6 +1,7 @@
 <script>
   import { onMount, createEventDispatcher } from 'svelte';
   import UpdatePanel from './UpdatePanel.svelte';
+  import LicensePanel from './LicensePanel.svelte';
   const dispatch = createEventDispatcher();
 
   export let updateInfo = null;
@@ -141,6 +142,7 @@
     <div class="body">
       {#if tab === 'general'}
         <UpdatePanel {updateInfo} />
+        <LicensePanel />
         <div class="section">
           <h3>Interface mode</h3>
           <p class="hint">Simple mode hides advanced rails (Extensions, Persona) for a cleaner chat-first layout.</p>

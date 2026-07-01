@@ -11,3 +11,6 @@ var Packages embed.FS
 
 //go:embed mcp/*.md
 var MCP embed.FS
+
+//go:embed skills/*.md
+var Skills embed.FS

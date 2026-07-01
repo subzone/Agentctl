@@ -11,15 +11,25 @@ import (
 
 	"github.com/subzone/Agentctl/examples"
 	"github.com/subzone/Agentctl/internal/config"
+	"github.com/subzone/Agentctl/internal/entitlement"
 )
 
 func newPackagesCmd() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "packages",
+		Short: "Discover and install curated package bundles",
+	}
+	cmd.AddCommand(newPackagesListCmd())
+	cmd.AddCommand(newPackagesInstallCmd())
+	return cmd
+}
+
+func newPackagesListCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "packages [dir...]",
-		Short: "Discover package .md files",
-		Long: "Scans directories for Markdown files with package frontmatter.\n" +
-			"With no arguments, scans ./examples/packages/ and the current directory.",
-		RunE: runPackages,
+		Use:   "list [dir...]",
+		Short: "List package .md files",
+		Long:  "Scans directories for Markdown files with package frontmatter.\nWith no arguments, scans ./examples/packages/ and the current directory.",
+		RunE:  runPackages,
 	}
 }
 
@@ -69,6 +79,8 @@ func runPackages(_ *cobra.Command, args []string) error {
 		return nil
 	}
 
+	state, _ := entitlement.Load()
+
 	nameW, agentsW, skillsW, mcpW, entW := 4, 6, 6, 3, 11
 	for _, p := range packages {
 		if len(p.name) > nameW {
@@ -88,12 +100,20 @@ func runPackages(_ *cobra.Command, args []string) error {
 		}
 	}
 
-	fmt.Printf("  %-*s  %-*s  %-*s  %-*s  %-*s  %s\n", nameW, "NAME", agentsW, "AGENTS", skillsW, "SKILLS", mcpW, "MCP", entW, "ENTITLEMENTS", "PATH")
-	fmt.Printf("  %s  %s  %s  %s  %s  %s\n", strings.Repeat("─", nameW), strings.Repeat("─", agentsW), strings.Repeat("─", skillsW), strings.Repeat("─", mcpW), strings.Repeat("─", entW), strings.Repeat("─", 40))
+	fmt.Printf("  %-*s  %-*s  %-*s  %-*s  %-*s  %s\n", nameW, "NAME", agentsW, "AGENTS", skillsW, "SKILLS", mcpW, "MCP", entW, "ENTITLEMENTS", "STATUS")
+	fmt.Printf("  %s  %s  %s  %s  %s  %s\n", strings.Repeat("─", nameW), strings.Repeat("─", agentsW), strings.Repeat("─", skillsW), strings.Repeat("─", mcpW), strings.Repeat("─", entW), strings.Repeat("─", 12))
 	for _, p := range packages {
-		fmt.Printf("  %-*s  %-*d  %-*d  %-*d  %-*d  %s\n", nameW, p.name, agentsW, len(p.agents), skillsW, len(p.skills), mcpW, len(p.mcp), entW, len(p.entitlements), p.path)
+		status := "open"
+		if len(p.entitlements) > 0 {
+			if missing := state.HasAllEntitlements(p.entitlements); len(missing) > 0 {
+				status = "locked"
+			} else {
+				status = "licensed"
+			}
+		}
+		fmt.Printf("  %-*s  %-*d  %-*d  %-*d  %-*d  %s\n", nameW, p.name, agentsW, len(p.agents), skillsW, len(p.skills), mcpW, len(p.mcp), entW, len(p.entitlements), status)
 	}
-	fmt.Printf("\n  %d packages found. Run with: m chat <path>\n", len(packages))
+	fmt.Printf("\n  %d packages found. Install: m packages install <name>\n", len(packages))
 	return nil
 }
 

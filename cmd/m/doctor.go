@@ -9,6 +9,7 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/subzone/Agentctl/internal/entitlement"
 	"github.com/subzone/Agentctl/internal/userconfig"
 )
 
@@ -119,6 +120,17 @@ func runDoctor(cmd *cobra.Command, _ []string) error {
 		ok = false
 	} else {
 		fmt.Fprintln(out, "✓ Session store: ready")
+	}
+
+	// 7. License / plan
+	fmt.Fprintln(out)
+	if ent, err := entitlement.Load(); err != nil {
+		fmt.Fprintf(out, "✗ License: %v\n", err)
+	} else {
+		fmt.Fprintf(out, "✓ Plan: %s (entitlements: %v)\n", ent.Plan, ent.EffectiveEntitlements())
+		if ent.Plan == entitlement.PlanFree {
+			fmt.Fprintln(out, "  Pro packages locked — `m license activate <key>`")
+		}
 	}
 
 	fmt.Fprintln(out)

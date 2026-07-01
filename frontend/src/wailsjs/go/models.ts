@@ -237,6 +237,26 @@ export namespace desktop {
 	        this.model = source["model"];
 	    }
 	}
+	export class EntitlementInfo {
+	    plan: string;
+	    entitlements: string[];
+	    packages: string[];
+	    licenseHint: string;
+	    isPro: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new EntitlementInfo(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.plan = source["plan"];
+	        this.entitlements = source["entitlements"];
+	        this.packages = source["packages"];
+	        this.licenseHint = source["licenseHint"];
+	        this.isPro = source["isPro"];
+	    }
+	}
 	export class FileResult {
 	    path: string;
 	    name: string;
@@ -578,6 +598,26 @@ export namespace desktop {
 		    }
 		    return a;
 		}
+	}
+	export class PackageOffer {
+	    name: string;
+	    description: string;
+	    entitlements: string[];
+	    locked: boolean;
+	    installed: boolean;
+	
+	    static createFrom(source: any = {}) {
+	        return new PackageOffer(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.description = source["description"];
+	        this.entitlements = source["entitlements"];
+	        this.locked = source["locked"];
+	        this.installed = source["installed"];
+	    }
 	}
 	
 	export class PolicyRuleView {
