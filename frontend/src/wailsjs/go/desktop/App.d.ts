@@ -144,7 +144,7 @@ export function SearchAtFiles(arg1:string):Promise<Array<atfile.Candidate>>;
 
 export function SearchSavedSessions(arg1:string):Promise<Array<desktop.SavedSessionSummary>>;
 
-export function SendMessage(arg1:string,arg2:string):Promise<void>;
+export function SendMessage(arg1:string,arg2:string,arg3:Array<desktop.ImageAttachment>):Promise<void>;
 
 export function SetProductVersion(arg1:string):Promise<void>;
 

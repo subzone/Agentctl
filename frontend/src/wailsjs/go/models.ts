@@ -260,7 +260,10 @@ export namespace desktop {
 	export class FileResult {
 	    path: string;
 	    name: string;
+	    kind: string;
 	    content: string;
+	    mimeType?: string;
+	    dataB64?: string;
 	
 	    static createFrom(source: any = {}) {
 	        return new FileResult(source);
@@ -270,7 +273,26 @@ export namespace desktop {
 	        if ('string' === typeof source) source = JSON.parse(source);
 	        this.path = source["path"];
 	        this.name = source["name"];
+	        this.kind = source["kind"];
 	        this.content = source["content"];
+	        this.mimeType = source["mimeType"];
+	        this.dataB64 = source["dataB64"];
+	    }
+	}
+	export class ImageAttachment {
+	    name: string;
+	    mimeType: string;
+	    dataB64: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImageAttachment(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.mimeType = source["mimeType"];
+	        this.dataB64 = source["dataB64"];
 	    }
 	}
 	export class HealthCheck {

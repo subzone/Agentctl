@@ -293,6 +293,14 @@ func (s *Session) Truncate(maxExchanges int) {
 // model stops naturally (or hits MaxTurns). The assistant's response
 // streams to s.cfg.Out; full message turns are appended to the history.
 func (s *Session) Step(ctx context.Context, task string) error {
+	return s.StepBlocks(ctx, []llm.ContentBlock{{Type: llm.BlockText, Text: task}})
+}
+
+// StepBlocks appends a multimodal user turn (text and/or images) and runs the engine loop.
+func (s *Session) StepBlocks(ctx context.Context, blocks []llm.ContentBlock) error {
+	if len(blocks) == 0 {
+		return errors.New("engine: empty user message")
+	}
 	if s.cfg.Provider == nil {
 		return errors.New("engine: Provider is required")
 	}
@@ -300,17 +308,20 @@ func (s *Session) Step(ctx context.Context, task string) error {
 		return errors.New("engine: Model is required")
 	}
 
-	// PII guard: scan and redact user input before sending to LLM.
-	if s.cfg.PIIGuard != nil && s.cfg.PIIGuard.Mode != tools.PIIModeOff {
+	task := textFromBlocks(blocks)
+
+	// PII guard: scan and redact user text before sending to LLM.
+	if s.cfg.PIIGuard != nil && s.cfg.PIIGuard.Mode != tools.PIIModeOff && task != "" {
 		if findings := s.cfg.PIIGuard.Scan(task); len(findings) > 0 {
 			fmt.Fprintln(s.status, s.cfg.PIIGuard.Summary(findings))
 			if s.cfg.PIIGuard.Mode == tools.PIIModeRedact {
 				task = s.cfg.PIIGuard.Redact(task)
+				blocks = redactTextBlocks(blocks, task)
 			}
 		}
 	}
 
-	// MoE routing: classify input and swap model/system per expert.
+	// MoE routing: classify text input and swap model/system per expert.
 	if route := Classify(task, s.cfg.Routing); route != nil {
 		if s.cfg.ResolveModel != nil && route.Model != "" {
 			if p, m, err := s.cfg.ResolveModel(route.Model); err == nil {
@@ -328,7 +339,7 @@ func (s *Session) Step(ctx context.Context, task string) error {
 		}
 	}
 
-	s.messages = append(s.messages, llm.TextMessage(llm.RoleUser, task))
+	s.messages = append(s.messages, llm.Message{Role: llm.RoleUser, Content: blocks})
 	// Auto-compact when estimated tokens exceed threshold.
 	if s.shouldCompact() {
 		target := s.contextBudget * DefaultCompactionTarget / 100
@@ -554,6 +565,9 @@ func estimateTokens(msgs []llm.Message) int {
 	for _, m := range msgs {
 		for _, b := range m.Content {
 			total += len(b.Text) + len(b.Output) + len(b.ToolInput) + len(b.ToolName) + 20 // overhead
+			if b.Type == llm.BlockImage {
+				total += len(b.ImageData) + 800 // vision overhead
+			}
 		}
 	}
 	return total / 4
@@ -877,10 +891,38 @@ func allTextBlocks(m llm.Message) bool {
 	if len(m.Content) == 0 {
 		return false
 	}
+	hasText := false
 	for _, b := range m.Content {
-		if b.Type != llm.BlockText {
+		switch b.Type {
+		case llm.BlockText:
+			hasText = true
+		case llm.BlockImage:
+			continue
+		default:
 			return false
 		}
 	}
-	return true
+	return hasText
+}
+
+func textFromBlocks(blocks []llm.ContentBlock) string {
+	var sb strings.Builder
+	for _, b := range blocks {
+		if b.Type == llm.BlockText {
+			sb.WriteString(b.Text)
+		}
+	}
+	return sb.String()
+}
+
+func redactTextBlocks(blocks []llm.ContentBlock, redacted string) []llm.ContentBlock {
+	out := make([]llm.ContentBlock, len(blocks))
+	copy(out, blocks)
+	for i, b := range out {
+		if b.Type == llm.BlockText {
+			out[i].Text = redacted
+			break
+		}
+	}
+	return out
 }

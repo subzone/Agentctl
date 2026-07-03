@@ -119,7 +119,7 @@ func TestFSReadHappy(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if out != "hello world\n" {
+	if out != "hello world" {
 		t.Errorf("got %q", out)
 	}
 }
@@ -143,7 +143,7 @@ func TestFSReadTruncates(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Run: %v", err)
 	}
-	if out != "0123\n[output truncated]" {
+	if out != "0123\n[truncated — big.txt exceeded 4 bytes]" {
 		t.Errorf("got %q", out)
 	}
 }

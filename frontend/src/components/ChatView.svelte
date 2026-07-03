@@ -110,8 +110,20 @@
   async function attachFile() {
     try {
       const file = await window.go.desktop.App.OpenFile();
-      if (file && file.name && file.content !== undefined) {
-        attachedFiles = [...attachedFiles, { name: file.name, content: file.content }];
+      if (!file || !file.name) return;
+      if (file.kind === 'image' && file.dataB64) {
+        attachedFiles = [...attachedFiles, {
+          name: file.name,
+          kind: 'image',
+          mimeType: file.mimeType,
+          dataB64: file.dataB64,
+        }];
+      } else if (file.content !== undefined) {
+        attachedFiles = [...attachedFiles, {
+          name: file.name,
+          kind: 'text',
+          content: file.content,
+        }];
       }
     } catch (e) {
       dispatch('error', String(e));
@@ -174,10 +186,18 @@
     }
 
     let fullMsg = msg;
-    for (const f of attachedFiles) {
+    const textFiles = attachedFiles.filter(f => f.kind !== 'image');
+    const imageFiles = attachedFiles.filter(f => f.kind === 'image');
+    for (const f of textFiles) {
       fullMsg += `\n\n[File: ${f.name}]\n\`\`\`\n${f.content}\n\`\`\``;
     }
-    const displayMsg = msg + (attachedFiles.length > 0 ? ` [+${attachedFiles.length} file(s)]` : '');
+    const images = imageFiles.map(f => ({
+      name: f.name,
+      mimeType: f.mimeType || 'image/png',
+      dataB64: f.dataB64,
+    }));
+    const attachCount = textFiles.length + imageFiles.length;
+    const displayMsg = msg + (attachCount > 0 ? ` [+${attachCount} file(s)]` : '');
     inputValue = '';
     attachedFiles = [];
     closeFileSuggest();
@@ -188,7 +208,7 @@
     await tick();
     scrollToBottom();
     try {
-      await window.go.desktop.App.SendMessage(sessionId, fullMsg);
+      await window.go.desktop.App.SendMessage(sessionId, fullMsg, images);
     } catch (e) {
       streaming = false;
       messages = [...messages, { role: 'error', content: String(e) }];
@@ -399,7 +419,15 @@
     {#if attachedFiles.length > 0}
       <div class="attachments">
         {#each attachedFiles as f}
-          <div class="chip">📄 <span>{f.name}</span> <button on:click={() => removeFile(f.name)}>✕</button></div>
+          <div class="chip">
+            {#if f.kind === 'image'}
+              🖼️
+            {:else}
+              📄
+            {/if}
+            <span>{f.name}</span>
+            <button on:click={() => removeFile(f.name)}>✕</button>
+          </div>
         {/each}
       </div>
     {/if}
@@ -420,7 +448,7 @@
             </div>
           {/if}
           <textarea bind:value={inputValue} on:keydown={handleKey} on:input={onInput}
-            placeholder="Type a message… @file.go to inline · Enter to send"
+            placeholder="Type a message… @file.go · 📎 images · Enter to send"
             disabled={streaming} rows="3"></textarea>
         </div>
         <div class="btn-col">

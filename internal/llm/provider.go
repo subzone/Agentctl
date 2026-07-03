@@ -23,6 +23,7 @@ type BlockType string
 
 const (
 	BlockText       BlockType = "text"
+	BlockImage      BlockType = "image"
 	BlockToolUse    BlockType = "tool_use"
 	BlockToolResult BlockType = "tool_result"
 )
@@ -36,6 +37,10 @@ type ContentBlock struct {
 
 	// BlockText
 	Text string
+
+	// BlockImage (user → vision model)
+	MimeType  string
+	ImageData []byte
 
 	// BlockToolUse (assistant → tool call request)
 	ToolID    string

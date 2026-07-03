@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -260,6 +261,15 @@ func toAPIBlock(b llm.ContentBlock) (any, error) {
 	switch b.Type {
 	case llm.BlockText:
 		return map[string]any{"type": "text", "text": b.Text}, nil
+	case llm.BlockImage:
+		return map[string]any{
+			"type": "image",
+			"source": map[string]any{
+				"type":       "base64",
+				"media_type": b.MimeType,
+				"data":       base64.StdEncoding.EncodeToString(b.ImageData),
+			},
+		}, nil
 	case llm.BlockToolUse:
 		// input is an object on the wire; default to {} when no input was
 		// captured (which can happen for parameterless tools).

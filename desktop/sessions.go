@@ -214,6 +214,10 @@ func exportEngineSession(sess *engine.Session, provider, model string, inTok, ou
 		pm := ports.Message{Role: string(m.Role)}
 		for _, b := range m.Content {
 			pb := ports.ContentBlock{Type: string(b.Type), Text: b.Text}
+			pb.MimeType = b.MimeType
+			if b.Type == llm.BlockImage && len(b.ImageData) > 0 {
+				pb.ImageB64 = base64.StdEncoding.EncodeToString(b.ImageData)
+			}
 			pb.ToolID = b.ToolID
 			pb.ToolName = b.ToolName
 			if len(b.ToolInput) > 0 {
@@ -237,11 +241,17 @@ func importSessionData(data *ports.SessionData) []llm.Message {
 			b := llm.ContentBlock{
 				Type:      llm.BlockType(pb.Type),
 				Text:      pb.Text,
+				MimeType:  pb.MimeType,
 				ToolID:    pb.ToolID,
 				ToolName:  pb.ToolName,
 				ToolUseID: pb.ToolUseID,
 				Output:    pb.Output,
 				IsError:   pb.IsError,
+			}
+			if pb.ImageB64 != "" {
+				if decoded, err := base64.StdEncoding.DecodeString(pb.ImageB64); err == nil {
+					b.ImageData = decoded
+				}
 			}
 			if pb.ToolInput != "" {
 				b.ToolInput = json.RawMessage(pb.ToolInput)
@@ -282,6 +292,12 @@ func flattenContent(blocks []ports.ContentBlock) string {
 		case "text":
 			if b.Text != "" {
 				parts = append(parts, b.Text)
+			}
+		case "image":
+			if b.MimeType != "" {
+				parts = append(parts, "[image: "+b.MimeType+"]")
+			} else {
+				parts = append(parts, "[image]")
 			}
 		case "tool_use":
 			if b.ToolName != "" {

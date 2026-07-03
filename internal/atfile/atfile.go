@@ -6,6 +6,8 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+
+	"github.com/subzone/Agentctl/internal/filecontent"
 )
 
 // Pattern matches @path/to/file references in user input.
@@ -40,12 +42,14 @@ func Expand(input string) (string, []string) {
 			continue
 		}
 
-		data, err := os.ReadFile(abs)
+		content, err := filecontent.Read(abs, 256*1024)
 		if err != nil {
+			replacement := fmt.Sprintf("\n\n[File: %s — %v]\n", ref, err)
+			input = strings.Replace(input, "@"+ref, replacement, 1)
+			included = append(included, ref)
 			continue
 		}
 
-		content := strings.TrimRight(string(data), "\n")
 		replacement := fmt.Sprintf("\n\n[File: %s]\n```\n%s\n```\n", ref, content)
 		input = strings.Replace(input, "@"+ref, replacement, 1)
 		included = append(included, ref)

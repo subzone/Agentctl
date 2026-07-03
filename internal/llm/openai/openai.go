@@ -14,6 +14,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -121,7 +122,7 @@ type jsonSchemaSpec struct {
 
 type chatMsg struct {
 	Role       string         `json:"role"`
-	Content    string         `json:"content"`
+	Content    any            `json:"content"`
 	ToolCalls  []chatToolCall `json:"tool_calls,omitempty"`
 	ToolCallID string         `json:"tool_call_id,omitempty"`
 }
@@ -271,12 +272,21 @@ func buildMessages(system string, msgs []llm.Message) []chatMsg {
 	for _, m := range msgs {
 		switch m.Role {
 		case llm.RoleUser:
-			var userText strings.Builder
 			var toolMsgs []chatMsg
+			var visionParts []map[string]any
 			for _, b := range m.Content {
 				switch b.Type {
 				case llm.BlockText:
-					userText.WriteString(b.Text)
+					if b.Text != "" {
+						visionParts = append(visionParts, map[string]any{"type": "text", "text": b.Text})
+					}
+				case llm.BlockImage:
+					visionParts = append(visionParts, map[string]any{
+						"type": "image_url",
+						"image_url": map[string]any{
+							"url": imageDataURL(b.MimeType, b.ImageData),
+						},
+					})
 				case llm.BlockToolResult:
 					toolMsgs = append(toolMsgs, chatMsg{
 						Role:       "tool",
@@ -285,8 +295,14 @@ func buildMessages(system string, msgs []llm.Message) []chatMsg {
 					})
 				}
 			}
-			if userText.Len() > 0 {
-				out = append(out, chatMsg{Role: "user", Content: userText.String()})
+			if len(visionParts) > 0 {
+				content := any(visionParts)
+				if len(visionParts) == 1 {
+					if part, ok := visionParts[0]["text"].(string); ok && visionParts[0]["type"] == "text" {
+						content = part
+					}
+				}
+				out = append(out, chatMsg{Role: "user", Content: content})
 			}
 			out = append(out, toolMsgs...)
 		case llm.RoleAssistant:
@@ -312,6 +328,13 @@ func buildMessages(system string, msgs []llm.Message) []chatMsg {
 		}
 	}
 	return out
+}
+
+func imageDataURL(mimeType string, data []byte) string {
+	if mimeType == "" {
+		mimeType = "image/png"
+	}
+	return "data:" + mimeType + ";base64," + base64.StdEncoding.EncodeToString(data)
 }
 
 func buildTools(tools []llm.ToolSchema) []chatTool {

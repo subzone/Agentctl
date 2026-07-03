@@ -8,6 +8,7 @@ package desktop
 
 import (
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/fs"
@@ -23,6 +24,7 @@ import (
 	"github.com/subzone/Agentctl/examples"
 	"github.com/subzone/Agentctl/internal/config"
 	"github.com/subzone/Agentctl/internal/engine"
+	"github.com/subzone/Agentctl/internal/filecontent"
 	"github.com/subzone/Agentctl/internal/llm"
 	"github.com/subzone/Agentctl/internal/tools"
 	"github.com/subzone/Agentctl/internal/userconfig"
@@ -114,7 +116,7 @@ type CostInfo struct {
 
 func NewApp() *App {
 	return &App{
-		version:  "0.7.0",
+		version:  "0.7.1",
 		sessions: make(map[string]*Session),
 		pending:  make(map[string]chan bool),
 	}
@@ -442,8 +444,8 @@ func (a *App) CreateSession(agentName string) (*SessionInfo, error) {
 	}, nil
 }
 
-func (a *App) SendMessage(sessionID, message string) error {
-	return a.runEngineStep(sessionID, message, true)
+func (a *App) SendMessage(sessionID, message string, images []ImageAttachment) error {
+	return a.runEngineStep(sessionID, message, images, true)
 }
 
 func (a *App) StopGeneration(sessionID string) {
@@ -531,15 +533,25 @@ func calcCost(model string, in, out int) float64 {
 
 // FileResult is returned by OpenFile.
 type FileResult struct {
-	Path    string `json:"path"`
-	Name    string `json:"name"`
-	Content string `json:"content"`
+	Path     string `json:"path"`
+	Name     string `json:"name"`
+	Kind     string `json:"kind"` // text | image
+	Content  string `json:"content"`
+	MimeType string `json:"mimeType,omitempty"`
+	DataB64  string `json:"dataB64,omitempty"`
 }
 
-// OpenFile opens a native file picker and returns the file path and content.
+// ImageAttachment is a vision input from the chat UI.
+type ImageAttachment struct {
+	Name     string `json:"name"`
+	MimeType string `json:"mimeType"`
+	DataB64  string `json:"dataB64"`
+}
+
+// OpenFile opens a native file picker and returns text or image content.
 func (a *App) OpenFile() (*FileResult, error) {
 	path, err := runtime.OpenFileDialog(a.ctx, runtime.OpenDialogOptions{
-		Title: "Select file to attach",
+		Title: "Select file to attach (text, PDF, or image)",
 	})
 	if err != nil {
 		return nil, err
@@ -551,13 +563,31 @@ func (a *App) OpenFile() (*FileResult, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read file: %w", err)
 	}
-	content := string(data)
+	name := filepath.Base(path)
+	if filecontent.IsImage(name, data) {
+		img, err := filecontent.ReadImageBytes(name, data)
+		if err != nil {
+			return nil, err
+		}
+		return &FileResult{
+			Path:     path,
+			Name:     name,
+			Kind:     "image",
+			MimeType: img.MimeType,
+			DataB64:  base64.StdEncoding.EncodeToString(img.Data),
+		}, nil
+	}
+	content, err := filecontent.Read(path, 200*1024)
+	if err != nil {
+		return nil, fmt.Errorf("read file: %w", err)
+	}
 	if len(content) > 50000 {
 		content = content[:50000] + "\n[truncated]"
 	}
 	return &FileResult{
 		Path:    path,
-		Name:    filepath.Base(path),
+		Name:    name,
+		Kind:    "text",
 		Content: content,
 	}, nil
 }

@@ -72,6 +72,8 @@ type Message struct {
 type ContentBlock struct {
 	Type      string
 	Text      string
+	MimeType  string
+	ImageB64  string
 	ToolID    string
 	ToolName  string
 	ToolInput string

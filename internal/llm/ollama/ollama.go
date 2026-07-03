@@ -12,6 +12,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/base64"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -78,6 +79,7 @@ type chatOpts struct {
 type chatMsg struct {
 	Role      string         `json:"role"`
 	Content   string         `json:"content"`
+	Images    []string       `json:"images,omitempty"`
 	ToolCalls []chatToolCall `json:"tool_calls,omitempty"`
 }
 
@@ -189,17 +191,20 @@ func buildMessages(system string, msgs []llm.Message) []chatMsg {
 		switch m.Role {
 		case llm.RoleUser:
 			var userText strings.Builder
+			var images []string
 			var toolMsgs []chatMsg
 			for _, b := range m.Content {
 				switch b.Type {
 				case llm.BlockText:
 					userText.WriteString(b.Text)
+				case llm.BlockImage:
+					images = append(images, base64.StdEncoding.EncodeToString(b.ImageData))
 				case llm.BlockToolResult:
 					toolMsgs = append(toolMsgs, chatMsg{Role: "tool", Content: b.Output})
 				}
 			}
-			if userText.Len() > 0 {
-				out = append(out, chatMsg{Role: "user", Content: userText.String()})
+			if userText.Len() > 0 || len(images) > 0 {
+				out = append(out, chatMsg{Role: "user", Content: userText.String(), Images: images})
 			}
 			out = append(out, toolMsgs...)
 		case llm.RoleAssistant:
