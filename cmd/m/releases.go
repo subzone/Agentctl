@@ -25,6 +25,15 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.7.1",
+		Date:    "2026-07-03",
+		Highlights: []string{
+			"PDF attachments: extract text layer for chat, @file, and fs_read.",
+			"Image vision: attach screenshots/photos in desktop chat (Gemini, GPT-4o, Claude, llava).",
+			"Multimodal BlockImage wired through OpenAI, Anthropic, Gemini, and Ollama adapters.",
+		},
+	},
+	{
 		Version: "0.7.0",
 		Date:    "2026-07-03",
 		Highlights: []string{

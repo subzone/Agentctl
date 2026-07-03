@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-07-03
+
+### Added
+- **PDF attachments** — text-layer PDFs extracted for chat, `@file`, and `fs_read`
+- **Image vision** — attach PNG/JPG/GIF/WebP/BMP in desktop chat; sent to vision-capable models
+- **`internal/filecontent`** — shared text/PDF/image reading for attachments and tools
+- **Multimodal engine** — `StepBlocks` with `BlockImage` across OpenAI, Anthropic, Gemini, Ollama
+
+### Changed
+- `fs_read` supports PDF text extraction (scanned/image-only PDFs still unsupported)
+- Desktop `SendMessage` accepts image attachments alongside text and files
+- `@file` mentions use `filecontent` instead of raw binary reads
+
 ## [0.7.0] - 2026-07-03
 
 ### Added

@@ -10,7 +10,7 @@ Math: ~4,200 × $20/mo Pro · ~840 × $99/mo Team · or fewer Enterprise deals.
 
 ## North star
 
-**Product today:** local agent control plane (CLI + desktop) — v0.7.0 shipped.
+**Product today:** local agent control plane (CLI + desktop) — v0.7.1 shipped.
 
 **Business gap:** nothing charges, enforces limits, or sells to teams.
 
