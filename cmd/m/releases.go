@@ -25,6 +25,16 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.7.0",
+		Date:    "2026-07-03",
+		Highlights: []string{
+			"Control plane sandbox: OpenAPI contract, m controlplane serve, JWT entitlements.",
+			"Freemius webhook receiver for license sync (sandbox).",
+			"m license refresh — renew signed entitlement from control plane.",
+			"Activate via AGENTCTL_CONTROL_PLANE_URL or offline dev keys.",
+		},
+	},
+	{
 		Version: "0.6.0",
 		Date:    "2026-06-30",
 		Highlights: []string{

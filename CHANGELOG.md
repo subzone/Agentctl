@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-07-03
+
+### Added
+- **Control plane API** — OpenAPI 3.1 contract in `controlplane/openapi.yaml`
+- **Sandbox control plane** — `go run ./cmd/controlplane` or `m controlplane serve` on `:8090`
+- **Signed JWT entitlements** — Ed25519-signed tokens; client verifies and caches locally
+- **Freemius webhook receiver** — `POST /v1/webhooks/freemius` with idempotent license sync
+- **`m license refresh`** — renew control-plane JWT before expiry
+- **Sandbox licenses** — `FS-PRO-SANDBOX-2026`, `FS-TEAM-SANDBOX-2026` for local testing
+
+### Changed
+- `m license activate` tries dev keys offline, then control plane when `AGENTCTL_CONTROL_PLANE_URL` is set
+- Desktop license activation uses the same `entitlement.Activate` flow
+- CI builds `controlplane` binary alongside `m`
+
 ## [0.6.0] - 2026-06-30
 
 ### Added

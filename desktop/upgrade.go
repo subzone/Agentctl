@@ -51,7 +51,7 @@ func (a *App) productVersion() string {
 	if a.version != "" {
 		return a.version
 	}
-	return "0.6.0"
+	return "0.7.0"
 }
 
 func fetchLatestReleaseTag() string {

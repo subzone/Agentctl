@@ -114,7 +114,7 @@ type CostInfo struct {
 
 func NewApp() *App {
 	return &App{
-		version:  "0.6.0",
+		version:  "0.7.0",
 		sessions: make(map[string]*Session),
 		pending:  make(map[string]chan bool),
 	}
