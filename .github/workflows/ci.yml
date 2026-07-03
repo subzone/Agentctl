@@ -32,7 +32,9 @@ jobs:
         run: go test -race ./...
 
       - name: Build
-        run: CGO_ENABLED=0 go build -trimpath -o m ./cmd/m
+        run: |
+          CGO_ENABLED=0 go build -trimpath -o m ./cmd/m
+          CGO_ENABLED=0 go build -trimpath -o controlplane ./cmd/controlplane
 
       - name: Validate example agents
         run: ./m validate examples/

@@ -35,9 +35,9 @@ func (a *App) GetEntitlement() EntitlementInfo {
 	}
 }
 
-// ActivateLicense activates a license key (dev keys until control plane ships).
+// ActivateLicense activates a license key (dev keys or control plane JWT).
 func (a *App) ActivateLicense(key string) (EntitlementInfo, error) {
-	s, err := entitlement.ActivateDevKey(key)
+	s, err := entitlement.Activate(key)
 	if err != nil {
 		return EntitlementInfo{}, err
 	}

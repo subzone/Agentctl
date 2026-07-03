@@ -1,0 +1,266 @@
+openapi: 3.1.0
+info:
+  title: AgentCTL Control Plane API
+  version: 0.1.0
+  description: |
+    Hosted entitlement, billing sync, and API brokerage for AgentCTL clients.
+    Clients authenticate with a Freemius license key or a cached signed JWT.
+servers:
+  - url: https://api.agentctl.dev
+    description: Production
+  - url: http://localhost:8090
+    description: Local dev (`m controlplane serve`)
+
+tags:
+  - name: auth
+  - name: entitlements
+  - name: packages
+  - name: webhooks
+  - name: broker
+
+paths:
+  /health:
+    get:
+      summary: Liveness probe
+      operationId: health
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+
+  /v1/auth/freemius/activate:
+    post:
+      tags: [auth]
+      summary: Activate a Freemius license and receive a signed entitlement JWT
+      operationId: activateLicense
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ActivateRequest"
+      responses:
+        "200":
+          description: Entitlement issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntitlementResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+        "404":
+          description: Unknown or revoked license
+
+  /v1/auth/refresh:
+    post:
+      tags: [auth]
+      summary: Refresh a signed entitlement JWT before expiry
+      operationId: refreshEntitlement
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: New entitlement JWT
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntitlementResponse"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/entitlements/me:
+    get:
+      tags: [entitlements]
+      summary: Return decoded entitlement claims for the current JWT
+      operationId: getMyEntitlement
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Current entitlement
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EntitlementClaims"
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/packages:
+    get:
+      tags: [packages]
+      summary: List curated packages and required entitlement keys
+      operationId: listPackages
+      responses:
+        "200":
+          description: Package catalog
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  packages:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/PackageOffer"
+
+  /v1/webhooks/freemius:
+    post:
+      tags: [webhooks]
+      summary: Freemius subscription and license events (idempotent)
+      operationId: freemiusWebhook
+      parameters:
+        - in: header
+          name: X-Agentctl-Webhook-Secret
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/FreemiusWebhookEvent"
+      responses:
+        "200":
+          description: Event accepted
+        "401":
+          $ref: "#/components/responses/Unauthorized"
+
+  /v1/broker/llm:
+    post:
+      tags: [broker]
+      summary: Proxy an LLM completion through the control plane (Phase 2)
+      operationId: brokerLLM
+      security:
+        - bearerAuth: []
+      responses:
+        "501":
+          description: Not implemented in Phase 1
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  responses:
+    Unauthorized:
+      description: Invalid or expired credential
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/Error"
+
+  schemas:
+    HealthResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: ok
+        version:
+          type: string
+          example: 0.1.0
+
+    ActivateRequest:
+      type: object
+      required: [license_key]
+      properties:
+        license_key:
+          type: string
+          description: Freemius license key or sandbox test key
+        machine_id:
+          type: string
+          description: Optional client fingerprint for seat tracking
+
+    EntitlementResponse:
+      type: object
+      required: [token, plan, entitlements, expires_at]
+      properties:
+        token:
+          type: string
+          description: Signed JWT entitlement document
+        plan:
+          type: string
+          enum: [free, pro, team, enterprise]
+        entitlements:
+          type: array
+          items:
+            type: string
+        packages:
+          type: array
+          items:
+            type: string
+        subject:
+          type: string
+        expires_at:
+          type: string
+          format: date-time
+
+    EntitlementClaims:
+      type: object
+      properties:
+        sub:
+          type: string
+        plan:
+          type: string
+        entitlements:
+          type: array
+          items:
+            type: string
+        packages:
+          type: array
+          items:
+            type: string
+        exp:
+          type: integer
+          format: int64
+        ver:
+          type: integer
+
+    PackageOffer:
+      type: object
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        entitlements:
+          type: array
+          items:
+            type: string
+
+    FreemiusWebhookEvent:
+      type: object
+      required: [event, license_key]
+      properties:
+        event:
+          type: string
+          enum:
+            - license.activated
+            - license.revoked
+            - subscription.created
+            - subscription.renewed
+            - subscription.cancelled
+            - payment.failed
+        license_key:
+          type: string
+        plan:
+          type: string
+          enum: [pro, team, enterprise]
+        user_id:
+          type: string
+        email:
+          type: string
+          format: email
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string

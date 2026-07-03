@@ -84,6 +84,7 @@ func runCLI() {
 	root.AddCommand(newListCmd())
 	root.AddCommand(newPackagesCmd())
 	root.AddCommand(newLicenseCmd())
+	root.AddCommand(newControlPlaneCmd())
 	root.AddCommand(newSearchCmd())
 	root.AddCommand(newInstallCmd())
 	root.AddCommand(newChangelogCmd())

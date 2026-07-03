@@ -29,6 +29,7 @@ type State struct {
 	ActivatedAt  int64    `json:"activatedAt,omitempty"`
 	ExpiresAt    int64    `json:"expiresAt,omitempty"`
 	Source       string   `json:"source,omitempty"` // dev-key | control-plane
+	Token        string   `json:"token,omitempty"`  // signed JWT from control plane
 }
 
 // Default returns the free-tier state.

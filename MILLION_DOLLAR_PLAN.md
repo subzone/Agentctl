@@ -10,7 +10,7 @@ Math: ~4,200 × $20/mo Pro · ~840 × $99/mo Team · or fewer Enterprise deals.
 
 ## North star
 
-**Product today:** local agent control plane (CLI + desktop) — v0.6.0 shipped.
+**Product today:** local agent control plane (CLI + desktop) — v0.7.0 shipped.
 
 **Business gap:** nothing charges, enforces limits, or sells to teams.
 
@@ -33,9 +33,9 @@ Goal: first paid SKUs and client-side entitlement gating.
 | 1.4 | `m packages install <name>` — copy bundle to `~/.config/m/` | ✅ Done |
 | 1.5 | Desktop: plan badge + activate license in Settings | ✅ Done |
 | 1.6 | Curated Pro packages: `pro-dev`, `pro-security` | ✅ Done |
-| 1.7 | Control plane API contract (OpenAPI draft) | ⬜ |
-| 1.8 | Freemius sandbox + webhook receiver | ⬜ |
-| 1.9 | Signed JWT entitlements from server | ⬜ |
+| 1.7 | Control plane API contract (OpenAPI draft) | ✅ Done |
+| 1.8 | Freemius sandbox + webhook receiver | ✅ Done |
+| 1.9 | Signed JWT entitlements from server | ✅ Done |
 | 1.10 | Pricing page + checkout links | ⬜ |
 
 **Exit criteria:** User can activate Pro, install a locked package, see plan in desktop. Dev keys work offline; production uses control plane.
@@ -94,11 +94,9 @@ Goal: first B2B revenue from pipelines and org governance.
 
 ## Current sprint
 
-**Phase 1.1–1.6 shipped** (entitlement store, CLI + desktop gating, two Pro packages).
+**Phase 1.1–1.9 shipped** (entitlement store, CLI + desktop gating, control plane sandbox, JWT entitlements).
 
-**Next sprint:** Phase 1.7–1.9 — control plane OpenAPI, Freemius webhook, signed JWT entitlements.
-
-**After that:** Phase 2.1 — GitHub Action for team/CI wedge.
+**Next sprint:** Phase 1.10 — pricing page + checkout links, then Phase 2.1 — GitHub Action.
 
 ---
 
