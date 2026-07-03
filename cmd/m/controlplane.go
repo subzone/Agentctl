@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -45,7 +44,7 @@ func newControlPlaneServeCmd() *cobra.Command {
 			fmt.Fprintf(out, "Try: AGENTCTL_CONTROL_PLANE_URL=%s m license activate FS-PRO-SANDBOX-2026\n",
 				entitlement.LocalControlPlaneURL())
 			log.Printf("sandbox licenses: FS-PRO-SANDBOX-2026, FS-TEAM-SANDBOX-2026")
-			return http.ListenAndServe(cfg.Addr, srv.Handler()) // #nosec G114 -- sandbox dev server only
+			return controlplane.Listen(cfg.Addr, srv.Handler())
 		},
 	}
 	cmd.Flags().StringVar(&addr, "addr", ":8090", "listen address")
