@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.1] - 2026-07-04
+
+### Added
+- **Control plane observability** — Prometheus metrics at `/metrics` (request rate/latency by route, license activations by plan, webhook events by outcome)
+- Grafana dashboard for the control plane (argocd-app-of-apps)
+- Public pricing page (`docs/pricing.html`) with Free/Pro comparison and Freemius checkout links, wired into site nav
+
 ## [0.8.0] - 2026-07-04
 
 ### Added
