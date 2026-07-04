@@ -408,6 +408,30 @@ html.sr [data-lang="sr"] { display: revert; }
 .trouble-item h3 i { color: #ef4444; }
 .trouble-item p { font-size: 0.88rem; color: var(--fg3); line-height: 1.6; }
 
+/* ===== PRICING ===== */
+.pricing-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 24px; max-width: 780px; margin: 0 auto; }
+.price-card {
+  background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius);
+  padding: 40px 32px; position: relative; transition: all 0.2s;
+}
+.price-card.featured { border: 2px solid var(--accent); box-shadow: var(--shadow-lg); }
+.price-badge {
+  position: absolute; top: -14px; left: 50%; transform: translateX(-50%);
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%); color: #fff;
+  font-size: 0.72rem; font-weight: 700; text-transform: uppercase; letter-spacing: 1px;
+  padding: 6px 16px; border-radius: 99px; white-space: nowrap;
+}
+.price-name { font-size: 1.3rem; font-weight: 800; margin-bottom: 4px; }
+.price-tagline { font-size: 0.88rem; color: var(--fg3); margin-bottom: 20px; }
+.price-amount { display: flex; align-items: baseline; gap: 4px; margin-bottom: 24px; }
+.price-amount .num { font-size: 2.8rem; font-weight: 900; letter-spacing: -1px; }
+.price-amount .period { font-size: 0.95rem; color: var(--fg3); font-weight: 500; }
+.price-features { list-style: none; margin-bottom: 28px; }
+.price-features li { padding: 9px 0; font-size: 0.9rem; color: var(--fg2); display: flex; align-items: flex-start; gap: 10px; }
+.price-features li::before { content: "✓"; color: var(--green); font-weight: 700; flex-shrink: 0; }
+.price-features code { white-space: nowrap; }
+.price-card .btn { width: 100%; justify-content: center; }
+
 /* ===== RESPONSIVE ===== */ */
 @media (max-width: 900px) {
   .features-grid { grid-template-columns: repeat(2, 1fr); }
@@ -426,4 +450,5 @@ html.sr [data-lang="sr"] { display: revert; }
   .footer-grid { grid-template-columns: 1fr; gap: 32px; }
   .footer-bottom { flex-direction: column; gap: 12px; text-align: center; }
   .providers-row { gap: 24px; }
+  .pricing-grid { grid-template-columns: 1fr; }
 }

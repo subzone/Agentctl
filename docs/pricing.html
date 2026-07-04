@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AgentCTL Pricing — Free forever, or go Pro for $19/mo</title>
+<meta name="description" content="AgentCTL is free to use with your own API keys. Go Pro for curated dev and security agent packages, the desktop audit/policy panel, and to back ongoing development.">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<link rel="stylesheet" href="css/style.css">
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+</head>
+<body>
+<nav class="nav"><div class="nav-inner">
+  <a href="index.html" class="nav-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</a>
+  <div class="nav-links"><a href="index.html#features">Features</a><a href="agents.html">Agents</a><a href="architecture.html">Architecture</a><a href="mcp.html">MCP</a><a href="changelog.html">Changelog</a>
+      <a href="sessions.html">Sessions</a><a href="pricing.html">Pricing</a><a href="install.html" class="nav-cta">Install</a></div>
+  <div class="lang-toggle">
+    <a href="pricing.html" class="lang-btn active">EN</a>
+  </div>
+  <button class="nav-mobile" onclick="document.querySelector('.nav-links').classList.toggle('show')" aria-label="Menu"><i class="fa-solid fa-bars"></i></button>
+</div></nav>
+
+<!-- HERO -->
+<section class="page-hero">
+  <div class="hero-badge"><span class="hero-badge-dot"></span> No lock-in — cancel anytime, keep using Free forever</div>
+  <h1>Free to run.<br><span class="hero-gradient">Pro to move faster.</span></h1>
+  <p>Bring your own API key and AgentCTL costs nothing, forever. Upgrade when you want curated agent packages, the desktop audit panel, and a direct line to what ships next.</p>
+</section>
+
+<!-- PRICING CARDS -->
+<section class="section">
+  <div class="section-inner">
+    <div class="pricing-grid">
+
+      <div class="price-card">
+        <div class="price-name">Free</div>
+        <div class="price-tagline">Everything you need to run agents daily</div>
+        <div class="price-amount"><span class="num">$0</span><span class="period">/ forever</span></div>
+        <ul class="price-features">
+          <li>Full CLI + desktop app, no feature gates on the core engine</li>
+          <li>6 model providers — Anthropic, OpenAI, Ollama, Gemini, Alibaba, LiteLLM</li>
+          <li>9 built-in tools: shell, fs_read/write, git, test_run, web_fetch, code_search, delegate</li>
+          <li>MCP client — stdio, HTTP, and SSE transports</li>
+          <li>Encrypted session persistence, sub-agent delegation, local knowledge graph</li>
+          <li>Bring your own API keys — no usage tax, no telemetry</li>
+        </ul>
+        <a href="install.html" class="btn btn-ghost">Install Free →</a>
+      </div>
+
+      <div class="price-card featured">
+        <div class="price-badge">Pro</div>
+        <div class="price-name">Pro</div>
+        <div class="price-tagline">For people shipping with AgentCTL daily</div>
+        <div class="price-amount"><span class="num">$19</span><span class="period">/ month</span></div>
+        <ul class="price-features">
+          <li>Everything in Free</li>
+          <li><code>pro-dev</code> package — coder + reviewer agents, code-review skill, GitHub MCP preconfigured</li>
+          <li><code>pro-security</code> package — security + reviewer agents, audit-ready review workflows</li>
+          <li>Desktop <strong>Security panel</strong> — live audit log tail and policy rule viewer</li>
+          <li>One-command installs: <code>m packages install pro-dev</code></li>
+          <li>Every new curated package added as it ships, no extra charge</li>
+          <li>Directly funds AgentCTL's development</li>
+        </ul>
+        <a href="https://checkout.freemius.com/app/33496/plan/55088/" class="btn btn-primary">Upgrade to Pro →</a>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- COMPARISON -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Compare</div>
+      <h2>What you get, plan by plan</h2>
+      <p>No hidden tiers, no per-seat pricing games. Free is genuinely usable forever.</p>
+    </div>
+    <div class="comparison">
+      <table>
+        <thead>
+          <tr><th>Capability</th><th>Free</th><th>Pro</th></tr>
+        </thead>
+        <tbody>
+          <tr><td>CLI + desktop app</td><td class="check">✓</td><td class="check">✓</td></tr>
+          <tr><td>All 6 model providers</td><td class="check">✓</td><td class="check">✓</td></tr>
+          <tr><td>Built-in tools &amp; MCP client</td><td class="check">✓</td><td class="check">✓</td></tr>
+          <tr><td>Sub-agent delegation &amp; knowledge graph</td><td class="check">✓</td><td class="check">✓</td></tr>
+          <tr><td><code>pro-dev</code> package (coder, reviewer, GitHub MCP)</td><td class="cross">—</td><td class="check">✓</td></tr>
+          <tr><td><code>pro-security</code> package (security, audit workflows)</td><td class="cross">—</td><td class="check">✓</td></tr>
+          <tr><td>Desktop Security panel (audit log + policy viewer)</td><td class="cross">—</td><td class="check">✓</td></tr>
+          <tr><td>New curated packages as they ship</td><td class="cross">—</td><td class="check">✓</td></tr>
+          <tr><td>Supports ongoing development</td><td class="cross">—</td><td class="check">✓</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<!-- HOW ACTIVATION WORKS -->
+<section class="section">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">After you upgrade</div>
+      <h2>From checkout to installed in under a minute</h2>
+      <p>No account dashboard to configure. One command activates your license.</p>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">1</div>
+        <div class="step-content">
+          <h3>Check out</h3>
+          <p>Freemius handles billing — card, PayPal, or invoicing for teams. You'll get a license key by email immediately after purchase.</p>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">2</div>
+        <div class="step-content">
+          <h3>Activate</h3>
+          <div class="step-code"><span class="dim">$</span> m license activate &lt;your-key&gt;<br><span class="dim">✓ Activated pro plan (entitlements: [pro])</span></div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">3</div>
+        <div class="step-content">
+          <h3>Install a package</h3>
+          <div class="step-code"><span class="dim">$</span> m packages install pro-dev<br><span class="dim">$</span> m run coder "fix the failing test in api/handler.go"</div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num"><i class="fa-solid fa-check"></i></div>
+        <div class="step-content">
+          <h3>Verify anytime</h3>
+          <div class="step-code"><span class="dim">$</span> m license status<br>Plan:         pro<br>Entitlements: [pro]<br>Installed:    [pro-dev]</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FAQ -->
+<section class="section section-alt">
+  <div class="section-inner">
+    <div class="section-header">
+      <div class="section-label">Questions</div>
+      <h2>Before you upgrade</h2>
+    </div>
+    <div class="faq-list">
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Do I need Pro to use AgentCTL at all? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">No. The Free plan runs the full CLI and desktop app with every built-in tool, all 6 model providers, MCP, and session persistence — with your own API keys. Pro adds curated packages and the desktop audit panel on top.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          What exactly is in the <code>pro-dev</code> and <code>pro-security</code> packages? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a"><code>pro-dev</code> bundles the coder and reviewer agents, the code-review skill, and a preconfigured GitHub MCP server. <code>pro-security</code> bundles the security and reviewer agents with audit-ready review workflows. Both install with one command once you're on Pro.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Can I cancel anytime? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">Yes — it's a monthly subscription through Freemius, cancel whenever from the link in your license email. You keep Free forever regardless.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          Is AgentCTL still open source if I'm not on Pro? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">Yes. The core CLI, engine, and desktop app are the same codebase for everyone. Pro unlocks specific curated packages and a desktop panel — it doesn't lock the underlying project.</div>
+      </div>
+      <div class="faq-item">
+        <button class="faq-q" onclick="this.parentElement.classList.toggle('open')">
+          How do refunds work? <span class="faq-arrow">+</span>
+        </button>
+        <div class="faq-a">Handled by Freemius at checkout — see the refund policy shown on the checkout page before you pay.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <h2>Ready to go Pro?</h2>
+  <p>$19/month. Activate in one command. Cancel anytime.</p>
+  <div class="hero-buttons">
+    <a href="https://checkout.freemius.com/app/33496/plan/55088/" class="btn btn-white">Upgrade to Pro →</a>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="footer">
+  <div class="footer-inner">
+    <div class="footer-grid">
+      <div class="footer-brand">
+        <div class="footer-logo">███╗   ███╗
+████╗ ████║
+██╔████╔██║
+██║╚██╔╝██║
+██║ ╚═╝ ██║
+╚═╝     ╚═╝</div>
+        <p>MD-driven agent CLI for code, infrastructure, and automation.</p>
+      </div>
+      <div class="footer-col">
+        <h4>Product</h4>
+        <a href="https://github.com/subzone/Agentctl/releases/latest">Download</a>
+        <a href="install.html">Installation</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="https://github.com/subzone/Agentctl/releases">Changelog</a>
+      </div>
+      <div class="footer-col">
+        <h4>Resources</h4>
+        <a href="https://github.com/subzone/Agentctl/tree/main/examples/agents">Example Agents</a>
+        <a href="https://github.com/subzone/Agentctl/tree/main/examples/mcp">MCP Servers</a>
+        <a href="https://github.com/subzone/Agentctl/blob/main/PLAN.md">Architecture</a>
+        <a href="https://github.com/subzone/Agentctl/tree/main/examples/skills">Skills</a>
+      </div>
+      <div class="footer-col">
+        <h4>Community</h4>
+        <a href="https://github.com/subzone/Agentctl">GitHub</a>
+        <a href="https://github.com/subzone/Agentctl/issues">Issues</a>
+        <a href="https://github.com/subzone/Agentctl/discussions">Discussions</a>
+        <a href="https://github.com/subzone/Agentctl/blob/main/CONTRIBUTING.md">Contributing</a>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span>© 2025 AgentCTL</span>
+      <span>Built with <i class="fa-brands fa-golang"></i> · <a href="https://github.com/subzone/Agentctl"><i class="fa-brands fa-github"></i> subzone/Agentctl</a></span>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
