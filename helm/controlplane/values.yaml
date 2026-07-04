@@ -1,7 +1,10 @@
 image:
   repository: ghcr.io/subzone/agentctl-controlplane
   tag: latest
-  pullPolicy: IfNotPresent
+  # Always, not IfNotPresent: :latest is a floating tag, so a node that
+  # already cached an older image under that same tag string would
+  # otherwise never re-pull the new digest, even across a rollout restart.
+  pullPolicy: Always
 
 imagePullSecrets:
   - name: ghcr-secret
