@@ -30,6 +30,7 @@ func TestActivateSandboxLicense(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer srv.Close()
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
@@ -67,6 +68,7 @@ func TestFreemiusWebhookCreatesLicense(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer srv.Close()
 	ts := httptest.NewServer(srv.Handler())
 	defer ts.Close()
 
