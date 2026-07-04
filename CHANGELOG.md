@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.0] - 2026-07-04
+
 ### Added
 - **Production control plane path (Phase 1.10)** — SQLite-backed license store (`internal/controlplane/store.go`) so licenses survive restarts/redeploys
 - Production Ed25519 signing key trust (`entitlement.ProdPublicKeyHex`) alongside the sandbox dev key; client verifies against both
