@@ -5,6 +5,10 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "agentctl-controlplane.labels" . | nindent 4 }}
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: {{ .Values.service.targetPort | quote }}
+    prometheus.io/path: "/metrics"
 spec:
   type: {{ .Values.service.type }}
   selector:

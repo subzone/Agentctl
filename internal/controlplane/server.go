@@ -43,12 +43,13 @@ func (s *Server) Close() error {
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /health", s.handleHealth)
-	mux.HandleFunc("POST /v1/auth/freemius/activate", s.handleActivate)
-	mux.HandleFunc("POST /v1/auth/refresh", s.handleRefresh)
-	mux.HandleFunc("GET /v1/entitlements/me", s.handleEntitlementsMe)
-	mux.HandleFunc("GET /v1/packages", s.handlePackages)
-	mux.HandleFunc("POST /v1/webhooks/freemius", s.handleFreemiusWebhook)
-	mux.HandleFunc("POST /v1/broker/llm", s.handleBrokerNotImplemented)
+	mux.HandleFunc("POST /v1/auth/freemius/activate", instrumentRoute("activate", s.handleActivate))
+	mux.HandleFunc("POST /v1/auth/refresh", instrumentRoute("refresh", s.handleRefresh))
+	mux.HandleFunc("GET /v1/entitlements/me", instrumentRoute("entitlements_me", s.handleEntitlementsMe))
+	mux.HandleFunc("GET /v1/packages", instrumentRoute("packages", s.handlePackages))
+	mux.HandleFunc("POST /v1/webhooks/freemius", instrumentRoute("webhook_freemius", s.handleFreemiusWebhook))
+	mux.HandleFunc("POST /v1/broker/llm", instrumentRoute("broker_llm", s.handleBrokerNotImplemented))
+	mux.Handle("GET /metrics", metricsHandler())
 	return mux
 }
 
@@ -81,6 +82,7 @@ func (s *Server) handleActivate(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
+	licenseActivationsTotal.WithLabelValues(string(state.Plan)).Inc()
 	writeJSON(w, http.StatusOK, entitlementResponseFrom(state, token))
 }
 
@@ -139,13 +141,16 @@ func (s *Server) handleFreemiusWebhook(w http.ResponseWriter, r *http.Request) {
 	}
 	ev, err := parseFreemiusWebhook(raw)
 	if err != nil {
+		webhookEventsTotal.WithLabelValues("unparsed", "error").Inc()
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 	if err := ApplyFreemiusEvent(s.store, ev, s.cfg.FreemiusPlans); err != nil {
+		webhookEventsTotal.WithLabelValues(ev.Event, "error").Inc()
 		writeError(w, http.StatusBadRequest, err.Error())
 		return
 	}
+	webhookEventsTotal.WithLabelValues(ev.Event, "applied").Inc()
 	w.WriteHeader(http.StatusOK)
 }
 
