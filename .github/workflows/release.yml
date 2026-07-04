@@ -7,6 +7,7 @@ on:
 
 permissions:
   contents: write
+  packages: write
 
 jobs:
   gate:
@@ -101,6 +102,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
+          sed -i "s/\"productVersion\": \"[^\"]*\"/\"productVersion\": \"${VERSION}\"/" wails.json
           wails build -tags webkit2_41 -clean -ldflags "-X main.Version=${VERSION}"
 
       - name: Package as tar.gz
@@ -153,6 +155,7 @@ jobs:
         shell: bash
         run: |
           VERSION="${GITHUB_REF_NAME#v}"
+          sed -i "s/\"productVersion\": \"[^\"]*\"/\"productVersion\": \"${VERSION}\"/" wails.json
           ~/go/bin/wails build -clean -ldflags "-X main.Version=${VERSION}"
 
       - name: Package as zip
@@ -198,6 +201,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${GITHUB_REF_NAME#v}"
+          sed -i '' "s/\"productVersion\": \"[^\"]*\"/\"productVersion\": \"${VERSION}\"/" wails.json
           wails build -clean -ldflags "-X main.Version=${VERSION}"
 
       - name: Sign with entitlements
@@ -269,6 +273,36 @@ jobs:
           gh release upload "${GITHUB_REF_NAME}" \
             "dist/m_${VERSION}_macos_universal.pkg" \
             --clobber
+
+  controlplane-image:
+    name: Build + push control plane image (GHCR)
+    needs: gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: Dockerfile.controlplane
+          push: true
+          platforms: linux/amd64,linux/arm64
+          build-args: |
+            VERSION=${{ github.ref_name }}
+          tags: |
+            ghcr.io/subzone/agentctl-controlplane:${{ github.ref_name }}
+            ghcr.io/subzone/agentctl-controlplane:latest
 
   homebrew-bump:
     name: Bump Homebrew formula

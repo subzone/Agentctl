@@ -1,0 +1,45 @@
+# syntax=docker/dockerfile:1.7
+
+# Build stage: static binary for the control plane API (cmd/controlplane).
+FROM --platform=$BUILDPLATFORM golang:1.26.1-alpine AS build
+
+ARG TARGETOS
+ARG TARGETARCH
+ARG VERSION=dev
+
+WORKDIR /src
+
+COPY go.mod go.sum ./
+RUN --mount=type=cache,target=/go/pkg/mod \
+    go mod download
+
+COPY . .
+
+# CGO_ENABLED=0 works here because modernc.org/sqlite is a pure-Go driver.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH \
+    go build \
+        -trimpath \
+        -ldflags "-s -w -X main.Version=${VERSION}" \
+        -o /out/controlplane \
+        ./cmd/controlplane
+
+# Runtime stage
+FROM alpine:3.20 AS runtime
+
+RUN apk add --no-cache ca-certificates tzdata && \
+    addgroup -g 1000 -S agentctl && \
+    adduser -u 1000 -S agentctl -G agentctl -h /home/agentctl && \
+    mkdir -p /data && \
+    chown -R agentctl:agentctl /data /home/agentctl
+
+COPY --from=build /out/controlplane /usr/local/bin/controlplane
+
+USER agentctl
+WORKDIR /data
+ENV AGENTCTL_CP_ADDR=:8090
+ENV AGENTCTL_CP_DB_PATH=/data/controlplane.db
+
+EXPOSE 8090
+ENTRYPOINT ["/usr/local/bin/controlplane"]

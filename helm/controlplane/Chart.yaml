@@ -1,0 +1,6 @@
+apiVersion: v2
+name: agentctl-controlplane
+description: AgentCTL hosted control plane — Freemius license sync and signed JWT entitlements
+type: application
+version: 0.1.0
+appVersion: "0.1.0"

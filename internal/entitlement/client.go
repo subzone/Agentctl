@@ -13,12 +13,21 @@ import (
 
 const defaultControlPlaneURL = "http://localhost:8090"
 
-// ControlPlaneURL returns AGENTCTL_CONTROL_PLANE_URL or the local dev default when unset.
+// ProdControlPlaneURL is the hosted control plane new licenses activate
+// against by default — no env var needed for a real customer.
+const ProdControlPlaneURL = "https://agentctl-api.myk8s.pp.ua"
+
+// ControlPlaneURL returns AGENTCTL_CONTROL_PLANE_URL, or the production
+// control plane when unset. Set AGENTCTL_CONTROL_PLANE_URL=http://localhost:8090
+// (or empty via AGENTCTL_CONTROL_PLANE_URL=-) to target a local sandbox instead.
 func ControlPlaneURL() string {
 	if u := strings.TrimSpace(os.Getenv("AGENTCTL_CONTROL_PLANE_URL")); u != "" {
+		if u == "-" {
+			return ""
+		}
 		return strings.TrimRight(u, "/")
 	}
-	return ""
+	return ProdControlPlaneURL
 }
 
 type activateRequest struct {

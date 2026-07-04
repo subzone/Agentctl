@@ -36,7 +36,23 @@ Goal: first paid SKUs and client-side entitlement gating.
 | 1.7 | Control plane API contract (OpenAPI draft) | ✅ Done |
 | 1.8 | Freemius sandbox + webhook receiver | ✅ Done |
 | 1.9 | Signed JWT entitlements from server | ✅ Done |
-| 1.10 | Pricing page + checkout links | ⬜ |
+| 1.10 | Pricing page + checkout links | 🔧 In progress |
+
+**1.10 breakdown (2026-07-04):**
+
+| # | Item | Status |
+|---|------|--------|
+| 1.10a | Control plane persists licenses (SQLite, survives restarts) | ✅ Done |
+| 1.10b | Production Ed25519 signing key + client trust update | ✅ Done (code) — private key must be set as `AGENTCTL_CP_SIGNING_KEY` in the cluster secret store |
+| 1.10c | Client defaults to production control plane URL (no env var needed) | ✅ Done |
+| 1.10d | Freemius webhook signature verification (`x-signature` HMAC) | ✅ Done (code) — unverified against a live Freemius payload, test before go-live |
+| 1.10e | GHCR image + Helm chart + ArgoCD deployment to `agentctl-api.myk8s.pp.ua` | ✅ Drafted — image builds and runs locally; k8s manifests drafted in `argocd-app-of-apps`, not yet committed/pushed |
+| 1.10f | Freemius seller account: product, Pro plan, checkout link | ✅ Done — product `AgentCtl` (store 17705, app 33496); Free=`55087`, Pro=`55088` @ $19/mo monthly; checkout links: prod `https://checkout.freemius.com/app/33496/plan/55088/`, sandbox `?sandbox=true` |
+| 1.10g | Populate real secrets in AWS Parameter Store (`/agentctl-controlplane/*`) | 🔧 Webhook secret token generated and set on the Freemius listener URL (`?token=...`); still needs to land in Parameter Store + `GHCR_DOCKERCONFIG` |
+| 1.10h | Public pricing page linking to Freemius checkout | ⬜ Not started |
+| 1.10i | End-to-end smoke test with a real (or Freemius sandbox) purchase | ⬜ Blocked on deploying the control plane (nothing is listening at `agentctl-api.myk8s.pp.ua` yet) — do this after 1.10e ships |
+
+**Freemius webhook listener** (confirmed live in dashboard, `apps/33496/webhooks/listeners`): URL `https://agentctl-api.myk8s.pp.ua/v1/webhooks/freemius?token=<secret>`, 11 event types selected — `license.{activated,created,cancelled,deactivated,deleted,expired,activations.synced,blacklisted_site.deleted}`, `subscription.{created,cancelled,renewal.failed.last}`. Real event names confirmed against the live dashboard catalog and differ from the original guess (no generic `payment.failed`/`license.revoked` — see `internal/controlplane/webhook.go`).
 
 **Exit criteria:** User can activate Pro, install a locked package, see plan in desktop. Dev keys work offline; production uses control plane.
 

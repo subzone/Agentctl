@@ -5,17 +5,27 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"path/filepath"
 	"testing"
 
 	"github.com/subzone/Agentctl/internal/controlplane"
 	"github.com/subzone/Agentctl/internal/entitlement"
 )
 
-func TestActivateSandboxLicense(t *testing.T) {
+// testConfig loads config against an isolated, per-test SQLite file so tests
+// never touch a shared or repo-tracked controlplane.db.
+func testConfig(t *testing.T) controlplane.Config {
+	t.Helper()
+	t.Setenv("AGENTCTL_CP_DB_PATH", filepath.Join(t.TempDir(), "controlplane.db"))
 	cfg, err := controlplane.LoadConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
+	return cfg
+}
+
+func TestActivateSandboxLicense(t *testing.T) {
+	cfg := testConfig(t)
 	srv, err := controlplane.NewServer(cfg)
 	if err != nil {
 		t.Fatal(err)
@@ -52,10 +62,7 @@ func TestActivateSandboxLicense(t *testing.T) {
 }
 
 func TestFreemiusWebhookCreatesLicense(t *testing.T) {
-	cfg, err := controlplane.LoadConfig()
-	if err != nil {
-		t.Fatal(err)
-	}
+	cfg := testConfig(t)
 	srv, err := controlplane.NewServer(cfg)
 	if err != nil {
 		t.Fatal(err)

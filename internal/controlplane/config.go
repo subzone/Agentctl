@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 	"strings"
 	"time"
@@ -15,38 +16,70 @@ import (
 // Config configures the control plane HTTP server.
 type Config struct {
 	Addr          string
+	Env           string // "dev" (default) or "production"
+	DBPath        string
 	WebhookSecret string
 	SigningKey    ed25519.PrivateKey
+	FreemiusPlans map[string]entitlement.Plan // Freemius plan ID -> our plan name
 	Version       string
+}
+
+// IsProduction reports whether the server is running in production mode,
+// which disables sandbox license seeding and requires an explicit signing key.
+func (c Config) IsProduction() bool {
+	return strings.EqualFold(strings.TrimSpace(c.Env), "production")
 }
 
 // LoadConfig reads server config from environment.
 func LoadConfig() (Config, error) {
+	env := strings.TrimSpace(os.Getenv("AGENTCTL_CP_ENV"))
+	if env == "" {
+		env = "dev"
+	}
 	addr := strings.TrimSpace(os.Getenv("AGENTCTL_CP_ADDR"))
 	if addr == "" {
 		addr = ":8090"
 	}
+	dbPath := strings.TrimSpace(os.Getenv("AGENTCTL_CP_DB_PATH"))
+	if dbPath == "" {
+		dbPath = "controlplane.db"
+	}
 	secret := strings.TrimSpace(os.Getenv("AGENTCTL_FREEMIUS_WEBHOOK_SECRET"))
 	if secret == "" {
-		secret = "dev-webhook-secret" // #nosec G101 -- sandbox default; override in production
+		if strings.EqualFold(env, "production") {
+			return Config{}, fmt.Errorf("AGENTCTL_FREEMIUS_WEBHOOK_SECRET is required when AGENTCTL_CP_ENV=production")
+		}
+		secret = "dev-webhook-secret" // #nosec G101 -- sandbox default; overridden in production
 	}
-	priv, err := loadSigningKey()
+	priv, err := loadSigningKey(env)
+	if err != nil {
+		return Config{}, err
+	}
+	plans, err := loadFreemiusPlanMap()
 	if err != nil {
 		return Config{}, err
 	}
 	return Config{
 		Addr:          addr,
+		Env:           env,
+		DBPath:        dbPath,
 		WebhookSecret: secret,
 		SigningKey:    priv,
+		FreemiusPlans: plans,
 		Version:       "0.1.0",
 	}, nil
 }
 
-func loadSigningKey() (ed25519.PrivateKey, error) {
-	if hexKey := strings.TrimSpace(os.Getenv("AGENTCTL_CP_SIGNING_KEY")); hexKey != "" {
-		return decodePrivateKeyHex(hexKey)
+func loadSigningKey(env string) (ed25519.PrivateKey, error) {
+	hexKey := strings.TrimSpace(os.Getenv("AGENTCTL_CP_SIGNING_KEY"))
+	if hexKey == "" {
+		if strings.EqualFold(env, "production") {
+			return nil, fmt.Errorf("AGENTCTL_CP_SIGNING_KEY is required when AGENTCTL_CP_ENV=production")
+		}
+		log.Printf("AGENTCTL_CP_SIGNING_KEY not set — signing entitlements with the public dev key (sandbox only)")
+		return entitlement.DevPrivateKey()
 	}
-	return entitlement.DevPrivateKey()
+	return decodePrivateKeyHex(hexKey)
 }
 
 func decodePrivateKeyHex(hexKey string) (ed25519.PrivateKey, error) {
@@ -62,6 +95,26 @@ func decodePrivateKeyHex(hexKey string) (ed25519.PrivateKey, error) {
 	default:
 		return nil, fmt.Errorf("invalid signing key length")
 	}
+}
+
+// loadFreemiusPlanMap reads AGENTCTL_FREEMIUS_PLAN_MAP, a JSON object mapping
+// Freemius plan IDs (as they appear in webhook payloads) to our plan names,
+// e.g. {"12345":"pro","12346":"team"}. Populate this once the real Freemius
+// product/plans exist and their numeric IDs are known.
+func loadFreemiusPlanMap() (map[string]entitlement.Plan, error) {
+	raw := strings.TrimSpace(os.Getenv("AGENTCTL_FREEMIUS_PLAN_MAP"))
+	out := map[string]entitlement.Plan{}
+	if raw == "" {
+		return out, nil
+	}
+	var flat map[string]string
+	if err := json.Unmarshal([]byte(raw), &flat); err != nil {
+		return nil, fmt.Errorf("invalid AGENTCTL_FREEMIUS_PLAN_MAP: %w", err)
+	}
+	for k, v := range flat {
+		out[k] = entitlement.Plan(strings.ToLower(strings.TrimSpace(v)))
+	}
+	return out, nil
 }
 
 // IssueToken signs an entitlement JWT for a license record.
@@ -93,57 +146,6 @@ func maskLicense(key string) string {
 		return "****"
 	}
 	return key[:4] + "…" + key[len(key)-4:]
-}
-
-// FreemiusWebhookEvent is the sandbox webhook payload shape.
-type FreemiusWebhookEvent struct {
-	EventID    string `json:"event_id,omitempty"`
-	Event      string `json:"event"`
-	LicenseKey string `json:"license_key"`
-	Plan       string `json:"plan"`
-	UserID     string `json:"user_id"`
-	Email      string `json:"email"`
-}
-
-// ApplyFreemiusEvent updates license state from a webhook (idempotent).
-func ApplyFreemiusEvent(store *Store, ev FreemiusWebhookEvent) error {
-	key := strings.TrimSpace(ev.LicenseKey)
-	if key == "" {
-		return fmt.Errorf("license_key required")
-	}
-	id := strings.TrimSpace(ev.EventID)
-	if id == "" {
-		id = ev.Event + ":" + key
-	}
-	if !store.MarkWebhookSeen(id) {
-		return nil
-	}
-	switch strings.ToLower(strings.TrimSpace(ev.Event)) {
-	case "license.revoked", "subscription.cancelled", "payment.failed":
-		store.RevokeLicense(key)
-		return nil
-	case "license.activated", "subscription.created", "subscription.renewed":
-		plan := entitlement.Plan(strings.ToLower(strings.TrimSpace(ev.Plan)))
-		if plan == "" {
-			plan = entitlement.PlanPro
-		}
-		subject := strings.TrimSpace(ev.UserID)
-		if subject == "" {
-			subject = strings.TrimSpace(ev.Email)
-		}
-		if subject == "" {
-			subject = "user_" + key
-		}
-		store.UpsertLicense(LicenseRecord{
-			LicenseKey:   key,
-			Plan:         plan,
-			Subject:      subject,
-			Entitlements: entitlement.State{Plan: plan}.EffectiveEntitlements(),
-		})
-		return nil
-	default:
-		return fmt.Errorf("unknown event: %s", ev.Event)
-	}
 }
 
 // PackageCatalog returns curated package metadata for GET /v1/packages.

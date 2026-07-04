@@ -13,6 +13,11 @@ import (
 // DevPrivateKeyHex is the Ed25519 seed for sandbox JWT signing (control plane dev only).
 const DevPrivateKeyHex = "d8d14ea39788842c5151355fc582afe30ff498e4afbead6fecaeb8e443ce13da"
 
+// ProdPublicKeyHex is the Ed25519 public key for the production control plane
+// (agentctl-api.myk8s.pp.ua). Only the public half lives in the client/repo —
+// the matching private key is held as a cluster secret and never committed.
+const ProdPublicKeyHex = "40fc1129bc55910ddc27f960ad3c360ef3744313b78d92b0e9f04275390b15a4"
+
 const jwtIssuer = "agentctl-control-plane"
 const defaultJWTTTL = 30 * 24 * time.Hour
 
@@ -80,6 +85,33 @@ func DevPublicKey() (ed25519.PublicKey, error) {
 	return priv.Public().(ed25519.PublicKey), nil
 }
 
+// ProdPublicKey returns the production control-plane verification key.
+func ProdPublicKey() (ed25519.PublicKey, error) {
+	b, err := hex.DecodeString(ProdPublicKeyHex)
+	if err != nil {
+		return nil, err
+	}
+	if len(b) != ed25519.PublicKeySize {
+		return nil, fmt.Errorf("invalid prod public key length")
+	}
+	return ed25519.PublicKey(b), nil
+}
+
+// TrustedPublicKeys returns every key the client accepts entitlement JWTs
+// from: production first, then the dev/sandbox key for local `m controlplane
+// serve` testing.
+func TrustedPublicKeys() ([]ed25519.PublicKey, error) {
+	prod, err := ProdPublicKey()
+	if err != nil {
+		return nil, err
+	}
+	dev, err := DevPublicKey()
+	if err != nil {
+		return nil, err
+	}
+	return []ed25519.PublicKey{prod, dev}, nil
+}
+
 // DevPrivateKey returns the sandbox signing key (control plane dev only).
 func DevPrivateKey() (ed25519.PrivateKey, error) {
 	b, err := hex.DecodeString(DevPrivateKeyHex)
@@ -126,15 +158,21 @@ func StateFromClaims(c *Claims, token string) State {
 	}
 }
 
-// ApplyToken verifies a JWT with the dev public key and returns state.
+// ApplyToken verifies a JWT against every trusted public key (production,
+// then dev/sandbox) and returns the resulting state.
 func ApplyToken(token string) (State, error) {
-	pub, err := DevPublicKey()
+	keys, err := TrustedPublicKeys()
 	if err != nil {
 		return State{}, err
 	}
-	claims, err := ParseToken(token, pub)
-	if err != nil {
-		return State{}, fmt.Errorf("verify entitlement: %w", err)
+	var lastErr error
+	for _, pub := range keys {
+		claims, err := ParseToken(token, pub)
+		if err != nil {
+			lastErr = err
+			continue
+		}
+		return StateFromClaims(claims, token), nil
 	}
-	return StateFromClaims(claims, token), nil
+	return State{}, fmt.Errorf("verify entitlement: %w", lastErr)
 }

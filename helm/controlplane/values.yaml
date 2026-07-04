@@ -1,0 +1,63 @@
+image:
+  repository: ghcr.io/subzone/agentctl-controlplane
+  tag: latest
+  pullPolicy: IfNotPresent
+
+imagePullSecrets:
+  - name: ghcr-secret
+
+# Single replica: the license store is a SQLite file on a ReadWriteOnce
+# volume, so this must stay 1 until/unless the store moves to Postgres.
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 8090
+  targetPort: 8090
+
+# Non-sensitive config passed as env vars
+env:
+  AGENTCTL_CP_ENV: "production"
+  AGENTCTL_CP_ADDR: ":8090"
+  AGENTCTL_CP_DB_PATH: "/data/controlplane.db"
+  # Freemius plan ID -> our plan name (AgentCTL product, store 17705 / app 33496).
+  # Free = 55087 (no mapping needed, that's the default/no-license state).
+  AGENTCTL_FREEMIUS_PLAN_MAP: '{"55088":"pro"}'
+
+# Name of the K8s Secret containing sensitive env vars:
+#   AGENTCTL_FREEMIUS_WEBHOOK_SECRET
+#   AGENTCTL_CP_SIGNING_KEY
+# Populated via ExternalSecret — see argocd-app-of-apps/apps/external-secrets-config.
+existingSecret: agentctl-controlplane-env
+
+persistence:
+  enabled: true
+  size: 1Gi
+  storageClassName: ""
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 64Mi
+  limits:
+    cpu: 250m
+    memory: 256Mi
+
+livenessProbe:
+  httpGet:
+    path: /health
+    port: 8090
+  initialDelaySeconds: 5
+  periodSeconds: 30
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /health
+    port: 8090
+  initialDelaySeconds: 5
+  periodSeconds: 10
+  failureThreshold: 3
+
+podAnnotations:
+  sidecar.istio.io/inject: "true"

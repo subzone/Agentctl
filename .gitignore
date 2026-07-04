@@ -10,6 +10,10 @@
 *.out
 coverage.txt
 
+# Control plane local/sandbox SQLite state
+controlplane.db
+controlplane.db-*
+
 # Editor / OS
 .DS_Store
 .idea/

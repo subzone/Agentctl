@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Production control plane path (Phase 1.10)** — SQLite-backed license store (`internal/controlplane/store.go`) so licenses survive restarts/redeploys
+- Production Ed25519 signing key trust (`entitlement.ProdPublicKeyHex`) alongside the sandbox dev key; client verifies against both
+- Client defaults `AGENTCTL_CONTROL_PLANE_URL` to the hosted production control plane; set to `-` to force offline/dev-key mode
+- Real Freemius webhook signature verification (`x-signature` HMAC) alongside the legacy sandbox shared-secret header
+- `AGENTCTL_CP_ENV=production` guard — refuses to boot without a real webhook secret and signing key, skips sandbox license seeding
+- `AGENTCTL_FREEMIUS_PLAN_MAP` for mapping real Freemius plan IDs to internal plan names
+- `Dockerfile.controlplane` and `helm/controlplane/` chart for deploying the control plane to Kubernetes
+- CI job to build and push `ghcr.io/subzone/agentctl-controlplane` on tagged releases
+
 ## [0.7.1] - 2026-07-03
 
 ### Added
