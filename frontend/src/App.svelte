@@ -1,5 +1,6 @@
 <script>
   import { onMount, tick } from 'svelte';
+  import { House, MessagesSquare, Share2, Puzzle, Drama, ShieldCheck, Settings as SettingsIcon } from '@lucide/svelte';
   import Sidebar from './components/Sidebar.svelte';
   import KnowledgePanel from './components/KnowledgePanel.svelte';
   import KnowledgeGraph from './components/KnowledgeGraph.svelte';
@@ -931,28 +932,28 @@
     <div class="body">
       <nav class="rail">
         <button class="rail-btn" class:active={leftTab === 'home'} on:click={openHome} title="Command Center">
-          <span class="rail-ico">⌂</span><span class="rail-lbl">Home</span>
+          <span class="rail-ico"><House size={17} strokeWidth={2} /></span><span class="rail-lbl">Home</span>
         </button>
         <button class="rail-btn" class:active={leftTab === 'agents'} on:click={() => { leftTab = 'agents'; loadContextPreview(); }} title="Chat">
-          <span class="rail-ico">⬡</span><span class="rail-lbl">Chat</span>
+          <span class="rail-ico"><MessagesSquare size={17} strokeWidth={2} /></span><span class="rail-lbl">Chat</span>
         </button>
         <button class="rail-btn" class:active={leftTab === 'knowledge'} on:click={openKnowledge} title="Knowledge graph">
-          <span class="rail-ico">◆</span><span class="rail-lbl">Knowledge</span>
+          <span class="rail-ico"><Share2 size={17} strokeWidth={2} /></span><span class="rail-lbl">Knowledge</span>
         </button>
         {#if proMode}
         <button class="rail-btn" class:active={leftTab === 'extensions'} on:click={() => openExtensions('tools')} title="Extensions">
-          <span class="rail-ico">🧩</span><span class="rail-lbl">Extensions</span>
+          <span class="rail-ico"><Puzzle size={17} strokeWidth={2} /></span><span class="rail-lbl">Extensions</span>
         </button>
         <button class="rail-btn" class:active={leftTab === 'personality'} on:click={openPersonality} title="Personality">
-          <span class="rail-ico">🎭</span><span class="rail-lbl">Persona</span>
+          <span class="rail-ico"><Drama size={17} strokeWidth={2} /></span><span class="rail-lbl">Persona</span>
         </button>
         <button class="rail-btn" class:active={leftTab === 'security'} on:click={() => leftTab = 'security'} title="Audit & policy">
-          <span class="rail-ico">🛡</span><span class="rail-lbl">Security</span>
+          <span class="rail-ico"><ShieldCheck size={17} strokeWidth={2} /></span><span class="rail-lbl">Security</span>
         </button>
         {/if}
         <div class="rail-spacer"></div>
         <button class="rail-btn" on:click={() => showSettings = true} title="Settings">
-          <span class="rail-ico">⚙</span><span class="rail-lbl">Settings</span>
+          <span class="rail-ico"><SettingsIcon size={17} strokeWidth={2} /></span><span class="rail-lbl">Settings</span>
         </button>
       </nav>
 
@@ -1234,11 +1235,13 @@ km serve</pre>
 <style>
   :global(*){box-sizing:border-box;margin:0;padding:0}
   :global(:root){
-    --bg:#0f172a;--bg-panel:#1e293b;--bg-input:#1e293b;--border:#334155;
-    --user:#5f87ff;--tool:#d7af00;--err:#ff5f5f;--accent:#3b82f6;
-    --text:#e2e8f0;--muted:#64748b;
+    --bg:#1e1e2e;--bg-panel:#181825;--bg-input:#292c3c;--border:#363a4f;
+    --user:#5f87ff;--tool:#d7af00;--err:#ff5f5f;
+    --accent:#4f46e5;--accent2:#7c3aed;--accent-gradient:linear-gradient(135deg, var(--accent) 0%, var(--accent2) 100%);
+    --text:#e2e8f0;--muted:#7b7fa3;
   }
-  :global(body){font-family:-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh}
+  :global(body){font-family:'Inter',-apple-system,BlinkMacSystemFont,'SF Pro Text',sans-serif;background:var(--bg);color:var(--text);overflow:hidden;height:100vh}
+  :global(code, pre, .mono){font-family:'JetBrains Mono',ui-monospace,monospace}
 
   .app{display:flex;flex-direction:column;height:100vh;overflow:hidden}
   .body{display:flex;flex:1;overflow:hidden;min-height:0}
@@ -1252,13 +1255,13 @@ km serve</pre>
   .update-modal-head h2{font-size:16px;font-weight:700;color:var(--text)}
   .update-modal-head .x{background:none;border:none;color:var(--muted);cursor:pointer;font-size:16px}
 
-  .rail{width:62px;flex-shrink:0;display:flex;flex-direction:column;align-items:stretch;gap:2px;padding:8px 6px;background:#080d18;border-right:1px solid #1e293b;overflow:hidden}
+  .rail{width:62px;flex-shrink:0;display:flex;flex-direction:column;align-items:stretch;gap:2px;padding:8px 6px;background:var(--bg-panel);border-right:1px solid var(--border);overflow:hidden}
   .rail-spacer{flex:1}
-  .rail-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;background:none;border:none;border-radius:8px;color:#64748b;cursor:pointer;position:relative}
-  .rail-btn:hover{background:#111c30;color:#cbd5e1}
-  .rail-btn.active{background:#1e293b;color:#e2e8f0}
-  .rail-btn.active::before{content:'';position:absolute;left:-6px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:#6366f1}
-  .rail-ico{font-size:17px;line-height:1}
+  .rail-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;background:none;border:none;border-radius:8px;color:var(--muted);cursor:pointer;position:relative;transition:background 0.15s,color 0.15s}
+  .rail-btn:hover{background:var(--bg-input);color:var(--text)}
+  .rail-btn.active{background:var(--bg-input);color:var(--text)}
+  .rail-btn.active::before{content:'';position:absolute;left:-6px;top:8px;bottom:8px;width:3px;border-radius:0 3px 3px 0;background:var(--accent-gradient)}
+  .rail-ico{display:flex;line-height:1}
   .rail-lbl{font-size:9px;font-weight:600;letter-spacing:-0.1px}
 
   .sidecol{width:240px;flex-shrink:0;display:flex;flex-direction:column;background:#0c1322;border-right:1px solid #1e293b;overflow:hidden}

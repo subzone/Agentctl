@@ -31,7 +31,7 @@
   .title{font-size:10px;font-weight:700;text-transform:uppercase;color:#c4b5fd;margin-bottom:8px;letter-spacing:0.4px}
   .list{display:flex;flex-direction:column;gap:4px;max-height:100px;overflow-y:auto}
   .row{display:flex;align-items:center;gap:8px;font-size:11px}
-  .idx{color:#6366f1;font-weight:700;width:16px}
+  .idx{color:var(--accent);font-weight:700;width:16px}
   .cat{font-size:9px;font-weight:700;padding:2px 8px;border-radius:10px;color:#0f172a;text-transform:uppercase}
   .model{color:#e2e8f0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .ts{color:#818cf8;font-size:10px;flex-shrink:0}

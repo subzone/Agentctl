@@ -37,7 +37,7 @@
 
 <style>
   .tc{border:1px solid var(--border,#334155);border-radius:8px;background:#0c1322;margin:6px 0;overflow:hidden}
-  .tc.running{border-color:#6366f1}
+  .tc.running{border-color:var(--accent)}
   .tc.err{border-color:#ef4444}
   .tc-head{width:100%;display:flex;align-items:center;gap:8px;padding:8px 10px;background:none;border:none;color:var(--text,#e2e8f0);cursor:pointer;text-align:left;font-size:12px}
   .tc-head:hover{background:#111c30}

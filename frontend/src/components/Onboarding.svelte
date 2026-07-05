@@ -95,14 +95,14 @@
   .card{width:480px;max-width:100%;background:#0f172a;border:1px solid #334155;border-radius:14px;padding:28px;box-shadow:0 24px 80px rgba(0,0,0,0.5)}
   .steps{display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:24px}
   .steps span{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;background:#1e293b;color:#64748b}
-  .steps span.done{background:#6366f1;color:#fff}
+  .steps span.done{background:var(--accent);color:#fff}
   .line{width:32px;height:2px;background:#334155}
   h2{margin:0 0 10px;font-size:20px;color:#f1f5f9}
   p{margin:0 0 16px;font-size:14px;color:#94a3b8;line-height:1.5}
   ul{margin:0 0 20px;padding-left:20px;font-size:13px;color:#cbd5e1;line-height:1.7}
   .actions{display:flex;justify-content:flex-end;gap:10px}
   .primary,.ghost{padding:10px 20px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:1px solid #334155}
-  .primary{background:#6366f1;border-color:#6366f1;color:#fff}
+  .primary{background:var(--accent);border-color:var(--accent);color:#fff}
   .ghost{background:transparent;color:#94a3b8}
   .keys{display:flex;flex-direction:column;gap:12px;margin-bottom:16px}
   .keys label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#94a3b8}

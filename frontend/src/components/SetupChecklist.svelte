@@ -56,7 +56,7 @@
   .step{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;border:1px solid transparent;background:#080d18;width:100%;text-align:left;color:var(--text);cursor:pointer;font-size:12px}
   .step:not(.done):hover{border-color:var(--border)}
   .step.done{opacity:0.65;cursor:default}
-  .ico{width:18px;text-align:center;color:#6366f1;font-weight:700}
+  .ico{width:18px;text-align:center;color:var(--accent);font-weight:700}
   .step.done .ico{color:#86efac}
   .lbl{flex:1}
   .go{color:var(--accent);font-size:11px}

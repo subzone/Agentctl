@@ -157,7 +157,7 @@ km serve</pre>
   .btn{width:100%;padding:8px;border:1px solid #334155;border-radius:8px;background:#1e293b;color:#e2e8f0;font-size:12px;cursor:pointer}
   .btn:hover:not(:disabled){background:#334155}
   .btn:disabled{opacity:0.6;cursor:not-allowed}
-  .btn.primary{background:#6366f1;border-color:#6366f1;color:#fff;font-weight:600}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
   .btn.mini{width:auto;padding:8px 12px;flex-shrink:0}
   .search-row{display:flex;gap:6px}
   .search,.filter{width:100%;box-sizing:border-box;padding:8px 10px;background:#0c1322;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:12px}
@@ -167,7 +167,7 @@ km serve</pre>
   .results{margin:8px 0 0;padding:8px;background:#0c1322;border:1px solid #1e293b;border-radius:6px;font-size:10px;color:#cbd5e1;max-height:120px;overflow:auto;white-space:pre-wrap;word-break:break-word}
   .prog{margin-top:8px}
   .bar{height:5px;background:#1e293b;border-radius:4px;overflow:hidden}
-  .fill{height:100%;background:#6366f1}
+  .fill{height:100%;background:var(--accent)}
   .prog-meta,.prog-file{font-size:10px;color:#64748b;margin-top:4px}
   .prog-file{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ok{margin-top:6px;font-size:11px;color:#34d399}
@@ -180,7 +180,7 @@ km serve</pre>
   .nlist{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:1px;padding-bottom:8px}
   .nrow{display:flex;align-items:center;gap:6px;width:100%;padding:6px 8px;border:none;border-radius:6px;background:transparent;color:#e2e8f0;font-size:11px;text-align:left;cursor:pointer}
   .nrow:hover{background:#111c30}
-  .nrow.sel{background:#1e293b;outline:1px solid #6366f1}
+  .nrow.sel{background:#1e293b;outline:1px solid var(--accent)}
   .nrow .lbl{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
   .nrow .typ{font-size:9px;color:#64748b;text-transform:uppercase}
   .empty{padding:12px;text-align:center;color:#475569;font-size:11px}

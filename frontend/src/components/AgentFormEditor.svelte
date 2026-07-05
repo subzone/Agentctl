@@ -185,8 +185,8 @@
   .toolbar{display:flex;align-items:center;gap:8px;padding:10px 16px;border-bottom:1px solid var(--border);flex-shrink:0;background:#080d18}
   .title{flex:1;font-size:13px;font-weight:600}
   .toggle,.dup{padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--muted);font-size:11px;font-weight:600;cursor:pointer}
-  .toggle.on{background:#1e293b;color:var(--text);border-color:#6366f1}
-  .dup{border-color:#6366f1;color:#a5b4fc}
+  .toggle.on{background:#1e293b;color:var(--text);border-color:var(--accent)}
+  .dup{border-color:var(--accent);color:#a5b4fc}
   .save{padding:6px 14px;border-radius:6px;border:none;background:var(--accent);color:#fff;font-size:12px;font-weight:600;cursor:pointer}
   .err,.warn{margin:8px 16px 0;padding:8px 10px;border-radius:6px;font-size:12px}
   .err{background:#450a0a;color:#fca5a5}

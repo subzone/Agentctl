@@ -42,7 +42,7 @@
   .tlist{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;margin-top:4px}
   .titem{width:100%;display:flex;align-items:center;gap:8px;padding:8px 10px;background:none;border:none;border-radius:6px;color:#e2e8f0;cursor:pointer;text-align:left}
   .titem:hover{background:#1e293b}
-  .titem.active{background:#1e293b;border-left:2px solid #6366f1}
+  .titem.active{background:#1e293b;border-left:2px solid var(--accent)}
   .ticon{font-size:15px}
   .tinfo{min-width:0}
   .tname{font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:6px}

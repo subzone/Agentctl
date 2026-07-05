@@ -97,7 +97,7 @@
     width: 100%; padding: 8px 12px; background: #1e293b; border: 1px solid #334155;
     border-radius: 6px; color: #e2e8f0; font-size: 13px; outline: none;
   }
-  .search-box input:focus { border-color: #3b82f6; }
+  .search-box input:focus { border-color: var(--accent); }
 
   .agent-list { flex: 1; overflow-y: auto; padding: 0 8px 8px; min-height: 0; }
 
@@ -109,10 +109,10 @@
     color: #e2e8f0; cursor: pointer; text-align: left; margin-bottom: 2px;
   }
   .agent-btn:hover { background: #1e293b; }
-  .agent-btn.active{background:#1e293b;border-left:2px solid #3b82f6}
-  .default-agent{background:color-mix(in srgb,#6366f1 12%,transparent);border:1px solid color-mix(in srgb,#6366f1 30%,transparent)}
+  .agent-btn.active{background:#1e293b;border-left:2px solid var(--accent)}
+  .default-agent{background:color-mix(in srgb,var(--accent) 12%,transparent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent)}
   .default-agent .icon{color:#818cf8}
-  .moe-tag{font-size:9px;background:#6366f1;color:#fff;padding:1px 5px;border-radius:4px;vertical-align:middle;font-weight:600}
+  .moe-tag{font-size:9px;background:var(--accent);color:#fff;padding:1px 5px;border-radius:4px;vertical-align:middle;font-weight:600}
   .icon { font-size: 16px; }
   .info { min-width: 0; }
   .name { font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -121,7 +121,7 @@
 
   .history{padding:0 8px 10px;border-top:1px solid #1e293b;max-height:180px;overflow-y:auto;flex-shrink:0}
   .sess-search{width:100%;margin:0 0 6px;padding:6px 8px;background:#1e293b;border:1px solid #334155;border-radius:6px;color:#e2e8f0;font-size:11px;outline:none;box-sizing:border-box}
-  .sess-search:focus{border-color:#3b82f6}
+  .sess-search:focus{border-color:var(--accent)}
   .history-item{
     display:flex;align-items:center;gap:6px;width:100%;padding:6px 10px;
     background:none;border:none;border-radius:6px;cursor:pointer;text-align:left;color:#94a3b8;

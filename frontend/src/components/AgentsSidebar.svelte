@@ -36,7 +36,7 @@
   .list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:2px;margin-top:4px}
   .row{width:100%;display:flex;align-items:center;gap:8px;padding:8px 10px;background:none;border:none;border-radius:6px;color:#e2e8f0;cursor:pointer;text-align:left}
   .row:hover{background:#1e293b}
-  .row.active{background:#1e293b;border-left:2px solid #6366f1}
+  .row.active{background:#1e293b;border-left:2px solid var(--accent)}
   .ico{font-size:14px;opacity:0.8}
   .info{min-width:0;flex:1}
   .name{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px}

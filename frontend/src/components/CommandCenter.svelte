@@ -1,5 +1,6 @@
 <script>
   import { createEventDispatcher } from 'svelte';
+  import { MessagesSquare, Share2, Wrench, Sparkles, Plug, Drama } from '@lucide/svelte';
   const dispatch = createEventDispatcher();
 
   export let agent = null;
@@ -57,32 +58,32 @@
 
   <div class="grid">
     <button class="card" on:click={() => dispatch('nav', 'agents')}>
-      <span class="card-ico">⬡</span>
+      <span class="card-ico"><MessagesSquare size={20} strokeWidth={2} /></span>
       <span class="card-lbl">Chat</span>
       <span class="card-sub">Talk to {agent?.name || 'an agent'}</span>
     </button>
     <button class="card" on:click={() => dispatch('nav', 'knowledge')}>
-      <span class="card-ico">◆</span>
+      <span class="card-ico"><Share2 size={20} strokeWidth={2} /></span>
       <span class="card-lbl">Knowledge</span>
       <span class="card-sub">{stats.km ? 'Graph online' : 'Start km serve'}</span>
     </button>
     <button class="card" on:click={() => dispatch('nav', 'ext-tools')}>
-      <span class="card-ico">🛠</span>
+      <span class="card-ico"><Wrench size={20} strokeWidth={2} /></span>
       <span class="card-lbl">Tools</span>
       <span class="card-sub">{stats.tools} custom</span>
     </button>
     <button class="card" on:click={() => dispatch('nav', 'ext-skills')}>
-      <span class="card-ico">✦</span>
+      <span class="card-ico"><Sparkles size={20} strokeWidth={2} /></span>
       <span class="card-lbl">Skills</span>
       <span class="card-sub">{stats.skills} active</span>
     </button>
     <button class="card" on:click={() => dispatch('nav', 'ext-mcp')}>
-      <span class="card-ico">🔌</span>
+      <span class="card-ico"><Plug size={20} strokeWidth={2} /></span>
       <span class="card-lbl">MCP</span>
       <span class="card-sub">{stats.mcp} server(s)</span>
     </button>
     <button class="card" on:click={() => dispatch('nav', 'personality')}>
-      <span class="card-ico">🎭</span>
+      <span class="card-ico"><Drama size={20} strokeWidth={2} /></span>
       <span class="card-lbl">Persona</span>
       <span class="card-sub">Per-agent behaviour</span>
     </button>
@@ -168,15 +169,16 @@
   .head{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;margin-bottom:24px}
   .head h1{margin:0;font-size:22px;font-weight:700;color:var(--text)}
   .sub{margin:6px 0 0;font-size:13px;color:var(--muted)}
-  .model{margin-left:8px;font-size:11px;background:#0f172a;padding:2px 8px;border-radius:4px;color:#94a3b8}
+  .model{margin-left:8px;font-size:11px;background:var(--bg-input);padding:2px 8px;border-radius:4px;color:var(--muted)}
   .head-actions{display:flex;gap:8px;flex-shrink:0}
-  .act{padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px;font-weight:600;cursor:pointer}
+  .act{padding:9px 16px;border-radius:8px;border:1px solid var(--border);background:var(--bg-input);color:var(--text);font-size:13px;font-weight:600;cursor:pointer;transition:transform 0.15s,box-shadow 0.15s,filter 0.15s}
   .act:hover{filter:brightness(1.1)}
-  .act.primary{background:var(--accent);border-color:var(--accent);color:#fff}
-  .act:disabled{opacity:0.5;cursor:not-allowed}
+  .act.primary{background:var(--accent-gradient);border-color:transparent;color:#fff;box-shadow:0 4px 14px rgba(79,70,229,0.35)}
+  .act.primary:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(79,70,229,0.45)}
+  .act:disabled{opacity:0.5;cursor:not-allowed;transform:none}
 
   .sub .model{font-size:11px;color:var(--muted);margin-left:8px}
-  .plan-pill{margin-left:10px;font-size:10px;font-weight:800;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:#334155;color:#94a3b8}
+  .plan-pill{margin-left:10px;font-size:10px;font-weight:800;text-transform:uppercase;padding:2px 8px;border-radius:4px;background:var(--bg-input);color:var(--muted)}
   .plan-pill.pro{background:#4c1d95;color:#e9d5ff}
 
   .packages{margin-bottom:20px}
@@ -189,9 +191,9 @@
   .pkg-hint{font-size:11px;color:var(--muted);margin-top:8px}
 
   .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px;margin-bottom:20px}
-  .card{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 16px;background:#0c1322;border:1px solid var(--border);border-radius:10px;cursor:pointer;text-align:left;color:var(--text)}
-  .card:hover{border-color:var(--accent);background:#111c30}
-  .card-ico{font-size:20px}
+  .card{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:14px 16px;background:var(--bg-panel);border:1px solid var(--border);border-radius:10px;cursor:pointer;text-align:left;color:var(--text);transition:border-color 0.15s,background 0.15s,transform 0.15s}
+  .card:hover{border-color:var(--accent);background:var(--bg-input);transform:translateY(-2px)}
+  .card-ico{display:flex;color:var(--accent)}
   .card-lbl{font-size:13px;font-weight:600}
   .card-sub{font-size:11px;color:var(--muted)}
 

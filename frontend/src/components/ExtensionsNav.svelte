@@ -23,6 +23,6 @@
   .ext-nav{display:flex;gap:2px;padding:8px 8px 0;flex-shrink:0;border-bottom:1px solid #1e293b}
   .ext-nav button{flex:1;display:flex;align-items:center;justify-content:center;gap:4px;padding:8px 4px;background:none;border:none;border-bottom:2px solid transparent;color:#64748b;font-size:10px;font-weight:600;cursor:pointer;border-radius:6px 6px 0 0}
   .ext-nav button:hover{color:#cbd5e1;background:#111c30}
-  .ext-nav button.active{color:#e2e8f0;border-bottom-color:#6366f1;background:#0c1322}
+  .ext-nav button.active{color:#e2e8f0;border-bottom-color:var(--accent);background:#0c1322}
   .ico{font-size:12px}
 </style>

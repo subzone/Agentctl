@@ -84,12 +84,12 @@ km serve</pre>
   .btn{width:100%;padding:9px;border:1px solid #334155;border-radius:8px;background:#1e293b;color:#e2e8f0;font-size:13px;cursor:pointer}
   .btn:hover:not(:disabled){background:#334155}
   .btn:disabled{opacity:0.6;cursor:not-allowed}
-  .btn.primary{background:#6366f1;border-color:#6366f1;color:#fff;font-weight:600}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
   .btn.primary:hover:not(:disabled){filter:brightness(1.1)}
 
   .prog{margin-top:8px}
   .bar{height:6px;background:#1e293b;border-radius:4px;overflow:hidden}
-  .fill{height:100%;background:#6366f1;transition:width 0.2s}
+  .fill{height:100%;background:var(--accent);transition:width 0.2s}
   .prog-meta{font-size:11px;color:#94a3b8;margin-top:4px}
   .prog-file{font-size:10px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px}
   .ok{margin-top:8px;font-size:12px;color:#34d399}
