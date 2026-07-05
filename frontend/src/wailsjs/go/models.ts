@@ -279,22 +279,6 @@ export namespace desktop {
 	        this.dataB64 = source["dataB64"];
 	    }
 	}
-	export class ImageAttachment {
-	    name: string;
-	    mimeType: string;
-	    dataB64: string;
-	
-	    static createFrom(source: any = {}) {
-	        return new ImageAttachment(source);
-	    }
-	
-	    constructor(source: any = {}) {
-	        if ('string' === typeof source) source = JSON.parse(source);
-	        this.name = source["name"];
-	        this.mimeType = source["mimeType"];
-	        this.dataB64 = source["dataB64"];
-	    }
-	}
 	export class HealthCheck {
 	    id: string;
 	    label: string;
@@ -346,6 +330,22 @@ export namespace desktop {
 		    }
 		    return a;
 		}
+	}
+	export class ImageAttachment {
+	    name: string;
+	    mimeType: string;
+	    dataB64: string;
+	
+	    static createFrom(source: any = {}) {
+	        return new ImageAttachment(source);
+	    }
+	
+	    constructor(source: any = {}) {
+	        if ('string' === typeof source) source = JSON.parse(source);
+	        this.name = source["name"];
+	        this.mimeType = source["mimeType"];
+	        this.dataB64 = source["dataB64"];
+	    }
 	}
 	export class KMLink {
 	    source: string;
@@ -902,6 +902,8 @@ export namespace desktop {
 	    current: string;
 	    latest: string;
 	    updateAvailable: boolean;
+	    pendingInstall: boolean;
+	    pendingPath?: string;
 	    releaseUrl: string;
 	    desktopUrl: string;
 	    downloadNotes: string;
@@ -915,6 +917,8 @@ export namespace desktop {
 	        this.current = source["current"];
 	        this.latest = source["latest"];
 	        this.updateAvailable = source["updateAvailable"];
+	        this.pendingInstall = source["pendingInstall"];
+	        this.pendingPath = source["pendingPath"];
 	        this.releaseUrl = source["releaseUrl"];
 	        this.desktopUrl = source["desktopUrl"];
 	        this.downloadNotes = source["downloadNotes"];

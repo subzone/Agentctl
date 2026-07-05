@@ -25,6 +25,37 @@ type release struct {
 // and "what's new" banner. When you cut a new tag, prepend an entry.
 var releases = []release{
 	{
+		Version: "0.8.3",
+		Date:    "2026-07-05",
+		Highlights: []string{
+			"Desktop updates: correct version from build/bundle; pending-install state after download (no more upgrade nag loop).",
+			"Control plane /health reports image version; smoke script for local + prod checks.",
+			"E2E billing runbook (docs/E2E_BILLING.md) for Freemius sandbox → license activate.",
+		},
+	},
+	{
+		Version: "0.8.2",
+		Date:    "2026-07-05",
+		Highlights: []string{
+			"Desktop brand alignment: Inter + JetBrains Mono, indigo/violet accent, lucide icons.",
+		},
+	},
+	{
+		Version: "0.8.1",
+		Date:    "2026-07-04",
+		Highlights: []string{
+			"Pricing page with Freemius Pro checkout; Prometheus metrics on control plane.",
+		},
+	},
+	{
+		Version: "0.8.0",
+		Date:    "2026-07-04",
+		Highlights: []string{
+			"Production control plane: SQLite license store, Freemius HMAC webhooks, Helm chart + GHCR image.",
+			"Client defaults to hosted control plane URL; production signing key trust.",
+		},
+	},
+	{
 		Version: "0.7.1",
 		Date:    "2026-07-03",
 		Highlights: []string{

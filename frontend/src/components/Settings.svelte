@@ -141,7 +141,7 @@
 
     <div class="body">
       {#if tab === 'general'}
-        <UpdatePanel {updateInfo} />
+        <UpdatePanel {updateInfo} on:refresh={e => dispatch('refresh', e.detail)} />
         <LicensePanel />
         <div class="section">
           <h3>Interface mode</h3>

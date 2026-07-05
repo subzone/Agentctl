@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.3] - 2026-07-05
+
+### Fixed
+- **Desktop updates** — version detection from build ldflags / macOS bundle `Info.plist` (no hardcoded semver); pending-install state after download so the app stops nagging "upgrade available" before you replace the `.app`
+- **Freemius webhooks** — accept numeric `plan_id` in nested payloads (Freemius sends `55088` as a number)
+
+### Added
+- `scripts/smoke-controlplane.sh` — local sandbox activate + read-only production health check
+- `docs/E2E_BILLING.md` — Freemius sandbox → license activate runbook (Phase 1.10i)
+
+### Changed
+- Control plane `/health` reports `AGENTCTL_CP_VERSION` from the container image tag / Helm `appVersion` instead of a hardcoded `0.1.0`
+- CI runs control plane smoke test on every push
+
 ## [0.8.2] - 2026-07-05
 
 ### Changed

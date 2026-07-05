@@ -44,6 +44,10 @@
       Update available: v{updateInfo.current} → v{updateInfo.latest}
       <a href={updateInfo.releaseUrl} target="_blank" rel="noreferrer">Download</a>
     </div>
+  {:else if updateInfo?.pendingInstall}
+    <div class="update pending">
+      v{updateInfo.latest} downloaded — quit and replace the app in /Applications.
+    </div>
   {/if}
 </div>
 

@@ -52,8 +52,8 @@ type freemiusNestedPayload struct {
 	Type    string `json:"type"`
 	Objects struct {
 		License struct {
-			SecretKey string `json:"secret_key"`
-			PlanID    string `json:"plan_id"`
+			SecretKey string     `json:"secret_key"`
+			PlanID    flexString `json:"plan_id"`
 		} `json:"license"`
 		User struct {
 			ID    string `json:"id"`
@@ -81,7 +81,7 @@ func parseFreemiusWebhook(raw []byte) (FreemiusWebhookEvent, error) {
 			EventID:    nested.ID,
 			Event:      nested.Type,
 			LicenseKey: nested.Objects.License.SecretKey,
-			PlanID:     nested.Objects.License.PlanID,
+			PlanID:     nested.Objects.License.PlanID.String(),
 			UserID:     nested.Objects.User.ID,
 			Email:      nested.Objects.User.Email,
 		}, nil

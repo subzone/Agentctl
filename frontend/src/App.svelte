@@ -914,6 +914,7 @@
 
 {#if showSettings}
   <Settings {updateInfo}
+    on:refresh={e => updateInfo = e.detail}
     on:close={() => showSettings = false}
     on:theme={e => applyTheme(e.detail)}
     on:uiMode={e => setProMode(e.detail)}
@@ -1217,14 +1218,14 @@ km serve</pre>
     {#if showOnboarding}
       <Onboarding on:done={() => showOnboarding = false} />
     {/if}
-    {#if showUpdatePanel && updateInfo?.updateAvailable}
+    {#if showUpdatePanel && (updateInfo?.updateAvailable || updateInfo?.pendingInstall)}
       <div class="update-overlay" role="presentation" on:click={() => showUpdatePanel = false} on:keydown={() => {}}>
         <div class="update-modal" role="dialog" on:click|stopPropagation on:keydown={() => {}}>
           <div class="update-modal-head">
             <h2>Software update</h2>
             <button class="x" on:click={() => showUpdatePanel = false}>✕</button>
           </div>
-          <UpdatePanel {updateInfo} />
+          <UpdatePanel {updateInfo} on:refresh={e => updateInfo = e.detail} />
         </div>
       </div>
     {/if}

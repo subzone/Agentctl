@@ -13,12 +13,14 @@ import (
 
 // UpdateInfo describes an available AgentCTL release.
 type UpdateInfo struct {
-	Current       string `json:"current"`
-	Latest        string `json:"latest"`
+	Current         string `json:"current"`
+	Latest          string `json:"latest"`
 	UpdateAvailable bool   `json:"updateAvailable"`
-	ReleaseURL    string `json:"releaseUrl"`
-	DesktopURL    string `json:"desktopUrl"`
-	DownloadNotes string `json:"downloadNotes"`
+	PendingInstall  bool   `json:"pendingInstall"`
+	PendingPath     string `json:"pendingPath,omitempty"`
+	ReleaseURL      string `json:"releaseUrl"`
+	DesktopURL      string `json:"desktopUrl"`
+	DownloadNotes   string `json:"downloadNotes"`
 }
 
 // CheckForUpdate queries GitHub for the latest release tag.
@@ -36,10 +38,24 @@ func (a *App) CheckForUpdate() UpdateInfo {
 	if latest == "" {
 		return info
 	}
-	info.Latest = strings.TrimPrefix(latest, "v")
+	info.Latest = normalizeVersion(latest)
+	clearPendingUpdateIfInstalled(current, info.Latest)
+
 	if compareSemver(info.Latest, info.Current) > 0 {
+		if pending := loadPendingUpdate(); pending != nil && normalizeVersion(pending.Version) == info.Latest {
+			info.PendingInstall = true
+			info.PendingPath = pending.Path
+			info.ReleaseURL = "https://github.com/subzone/Agentctl/releases/tag/v" + info.Latest
+			info.DownloadNotes = "Update downloaded. Quit AgentCTL, replace the app in /Applications, then reopen."
+			touchUpdateCheck()
+			return info
+		}
 		info.UpdateAvailable = true
-		info.ReleaseURL = "https://github.com/subzone/Agentctl/releases/tag/" + latest
+		tag := latest
+		if !strings.HasPrefix(tag, "v") {
+			tag = "v" + tag
+		}
+		info.ReleaseURL = "https://github.com/subzone/Agentctl/releases/tag/" + tag
 		info.DesktopURL = info.ReleaseURL
 		info.DownloadNotes = "Download AgentCTL_" + info.Latest + " for your platform from the release page, or run: brew upgrade subzone/tap/m"
 	}
@@ -48,10 +64,25 @@ func (a *App) CheckForUpdate() UpdateInfo {
 }
 
 func (a *App) productVersion() string {
-	if a.version != "" {
-		return a.version
+	if v := normalizeVersion(a.version); v != "" && v != "dev" {
+		return v
 	}
-	return "0.7.1"
+	if bv := normalizeVersion(platformBundleVersion()); bv != "" {
+		return bv
+	}
+	if v := normalizeVersion(a.version); v != "" {
+		return v
+	}
+	return "dev"
+}
+
+func normalizeVersion(v string) string {
+	v = strings.TrimSpace(v)
+	v = strings.TrimPrefix(v, "v")
+	if idx := strings.IndexAny(v, "+-"); idx > 0 {
+		v = v[:idx]
+	}
+	return v
 }
 
 func fetchLatestReleaseTag() string {
@@ -92,8 +123,8 @@ func touchUpdateCheck() {
 
 // compareSemver returns 1 if a>b, -1 if a<b, 0 if equal (numeric dot parts).
 func compareSemver(a, b string) int {
-	a = strings.TrimPrefix(a, "v")
-	b = strings.TrimPrefix(b, "v")
+	a = normalizeVersion(a)
+	b = normalizeVersion(b)
 	pa := strings.Split(a, ".")
 	pb := strings.Split(b, ".")
 	for i := 0; i < len(pa) || i < len(pb); i++ {

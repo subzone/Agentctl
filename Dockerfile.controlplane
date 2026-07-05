@@ -28,6 +28,8 @@ RUN --mount=type=cache,target=/go/pkg/mod \
 # Runtime stage
 FROM alpine:3.20 AS runtime
 
+ARG VERSION=dev
+
 RUN apk add --no-cache ca-certificates tzdata && \
     addgroup -g 1000 -S agentctl && \
     adduser -u 1000 -S agentctl -G agentctl -h /home/agentctl && \
@@ -35,6 +37,8 @@ RUN apk add --no-cache ca-certificates tzdata && \
     chown -R agentctl:agentctl /data /home/agentctl
 
 COPY --from=build /out/controlplane /usr/local/bin/controlplane
+
+ENV AGENTCTL_CP_VERSION=${VERSION}
 
 USER agentctl
 WORKDIR /data

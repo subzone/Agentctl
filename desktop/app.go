@@ -116,7 +116,6 @@ type CostInfo struct {
 
 func NewApp() *App {
 	return &App{
-		version:  "0.7.1",
 		sessions: make(map[string]*Session),
 		pending:  make(map[string]chan bool),
 	}
@@ -124,9 +123,7 @@ func NewApp() *App {
 
 // SetProductVersion sets the build version (from main.Version ldflags).
 func (a *App) SetProductVersion(v string) {
-	if v != "" && v != "dev" {
-		a.version = v
-	}
+	a.version = strings.TrimSpace(v)
 }
 
 func (a *App) Startup(ctx context.Context) {

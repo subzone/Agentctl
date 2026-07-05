@@ -7,7 +7,7 @@ against your choice of LLM. Aimed at developers and DevOps people who live in
 the terminal and want to script agentic work without IDE lock-in or SDK
 sprawl.
 
-**Current version:** v0.7.1 | **Go version:** 1.26+ | **Binary size:** ~8.4 MB | **Docker image:** ~16 MB
+**Current version:** v0.8.3 | **Go version:** 1.26+ | **Binary size:** ~8.4 MB | **Docker image:** ~16 MB
 
 **Status:** beta. Desktop control plane with MoE chat, extensions, knowledge graph, and session persistence. Tagged releases ship CLI packages and AgentCTL desktop builds.
 

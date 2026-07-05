@@ -59,6 +59,11 @@ func LoadConfig() (Config, error) {
 	if err != nil {
 		return Config{}, err
 	}
+	ver := strings.TrimSpace(os.Getenv("AGENTCTL_CP_VERSION"))
+	if ver == "" {
+		ver = "dev"
+	}
+	ver = strings.TrimPrefix(ver, "v")
 	return Config{
 		Addr:          addr,
 		Env:           env,
@@ -66,7 +71,7 @@ func LoadConfig() (Config, error) {
 		WebhookSecret: secret,
 		SigningKey:    priv,
 		FreemiusPlans: plans,
-		Version:       "0.1.0",
+		Version:       ver,
 	}, nil
 }
 

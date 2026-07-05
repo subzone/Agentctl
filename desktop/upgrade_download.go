@@ -130,6 +130,8 @@ func (a *App) DownloadUpdate() (*UpdateDownloadResult, error) {
 		"filename": assetName,
 	})
 
+	savePendingUpdate(info.Latest, dest)
+
 	notes := installNotes(assetName)
 	return &UpdateDownloadResult{
 		Path:       dest,

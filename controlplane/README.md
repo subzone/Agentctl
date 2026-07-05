@@ -65,10 +65,9 @@ sandbox `https://checkout.freemius.com/app/33496/plan/55088/?sandbox=true`.
 **Not yet verified**: the exact JSON field names inside the real webhook
 payload (`objects.license.*`) — Freemius's own docs confirm the `objects:
 { license }` nesting and HMAC-SHA256 signing, but no live payload has been
-captured yet. Do this once the control plane is actually deployed (a
-sandbox purchase right now would just fail to connect — nothing is running
-at `agentctl-api.myk8s.pp.ua` yet): trigger a sandbox purchase, then check
-`internal/controlplane/webhook.go`'s parsing against what actually arrives.
+captured yet. Trigger a sandbox purchase (`?sandbox=true` checkout), verify
+webhook delivery in server logs, then check `internal/controlplane/webhook.go`'s
+parsing against what actually arrives.
 
 ## Run locally
 
@@ -108,6 +107,13 @@ curl -X POST http://localhost:8090/v1/webhooks/freemius \
 ```
 
 Then activate with `m license activate FS-CUSTOM-001`.
+
+## Smoke test
+
+```bash
+./scripts/smoke-controlplane.sh          # local dev server + sandbox activate
+./scripts/smoke-controlplane.sh --prod   # read-only prod health + metrics
+```
 
 ## Environment
 

@@ -51,6 +51,9 @@
     {#if updateInfo?.updateAvailable}
       <button type="button" class="update-pill" title={updateInfo.downloadNotes}
         on:click={() => dispatch('update')}>↑ v{updateInfo.latest}</button>
+    {:else if updateInfo?.pendingInstall}
+      <button type="button" class="update-pill pending" title={updateInfo.downloadNotes}
+        on:click={() => dispatch('update')}>Install v{updateInfo.latest}</button>
     {/if}
     {#if agent}
       {#if contextUsage > 0}
@@ -122,6 +125,7 @@
   .moe-tag{font-size:10px;color:#fff;padding:2px 8px;border-radius:4px;font-weight:600;white-space:nowrap;flex-shrink:0}
 
   .update-pill{font-size:10px;font-weight:700;padding:3px 10px;border-radius:12px;background:#713f12;color:#fcd34d;border:none;cursor:pointer;flex-shrink:0;font-family:inherit}
+  .update-pill.pending{background:#14532d;color:#86efac}
   .update-pill:hover{filter:brightness(1.1)}
 
   .ctx-bar{position:relative;width:60px;height:8px;background:#0f172a;border-radius:4px;border:1px solid #334155;overflow:hidden;flex-shrink:0}

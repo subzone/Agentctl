@@ -10,6 +10,13 @@
   let result = null;
   let error = '';
 
+  onMount(() => {
+    window.runtime?.EventsOn('updateProgress', onProgress);
+    if (updateInfo?.pendingInstall && updateInfo.pendingPath) {
+      result = { path: updateInfo.pendingPath, filename: updateInfo.pendingPath.split('/').pop() };
+    }
+  });
+
   function onProgress(data) {
     if (data?.phase === 'downloading') {
       downloading = true;
@@ -21,9 +28,11 @@
     }
   }
 
-  onMount(() => {
-    window.runtime?.EventsOn('updateProgress', onProgress);
-  });
+  async function refreshUpdateInfo() {
+    try {
+      dispatch('refresh', await window.go.desktop.App.CheckForUpdate());
+    } catch (_) {}
+  }
 
   onDestroy(() => {
     window.runtime?.EventsOff('updateProgress');
@@ -39,6 +48,7 @@
       result = res;
       downloading = false;
       progress = 100;
+      await refreshUpdateInfo();
     } catch (e) {
       error = String(e);
       downloading = false;
@@ -46,7 +56,7 @@
   }
 
   async function reveal() {
-    const path = result?.path;
+    const path = result?.path || updateInfo?.pendingPath;
     if (!path) return;
     try {
       await window.go.desktop.App.OpenPath(path);
@@ -84,6 +94,19 @@
       <a class="btn link" href={updateInfo.releaseUrl} target="_blank" rel="noreferrer">Release notes</a>
     </div>
   </div>
+{:else if updateInfo?.pendingInstall}
+  <div class="panel pending" class:compact>
+    <div class="head">
+      <span class="title">Install update</span>
+      <span class="ver">v{updateInfo.latest} ready</span>
+    </div>
+    <p class="notes">{updateInfo.downloadNotes}</p>
+    {#if result?.notes}<p class="notes">{result.notes}</p>{/if}
+    <div class="actions">
+      <button class="btn primary" on:click={reveal}>Show in Finder</button>
+      <a class="btn link" href={updateInfo.releaseUrl} target="_blank" rel="noreferrer">Release notes</a>
+    </div>
+  </div>
 {/if}
 
 <style>
@@ -94,13 +117,14 @@
   .ver{font-size:11px;color:#94a3b8;font-family:'SF Mono',Menlo,monospace}
   .notes{font-size:12px;color:#94a3b8;line-height:1.5;margin-bottom:10px}
   .prog{height:6px;background:#0f172a;border-radius:3px;overflow:hidden;margin-bottom:4px}
-  .fill{height:100%;background:#6366f1;transition:width 0.2s}
+  .fill{height:100%;background:var(--accent);transition:width 0.2s}
   .prog-meta{font-size:11px;color:#64748b;margin-bottom:8px}
   .err{font-size:12px;color:#fca5a5;margin-bottom:8px}
   .ok{font-size:12px;color:#86efac;margin-bottom:8px}
   .actions{display:flex;flex-wrap:wrap;gap:8px}
   .btn{padding:7px 14px;border-radius:6px;border:1px solid #334155;background:#0f172a;color:#e2e8f0;font-size:12px;font-weight:600;cursor:pointer;text-decoration:none}
-  .btn.primary{background:#6366f1;border-color:#6366f1;color:#fff}
+  .btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
   .btn:disabled{opacity:0.5;cursor:not-allowed}
   .btn.link{display:inline-flex;align-items:center}
+  .panel.pending .title{color:#86efac}
 </style>

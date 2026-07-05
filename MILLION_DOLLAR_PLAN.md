@@ -10,11 +10,13 @@ Math: ~4,200 × $20/mo Pro · ~840 × $99/mo Team · or fewer Enterprise deals.
 
 ## North star
 
-**Product today:** local agent control plane (CLI + desktop) — v0.7.1 shipped.
+**Product today:** local agent control plane (CLI + desktop) — **v0.8.3** shipped.
 
-**Business gap:** nothing charges, enforces limits, or sells to teams.
+**Business gap:** billing path is wired but **first paid conversion not yet proven** end-to-end.
 
 **Strategy:** hosted control plane + Freemius billing + curated packages + CI/enterprise wedge.
+
+**Control plane:** `https://agentctl-api.myk8s.pp.ua` — **live** (`/health` + `/metrics` returning 200 as of 2026-07-05).
 
 Detailed control-plane architecture: [`CONTROL_PLANE_SPEC.md`](CONTROL_PLANE_SPEC.md)  
 Enterprise feature depth: [`ENTERPRISE_PLAN.md`](ENTERPRISE_PLAN.md)
@@ -36,7 +38,7 @@ Goal: first paid SKUs and client-side entitlement gating.
 | 1.7 | Control plane API contract (OpenAPI draft) | ✅ Done |
 | 1.8 | Freemius sandbox + webhook receiver | ✅ Done |
 | 1.9 | Signed JWT entitlements from server | ✅ Done |
-| 1.10 | Pricing page + checkout links | 🔧 In progress |
+| 1.10 | Pricing page + checkout links | 🔧 Almost done — page shipped; E2E purchase smoke pending |
 
 **1.10 breakdown (2026-07-04):**
 
@@ -46,11 +48,11 @@ Goal: first paid SKUs and client-side entitlement gating.
 | 1.10b | Production Ed25519 signing key + client trust update | ✅ Done (code) — private key must be set as `AGENTCTL_CP_SIGNING_KEY` in the cluster secret store |
 | 1.10c | Client defaults to production control plane URL (no env var needed) | ✅ Done |
 | 1.10d | Freemius webhook signature verification (`x-signature` HMAC) | ✅ Done (code) — unverified against a live Freemius payload, test before go-live |
-| 1.10e | GHCR image + Helm chart + ArgoCD deployment to `agentctl-api.myk8s.pp.ua` | ✅ Drafted — image builds and runs locally; k8s manifests drafted in `argocd-app-of-apps`, not yet committed/pushed |
+| 1.10e | GHCR image + Helm chart + ArgoCD deployment to `agentctl-api.myk8s.pp.ua` | ✅ Live — `/health` OK; redeploy with `pullPolicy: Always` on `:latest` |
 | 1.10f | Freemius seller account: product, Pro plan, checkout link | ✅ Done — product `AgentCtl` (store 17705, app 33496); Free=`55087`, Pro=`55088` @ $19/mo monthly; checkout links: prod `https://checkout.freemius.com/app/33496/plan/55088/`, sandbox `?sandbox=true` |
-| 1.10g | Populate real secrets in AWS Parameter Store (`/agentctl-controlplane/*`) | 🔧 Webhook secret token generated and set on the Freemius listener URL (`?token=...`); still needs to land in Parameter Store + `GHCR_DOCKERCONFIG` |
-| 1.10h | Public pricing page linking to Freemius checkout | ⬜ Not started |
-| 1.10i | End-to-end smoke test with a real (or Freemius sandbox) purchase | ⬜ Blocked on deploying the control plane (nothing is listening at `agentctl-api.myk8s.pp.ua` yet) — do this after 1.10e ships |
+| 1.10g | Populate real secrets in AWS Parameter Store (`/agentctl-controlplane/*`) | ✅ Done (assumed — production boots with `AGENTCTL_CP_ENV=production`) |
+| 1.10h | Public pricing page linking to Freemius checkout | ✅ Done — `docs/pricing.html` (v0.8.1) |
+| 1.10i | End-to-end smoke test with a real (or Freemius sandbox) purchase | 🔧 Runbook in `docs/E2E_BILLING.md` — execute sandbox checkout + verify webhook |
 
 **Freemius webhook listener** (confirmed live in dashboard, `apps/33496/webhooks/listeners`): URL `https://agentctl-api.myk8s.pp.ua/v1/webhooks/freemius?token=<secret>`, 11 event types selected — `license.{activated,created,cancelled,deactivated,deleted,expired,activations.synced,blacklisted_site.deleted}`, `subscription.{created,cancelled,renewal.failed.last}`. Real event names confirmed against the live dashboard catalog and differ from the original guess (no generic `payment.failed`/`license.revoked` — see `internal/controlplane/webhook.go`).
 
@@ -110,9 +112,9 @@ Goal: first B2B revenue from pipelines and org governance.
 
 ## Current sprint
 
-**Phase 1.1–1.9 shipped** (entitlement store, CLI + desktop gating, control plane sandbox, JWT entitlements).
+**Phase 1.1–1.9 shipped** (entitlement store, CLI + desktop gating, control plane, JWT entitlements).
 
-**Next sprint:** Phase 1.10 — pricing page + checkout links, then Phase 2.1 — GitHub Action.
+**Current sprint:** finish **1.10i** (run `docs/E2E_BILLING.md`), then **Phase 2.1** — GitHub Action.
 
 ---
 

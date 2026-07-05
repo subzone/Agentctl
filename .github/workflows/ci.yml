@@ -36,5 +36,8 @@ jobs:
           CGO_ENABLED=0 go build -trimpath -o m ./cmd/m
           CGO_ENABLED=0 go build -trimpath -o controlplane ./cmd/controlplane
 
+      - name: Control plane smoke (local)
+        run: ./scripts/smoke-controlplane.sh
+
       - name: Validate example agents
         run: ./m validate examples/

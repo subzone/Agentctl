@@ -15,7 +15,7 @@
   "info": {
     "companyName": "subzone",
     "productName": "AgentCTL",
-    "productVersion": "0.8.2",
+    "productVersion": "0.8.3",
     "copyright": "Copyright © 2024-2026 subzone",
     "comments": "MD-driven agent for code, infra, and automation work"
   },
