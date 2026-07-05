@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.8.2] - 2026-07-05
+
+### Changed
+- **Desktop brand alignment** — Inter + JetBrains Mono fonts, indigo/violet gradient accent replacing the generic slate/blue palette, consistent lucide-svelte icon set across the nav rail and Command Center (was a mix of Unicode glyphs and emoji)
+- Swept ~20 desktop components off hardcoded accent-blue hex literals onto the shared `--accent` CSS token
+
 ## [0.8.1] - 2026-07-04
 
 ### Added
